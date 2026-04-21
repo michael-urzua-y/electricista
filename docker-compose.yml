@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: electricista_db
+    environment:
+      POSTGRES_DB: electricista
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - electricista_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: .
+    container_name: electricista_backend
+    command: >
+      sh -c "sleep 10 &&
+             python manage.py migrate &&
+             python -m scripts.init_db &&
+             python manage.py collectstatic --noinput &&
+             gunicorn electricista.wsgi:application --bind 0.0.0.0:8000 --timeout 120"
+    volumes:
+      - .:/app
+      - static_volume:/app/static
+      - media_volume:/app/media
+    ports:
+      - "8000:8000"
+    environment:
+      DEBUG: "False"
+      DB_NAME: electricista
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - electricista_net
+
+  frontend:
+    image: node:18-alpine
+    container_name: electricista_frontend
+    working_dir: /app/frontend
+    volumes:
+      - ./frontend:/app/frontend
+      - /app/frontend/node_modules
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install && npm run dev -- --host"
+    environment:
+      VITE_API_URL: http://localhost:8000/api
+    depends_on:
+      - backend
+    networks:
+      - electricista_net
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
+
+networks:
+  electricista_net:
+    driver: bridge

@@ -1,0 +1,43 @@
+# Backend - Django
+Django==4.2.30
+djangorestframework==3.14.0
+djangorestframework-simplejwt==5.3.1
+django-cors-headers==4.3.1
+python-decouple==3.8
+python-dotenv==1.0.0
+Pillow==10.1.0
+
+# OCR y procesamiento de imágenes
+pytesseract==0.3.10
+pdf2image==1.16.3
+PyPDF2==3.0.1
+pymupdf==1.23.26  # Alternativa más rápida para PDFs
+
+# HTTP requests ( Mistral AI client )
+requests==2.31.0
+
+# Base de datos
+psycopg2-binary==2.9.9
+dj-database-url==2.1.0
+
+# IA y NLP (para parseo de facturas)
+openai==1.3.7  # Para usar GPT/Vision si se desea, no solo Mistral
+mistralai>=0.1.0  # Cliente oficial de Mistral AI
+
+# Utilidades
+python-dateutil==2.8.2
+tqdm==4.66.1
+structlog==23.2.0
+
+# Desarrollo y Debug
+django-debug-toolbar==4.2.0
+ipython==8.17.2
+
+# Testing
+pytest==7.4.3
+pytest-django==4.7.0
+factory-boy==3.3.0
+
+# Production server
+gunicorn==21.2.0
+whitenoise==6.6.0

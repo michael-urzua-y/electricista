@@ -1,0 +1,96 @@
+from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from .models import Provider, Product, PriceHistory, PriceAlert
+from .serializers import ProviderSerializer, ProductSerializer, PriceHistorySerializer, PriceAlertSerializer
+
+
+class ProviderViewSet(viewsets.ModelViewSet):
+    """API para proveedores"""
+    queryset = Provider.objects.filter(is_active=True)
+    serializer_class = ProviderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class ProductViewSet(viewsets.ModelViewSet):
+    """API para productos"""
+    queryset = Product.objects.filter(is_active=True).select_related('provider')
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filterset_fields = ['provider', 'category']
+    search_fields = ['name', 'brand', 'model']
+
+    @action(detail=True, methods=['get'])
+    def price_history(self, request, pk=None):
+        """Obtener historial de precios de un producto"""
+        product = self.get_object()
+        history = product.price_history.all().select_related('provider')
+        serializer = PriceHistorySerializer(history, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def alerts(self, request, pk=None):
+        """Obtener alertas de un producto"""
+        product = self.get_object()
+        alerts = product.alerts.all().select_related('provider')
+        serializer = PriceAlertSerializer(alerts, many=True)
+        return Response(serializer.data)
+
+
+class ComparacionViewSet(viewsets.ViewSet):
+    """API para comparación de precios por producto entre proveedores"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def list(self, request):
+        """
+        Devuelve tabla comparativa de productos con precios por proveedor.
+        Solo incluye proveedores que tienen al menos un precio registrado.
+        """
+        from products.models import Product, Provider, PriceHistory
+        
+        # Obtener productos activos que tengan al menos un precio en el historial
+        products = Product.objects.filter(is_active=True, price_history__isnull=False).distinct().select_related('provider')
+        
+        # Obtener proveedores que tienen al menos un precio en el historial
+        providers = Provider.objects.filter(pricehistory__isnull=False).distinct()
+        provider_names = {p.name for p in providers}
+        
+        result = []
+        for product in products:
+            # Obtener el último precio de este producto en cada proveedor
+            latest_prices = PriceHistory.objects.filter(product=product).order_by('provider', '-recorded_at')
+            prices_by_provider = {}
+            seen = set()
+            for ph in latest_prices:
+                if ph.provider_id not in seen:
+                    prices_by_provider[ph.provider.name] = float(ph.price)
+                    seen.add(ph.provider_id)
+            
+            # Solo incluir proveedores que tengan precio para este producto
+            # (no rellenar con nulls)
+            
+            # Determinar más barato y más caro
+            if prices_by_provider:
+                min_provider = min(prices_by_provider, key=prices_by_provider.get)
+                max_provider = max(prices_by_provider, key=prices_by_provider.get)
+                best_price = prices_by_provider[min_provider]
+                worst_price = prices_by_provider[max_provider]
+            else:
+                min_provider = None
+                max_provider = None
+                best_price = None
+                worst_price = None
+            
+            result.append({
+                'product_id': product.id,
+                'product_name': product.name,
+                'category': product.category,
+                'prices': prices_by_provider,
+                'best_provider': min_provider,
+                'best_price': best_price,
+                'worst_provider': max_provider,
+                'worst_price': worst_price
+            })
+        
+        return Response(result)
