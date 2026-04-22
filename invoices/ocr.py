@@ -67,8 +67,9 @@ class OCRProcessor:
                 logger.info(f"PDF extraído con pymupdf: {len(full_text)} caracteres")
                 return full_text
             else:
-                # Poco texto, probablemente PDF escaneado → usar OCR
-                raise ValueError("PDF parece escaneado, usar OCR")
+                # Poco texto, probablemente PDF escaneado → intentar OCR
+                logger.info("PDF parece escaneado, intentando OCR...")
+                raise ValueError("PDF escaneado")
                 
         except Exception as e1:
             logger.info(f"Pymupdf falló o no aplica ({e1}), intentando OCR...")

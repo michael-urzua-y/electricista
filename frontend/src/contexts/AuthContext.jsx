@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import axios from 'axios'
 
-const API_URL = '/api'
+// Usar variable de entorno o fallback a /api para el proxy
+const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 const AuthContext = createContext(null)
 

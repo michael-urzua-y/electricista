@@ -16,7 +16,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-cgzg=^e9d66t37cb)b=myj_r3^
 
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'backend', 'electricista_backend', 'docker']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -44,7 +44,26 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+    'http://localhost:8000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:8000',
+    'http://0.0.0.0:5173',
+    'http://0.0.0.0:8000',
+    'http://docker:5173',
+    'http://docker:8000',
+    'http://frontend:5173',
+    'http://backend:8000',
+    'http://172.17.0.1:5173',
+    'http://172.17.0.1:8000',
+    'http://172.18.0.2:5173',
+    'http://172.18.0.2:8000',
+    'http://172.18.0.3:5173',
+    'http://172.18.0.3:8000',
+    'http://172.18.0.4:5173',
+    'http://172.18.0.4:8000',
+]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
