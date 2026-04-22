@@ -6,7 +6,8 @@ import {
   CubeIcon,
   ChartBarIcon,
   UserIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  BuildingStorefrontIcon
 } from '@heroicons/react/24/outline'
 
 export default function Layout() {
@@ -23,6 +24,7 @@ export default function Layout() {
     { to: '/facturas', icon: DocumentDuplicateIcon, label: 'Facturas' },
     { to: '/productos', icon: CubeIcon, label: 'Productos' },
     { to: '/comparacion', icon: ChartBarIcon, label: 'Comparación' },
+    { to: '/proveedores', icon: BuildingStorefrontIcon, label: 'Proveedores' },
   ]
 
   return (

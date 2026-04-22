@@ -8,9 +8,17 @@ from .serializers import ProviderSerializer, ProductSerializer, PriceHistorySeri
 
 class ProviderViewSet(viewsets.ModelViewSet):
     """API para proveedores"""
-    queryset = Provider.objects.filter(is_active=True)
+    queryset = Provider.objects.all()
     serializer_class = ProviderSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    @action(detail=True, methods=['post'])
+    def toggle_active(self, request, pk=None):
+        """Cambiar estado activo/inactivo del proveedor"""
+        provider = self.get_object()
+        provider.is_active = not provider.is_active
+        provider.save()
+        return Response({'is_active': provider.is_active})
 
 
 class ProductViewSet(viewsets.ModelViewSet):

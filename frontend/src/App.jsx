@@ -7,6 +7,7 @@ import Invoices from './pages/Invoices'
 import Products from './pages/Products'
 import PriceComparison from './pages/PriceComparison'
 import Profile from './pages/Profile'
+import Providers from './pages/Providers'
 
 function PrivateRoute({ children }) {
   const { token, loading } = useAuth()
@@ -28,6 +29,7 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="facturas" element={<Invoices />} />
             <Route path="productos" element={<Products />} />
+            <Route path="proveedores" element={<Providers />} />
             <Route path="comparacion" element={<PriceComparison />} />
             <Route path="perfil" element={<Profile />} />
           </Route>
