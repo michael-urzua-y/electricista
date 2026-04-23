@@ -8,6 +8,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import PriceVariationBadge from '../components/PriceVariationBadge'
 
 export default function Invoices() {
   const [invoices, setInvoices] = useState([])
@@ -18,6 +19,7 @@ export default function Invoices() {
   const [uploadError, setUploadError] = useState('')
   const [notification, setNotification] = useState(null)
   const [providers, setProviders] = useState([])
+  const [loadingDetail, setLoadingDetail] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -87,6 +89,20 @@ export default function Invoices() {
       setProviders(Array.isArray(res.data) ? res.data : res.data.results || [])
     } catch (error) {
       console.error('Error fetching providers:', error)
+    }
+  }
+
+  const fetchInvoiceDetail = async (invoice) => {
+    setLoadingDetail(true)
+    setSelectedInvoice(invoice)
+    try {
+      const res = await axios.get(`/api/facturas/${invoice.id}/`)
+      setSelectedInvoice(res.data)
+    } catch (error) {
+      console.error('Error fetching invoice detail:', error)
+      // Keep the list-level data as fallback
+    } finally {
+      setLoadingDetail(false)
     }
   }
 
@@ -175,6 +191,21 @@ export default function Invoices() {
       currency: 'CLP',
       minimumFractionDigits: 0
     }).format(value || 0)
+  }
+
+  const renderVariacion = (variacion) => {
+    if (!variacion) return null
+    if (variacion.variacion_porcentual != null) {
+      return <PriceVariationBadge variacion={variacion.variacion_porcentual} />
+    }
+    if (variacion.etiqueta === 'nuevo') {
+      return (
+        <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
+          Nuevo
+        </span>
+      )
+    }
+    return null
   }
 
   return (
@@ -384,7 +415,7 @@ export default function Invoices() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => setSelectedInvoice(invoice)}
+                          onClick={() => fetchInvoiceDetail(invoice)}
                           className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                           title="Ver detalles"
                         >
@@ -453,6 +484,9 @@ export default function Invoices() {
               {selectedInvoice.items && selectedInvoice.items.length > 0 && (
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Ítems de la factura</h3>
+                  {loadingDetail ? (
+                    <div className="text-center py-4 text-gray-400">Cargando detalles...</div>
+                  ) : (
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
                     <table className="w-full">
                       <thead className="bg-gray-50">
@@ -461,6 +495,7 @@ export default function Invoices() {
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-600">Cant.</th>
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-600">P. Unit.</th>
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-600">Total</th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-600">Variación</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -477,11 +512,15 @@ export default function Invoices() {
                             <td className="px-4 py-3 text-sm text-right">{item.quantity}</td>
                             <td className="px-4 py-3 text-sm text-right">{formatCurrency(item.unit_price)}</td>
                             <td className="px-4 py-3 text-sm text-right">{formatCurrency(item.total_price)}</td>
+                            <td className="px-4 py-3 text-sm text-center">
+                              {renderVariacion(item.variacion)}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+                  )}
                 </div>
               )}
 

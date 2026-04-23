@@ -1,7 +1,9 @@
 import logging
+from decimal import Decimal
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Invoice, InvoiceItem
+from .comparison import calcular_variacion
 from products.models import Provider
 
 logger = logging.getLogger(__name__)
@@ -21,6 +23,35 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'total_price']
 
 
+class InvoiceItemDetailSerializer(InvoiceItemSerializer):
+    """Item serializer enriched with price variation data relative to the previous invoice."""
+    variacion = serializers.SerializerMethodField()
+
+    class Meta(InvoiceItemSerializer.Meta):
+        fields = InvoiceItemSerializer.Meta.fields + ['variacion']
+
+    def get_variacion(self, obj):
+        items_anteriores = self.context.get('items_anteriores')
+        if items_anteriores is None:
+            return None
+
+        if obj.product_id is None:
+            return None
+
+        item_anterior = items_anteriores.get(obj.product_id)
+        if item_anterior is None:
+            return {'etiqueta': 'nuevo'}
+
+        precio_anterior = item_anterior.unit_price or Decimal('0')
+        precio_actual = obj.unit_price or Decimal('0')
+        variacion = calcular_variacion(precio_anterior, precio_actual)
+        return {
+            'precio_anterior': precio_anterior,
+            'diferencia': variacion['diferencia'],
+            'variacion_porcentual': variacion['variacion_porcentual'],
+        }
+
+
 class InvoiceListSerializer(serializers.ModelSerializer):
     provider_name = serializers.CharField(source='provider.name', read_only=True)
     items_count = serializers.SerializerMethodField()
@@ -38,7 +69,7 @@ class InvoiceListSerializer(serializers.ModelSerializer):
 
 class InvoiceDetailSerializer(serializers.ModelSerializer):
     provider_name = serializers.CharField(source='provider.name', read_only=True)
-    items = InvoiceItemSerializer(many=True, read_only=True)
+    items = InvoiceItemDetailSerializer(many=True, read_only=True)
     user_name = serializers.CharField(source='user.username', read_only=True)
 
     class Meta:
