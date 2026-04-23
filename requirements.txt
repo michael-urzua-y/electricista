@@ -16,6 +16,9 @@ pymupdf==1.23.26  # Alternativa más rápida para PDFs
 # HTTP requests ( Mistral AI client )
 requests==2.31.0
 
+# Cache
+django-redis==5.4.0
+
 # Base de datos
 psycopg2-binary==2.9.9
 dj-database-url==2.1.0

@@ -16,6 +16,11 @@ export default function Dashboard() {
   const [minPeriod, setMinPeriod] = useState('')
   const [maxPeriod, setMaxPeriod] = useState('')
   const [allInvoices, setAllInvoices] = useState([])
+  const [refreshInterval, setRefreshInterval] = useState(() => {
+    const stored = localStorage.getItem('dashboardRefreshInterval');
+    const parsed = stored ? parseInt(stored) : null;
+    return (!isNaN(parsed) && parsed > 0) ? parsed : 30000;
+  })
 
   // Modal de detalle diario
   const [showDailyModal, setShowDailyModal] = useState(false)
@@ -26,12 +31,36 @@ export default function Dashboard() {
   useEffect(() => {
     fetchDashboardData()
 
-    // Polling automático cada 10 segundos para mantener datos actualizados
-    const interval = setInterval(() => {
-      fetchDashboardData()
-    }, 10000)
-
-    return () => clearInterval(interval)
+    // Obtener intervalo de preferencia del usuario (default 30s para ser más conservador con recursos)
+    const intervalMs = parseInt(localStorage.getItem('dashboardRefreshInterval')) || 30000
+    
+    // Solo hacer polling si el intervalo es mayor a 0
+    if (intervalMs > 0) {
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          // Solo hacer petición si la pestaña está visible
+          fetchDashboardData()
+        }
+      }
+      
+      const interval = setInterval(() => {
+        // Verificar si la pestaña está visible antes de hacer la petición
+        if (!document.hidden) {
+          fetchDashboardData()
+        }
+      }, intervalMs)
+      
+      // Escuchar cambios de visibilidad de la pestaña
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+      
+      return () => {
+        clearInterval(interval)
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
+      }
+    }
+    
+    // Si intervalMs === 0, solo cargamos una vez (modo manual)
+    return () => {}
   }, [])
 
   const fetchDashboardData = async () => {
@@ -106,7 +135,7 @@ export default function Dashboard() {
     if (!month || !year) return invoices
     return invoices.filter(inv => {
       const d = new Date(inv.issue_date || inv.created_at)
-      return d.getMonth() + 1 === parseInt(month) && d.getFullYear() === parseInt(year)
+      return d.getMonth() + 1 === parseInt(month, 10) && d.getFullYear() === parseInt(year, 10)
     })
   }
 
@@ -190,8 +219,7 @@ export default function Dashboard() {
     return data
   })()
 
-  const COLORS = [
-    '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
     '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1',
     '#14b8a6', '#f43f5e', '#22c55e', '#eab308', '#a855f7',
     '#06b6d4', '#f97316', '#84cc16', '#ef4444', '#3b82f6'
@@ -234,30 +262,52 @@ export default function Dashboard() {
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
             <p className="text-gray-500 mt-1">Resumen de compras y precios</p>
           </div>
-          {/* Selector de mes/año + botón refrescar */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-gray-400" />
-              <label className="text-sm font-medium text-gray-700">Período:</label>
-              <input
-                type="month"
-                value={selectedYear && selectedMonth ? `${selectedYear}-${String(selectedMonth).padStart(2, '0')}` : ''}
-                onChange={handlePeriodChange}
-                min={minPeriod}
-                max={maxPeriod}
-                disabled={!minPeriod}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
-              />
-            </div>
-            <button
-              onClick={fetchDashboardData}
-              disabled={loading}
-              className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors disabled:opacity-50"
-              title="Actualizar datos"
-            >
-              <ArrowPathIcon className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
+           {/* Selector de mes/año + botón refrescar + configuración de actualización */}
+           <div className="flex items-center gap-4">
+             <div className="flex items-center gap-2">
+               <CalendarIcon className="w-5 h-5 text-gray-400" />
+               <label className="text-sm font-medium text-gray-700">Período:</label>
+               <input
+                 type="month"
+                 value={selectedYear && selectedMonth ? `${selectedYear}-${String(selectedMonth).padStart(2, '0')}` : ''}
+                 onChange={handlePeriodChange}
+                 min={minPeriod}
+                 max={maxPeriod}
+                 disabled={!minPeriod}
+                 className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+               />
+             </div>
+             
+             {/* Configuración de actualización automática */}
+             <div className="flex items-center gap-2">
+               <label className="text-sm font-medium text-gray-700">Actualización:</label>
+               <select
+                 value={refreshInterval === 0 ? 'manual' : refreshInterval/1000}
+                 onChange={(e) => {
+                   const newInterval = parseInt(e.target.value) * 1000;
+                   setRefreshInterval(newInterval);
+                   localStorage.setItem('dashboardRefreshInterval', newInterval.toString());
+                 }}
+                 className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+               >
+                 <option value="0">Manual</option>
+                 <option value="5">5s</option>
+                 <option value="10">10s</option>
+                 <option value="15">15s</option>
+                 <option value="30">30s</option>
+                 <option value="60">1min</option>
+               </select>
+             </div>
+             
+             <button
+               onClick={fetchDashboardData}
+               disabled={loading}
+               className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors disabled:opacity-50"
+               title="Actualizar datos"
+             >
+               <ArrowPathIcon className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+             </button>
+           </div>
         </div>
 
         {/* Stats cards */}
@@ -375,7 +425,6 @@ export default function Dashboard() {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumen de Precios</h3>
             {comparison.length > 0 ? (
               <div className="space-y-3">
-                <p className="text-sm text-gray-600">{comparison.length} productos con precios registrados</p>
                 {comparison.slice(0, 5).map((comp) => (
                   <div key={comp.product_id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                     <div>
@@ -416,17 +465,17 @@ export default function Dashboard() {
               ) : dailyData.length > 0 ? (
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dailyData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
-                    <YAxis stroke="#64748b" fontSize={12} />
-                    <Tooltip formatter={(value) => formatCurrency(value)} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-                    <Bar dataKey="total" radius={[4, 4, 0, 0]}>
-                      {dailyData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
+                    <BarChart data={dailyData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
+                      <YAxis stroke="#64748b" fontSize={12} />
+                      <Tooltip formatter={(value) => formatCurrency(value)} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                      <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                        {dailyData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               ) : (

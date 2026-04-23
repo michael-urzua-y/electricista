@@ -2,6 +2,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from django.core.cache import cache
 from .models import Provider, Product, PriceHistory, PriceAlert
 from .serializers import ProviderSerializer, ProductSerializer, PriceHistorySerializer, PriceAlertSerializer
 
@@ -12,13 +13,48 @@ class ProviderViewSet(viewsets.ModelViewSet):
     serializer_class = ProviderSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def list(self, request, *args, **kwargs):
+        # Intentar obtener de cache primero
+        cache_key = 'providers_list'
+        cached_data = cache.get(cache_key)
+        
+        if cached_data is not None:
+            return Response(cached_data)
+        
+        # Si no está en cache, obtener de la base de datos
+        response = super().list(request, *args, **kwargs)
+        
+        # Guardar en cache por 5 minutos
+        cache.set(cache_key, response.data, 300)
+        
+        return response
+
     @action(detail=True, methods=['post'])
     def toggle_active(self, request, pk=None):
         """Cambiar estado activo/inactivo del proveedor"""
         provider = self.get_object()
         provider.is_active = not provider.is_active
         provider.save()
+        
+        # Invalidar cache cuando se modifica un proveedor
+        cache.delete('providers_list')
+        
         return Response({'is_active': provider.is_active})
+
+    def perform_create(self, serializer):
+        """Crear un nuevo proveedor y invalidar cache"""
+        serializer.save()
+        cache.delete('providers_list')
+
+    def perform_update(self, serializer):
+        """Actualizar un proveedor y invalidar cache"""
+        serializer.save()
+        cache.delete('providers_list')
+
+    def perform_destroy(self, instance):
+        """Eliminar un proveedor y invalidar cache"""
+        instance.delete()
+        cache.delete('providers_list')
 
 
 class ProductViewSet(viewsets.ModelViewSet):
