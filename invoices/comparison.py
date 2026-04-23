@@ -207,18 +207,18 @@ def comparar_mes(proveedor_id: int, user, year: int, month: int) -> dict:
 
     productos = []
     for pid, entries in product_data.items():
-        if len(entries) < 2:
-            continue
-
         prices = [e['unit_price'] for e in entries]
         precio_minimo = min(prices)
         precio_maximo = max(prices)
         precio_promedio = sum(prices) / len(prices)
 
-        # Variation between first and last invoice of the period
-        precio_primera = entries[0]['unit_price']
-        precio_ultima = entries[-1]['unit_price']
-        variacion = calcular_variacion(precio_primera, precio_ultima)
+        if len(entries) >= 2:
+            precio_primera = entries[0]['unit_price']
+            precio_ultima = entries[-1]['unit_price']
+            variacion = calcular_variacion(precio_primera, precio_ultima)
+            variacion_porcentual = variacion['variacion_porcentual']
+        else:
+            variacion_porcentual = None
 
         productos.append({
             'producto_id': pid,
@@ -226,7 +226,7 @@ def comparar_mes(proveedor_id: int, user, year: int, month: int) -> dict:
             'precio_minimo': precio_minimo,
             'precio_maximo': precio_maximo,
             'precio_promedio': precio_promedio,
-            'variacion_porcentual': variacion['variacion_porcentual'],
+            'variacion_porcentual': variacion_porcentual,
         })
 
     return {
@@ -235,4 +235,88 @@ def comparar_mes(proveedor_id: int, user, year: int, month: int) -> dict:
         'facturas': facturas_meta,
         'productos': productos,
         'mensaje': None,
+    }
+
+
+def comparar_entre_proveedores(user) -> dict:
+    """
+    Compara precios del mismo producto entre distintos proveedores.
+
+    Para cada producto que aparece en facturas de 2+ proveedores,
+    muestra el precio más reciente de cada proveedor, cuál es el más
+    barato y la variación respecto al más barato.
+
+    Args:
+        user: Usuario autenticado.
+
+    Returns:
+        dict con lista de productos y sus precios por proveedor.
+    """
+    from collections import defaultdict
+
+    # Get all completed invoice items for this user with product_id
+    items = (
+        InvoiceItem.objects
+        .filter(
+            invoice__user=user,
+            invoice__status='completed',
+        )
+        .exclude(product_id__isnull=True)
+        .select_related('product', 'invoice__provider')
+        .order_by('invoice__issue_date')
+    )
+
+    # Group by product_id -> provider_id -> latest price
+    # product_id -> { provider_id: { name, price, invoice_date, invoice_number } }
+    product_providers = defaultdict(dict)
+    product_names = {}
+
+    for item in items:
+        pid = item.product_id
+        prov = item.invoice.provider
+        if not prov:
+            continue
+        price = item.unit_price or Decimal('0')
+        product_providers[pid][prov.id] = {
+            'proveedor_id': prov.id,
+            'proveedor_nombre': prov.name,
+            'precio': price,
+            'fecha': item.invoice.issue_date,
+            'factura': item.invoice.invoice_number,
+        }
+        if pid not in product_names and item.product:
+            product_names[pid] = item.product.name
+
+    productos = []
+    for pid, proveedores in product_providers.items():
+        if len(proveedores) < 2:
+            continue
+
+        precios_list = list(proveedores.values())
+        precio_min = min(precios_list, key=lambda x: x['precio'])
+        mejor_proveedor = precio_min['proveedor_nombre']
+        mejor_precio = precio_min['precio']
+
+        for p in precios_list:
+            if mejor_precio and mejor_precio > 0:
+                diff = p['precio'] - mejor_precio
+                var = calcular_variacion(mejor_precio, p['precio'])
+                p['diferencia'] = diff
+                p['variacion_porcentual'] = var['variacion_porcentual']
+            else:
+                p['diferencia'] = Decimal('0')
+                p['variacion_porcentual'] = None
+
+        productos.append({
+            'producto_id': pid,
+            'producto_nombre': product_names.get(pid, ''),
+            'mejor_proveedor': mejor_proveedor,
+            'mejor_precio': mejor_precio,
+            'proveedores': precios_list,
+        })
+
+    return {
+        'productos': productos,
+        'total_productos': len(productos),
+        'mensaje': None if productos else 'No hay productos compartidos entre proveedores',
     }

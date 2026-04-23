@@ -495,7 +495,22 @@ export default function Invoices() {
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-600">Cant.</th>
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-600">P. Unit.</th>
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-600">Total</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-600">Variación</th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-600">
+                            <span className="inline-flex items-center gap-1">
+                              Variación
+                              <span className="relative group">
+                                <span className="cursor-help inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold">!</span>
+                                <span className="hidden group-hover:block fixed z-50 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg leading-relaxed" style={{marginTop: '4px'}}>
+                                  Compara el precio de cada producto con la factura anterior del mismo proveedor.
+                                  <br /><br />
+                                  <span className="text-red-300">↑ Rojo</span>: el precio subió<br />
+                                  <span className="text-green-300">↓ Verde</span>: el precio bajó<br />
+                                  <span className="text-gray-300">Gris</span>: sin cambio<br />
+                                  <span className="text-blue-300">Nuevo</span>: no estaba en la factura anterior
+                                </span>
+                              </span>
+                            </span>
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -509,7 +524,7 @@ export default function Invoices() {
                                 </span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-sm text-right">{item.quantity}</td>
+                            <td className="px-4 py-3 text-sm text-right">{Math.round(Number(item.quantity))}</td>
                             <td className="px-4 py-3 text-sm text-right">{formatCurrency(item.unit_price)}</td>
                             <td className="px-4 py-3 text-sm text-right">{formatCurrency(item.total_price)}</td>
                             <td className="px-4 py-3 text-sm text-center">

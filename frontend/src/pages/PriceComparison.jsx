@@ -2,11 +2,14 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../services/api'
 import ComparisonTable from '../components/ComparisonTable'
 import PriceVariationBadge from '../components/PriceVariationBadge'
+import InvoiceSearchInput from '../components/InvoiceSearchInput'
+import Pagination from '../components/Pagination'
 
 const TABS = [
   { key: 'auto', label: 'Comparación Automática' },
   { key: 'manual', label: 'Comparación Manual' },
   { key: 'monthly', label: 'Resumen Mensual' },
+  { key: 'providers', label: 'Entre Proveedores' },
 ]
 
 const formatCurrency = (value) => {
@@ -49,8 +52,7 @@ function AutoTab() {
     fetchInvoices()
   }, [])
 
-  const handleSelect = async (e) => {
-    const id = e.target.value
+  const handleSelect = async (id) => {
     setSelectedId(id)
     setResult(null)
     if (!id) return
@@ -70,25 +72,17 @@ function AutoTab() {
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <label htmlFor="auto-invoice-select" className="block text-sm font-medium text-gray-700 mb-2">
-          Selecciona una factura completada
-        </label>
         {loadingInvoices ? (
           <Spinner />
         ) : (
-          <select
-            id="auto-invoice-select"
+          <InvoiceSearchInput
+            id="auto-invoice-search"
+            label="Buscar factura completada"
+            invoices={invoices}
             value={selectedId}
             onChange={handleSelect}
-            className="w-full max-w-md px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 outline-none"
-          >
-            <option value="">— Seleccionar factura —</option>
-            {invoices.map((inv) => (
-              <option key={inv.id} value={inv.id}>
-                {inv.invoice_number || `#${inv.id}`} — {inv.provider_name || 'Sin proveedor'} — {inv.issue_date || 'Sin fecha'}
-              </option>
-            ))}
-          </select>
+            placeholder="Buscar por número de factura o fecha..."
+          />
         )}
       </div>
 
@@ -223,42 +217,22 @@ function ManualTab() {
 
         {selectedProvider && !loadingInvoices && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="manual-base-select" className="block text-sm font-medium text-gray-700 mb-2">
-                Factura Base
-              </label>
-              <select
-                id="manual-base-select"
-                value={baseId}
-                onChange={(e) => { setBaseId(e.target.value); setResult(null); setError('') }}
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 outline-none"
-              >
-                <option value="">— Seleccionar —</option>
-                {invoices.map((inv) => (
-                  <option key={inv.id} value={inv.id}>
-                    {inv.invoice_number || `#${inv.id}`} — {inv.issue_date || 'Sin fecha'}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="manual-compare-select" className="block text-sm font-medium text-gray-700 mb-2">
-                Factura a Comparar
-              </label>
-              <select
-                id="manual-compare-select"
-                value={compareId}
-                onChange={(e) => { setCompareId(e.target.value); setResult(null); setError('') }}
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 outline-none"
-              >
-                <option value="">— Seleccionar —</option>
-                {invoices.map((inv) => (
-                  <option key={inv.id} value={inv.id}>
-                    {inv.invoice_number || `#${inv.id}`} — {inv.issue_date || 'Sin fecha'}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <InvoiceSearchInput
+              id="manual-base-search"
+              label="Factura Base (anterior)"
+              invoices={invoices}
+              value={baseId}
+              onChange={(id) => { setBaseId(id); setResult(null); setError('') }}
+              placeholder="Buscar factura base..."
+            />
+            <InvoiceSearchInput
+              id="manual-compare-search"
+              label="Factura a Comparar (actual)"
+              invoices={invoices}
+              value={compareId}
+              onChange={(id) => { setCompareId(id); setResult(null); setError('') }}
+              placeholder="Buscar factura a comparar..."
+            />
           </div>
         )}
 
@@ -288,6 +262,56 @@ function ManualTab() {
   )
 }
 
+
+// ─── Monthly Table (paginated + responsive) ───────────────────────────────────
+function MonthlyTable({ productos = [] }) {
+  const [page, setPage] = useState(1)
+  const totalPages = Math.ceil(productos.length / 10)
+  const paginated = productos.slice((page - 1) * 10, page * 10)
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-100">
+            <tr>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Producto</th>
+              <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase">Mínimo</th>
+              <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase">Máximo</th>
+              <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase">Promedio</th>
+              <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase">Variación</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {paginated.map((prod, idx) => (
+              <tr key={prod.producto_id ?? idx} className="hover:bg-gray-50 transition-colors">
+                <td className="px-6 py-4"><p className="font-medium text-gray-900">{prod.producto_nombre}</p></td>
+                <td className="px-6 py-4 text-sm text-right text-gray-600">{formatCurrency(prod.precio_minimo)}</td>
+                <td className="px-6 py-4 text-sm text-right text-gray-600">{formatCurrency(prod.precio_maximo)}</td>
+                <td className="px-6 py-4 text-sm text-right font-semibold text-gray-900">{formatCurrency(prod.precio_promedio)}</td>
+                <td className="px-6 py-4 text-center"><PriceVariationBadge variacion={prod.variacion_porcentual} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="md:hidden divide-y divide-gray-100">
+        {paginated.map((prod, idx) => (
+          <div key={prod.producto_id ?? idx} className="p-4 space-y-2">
+            <p className="font-medium text-gray-900 text-sm">{prod.producto_nombre}</p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div><span className="text-gray-500">Mín: </span><span>{formatCurrency(prod.precio_minimo)}</span></div>
+              <div><span className="text-gray-500">Máx: </span><span>{formatCurrency(prod.precio_maximo)}</span></div>
+              <div><span className="text-gray-500">Prom: </span><span className="font-semibold">{formatCurrency(prod.precio_promedio)}</span></div>
+              <div><PriceVariationBadge variacion={prod.variacion_porcentual} /></div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+    </div>
+  )
+}
 
 // ─── Resumen Mensual ───────────────────────────────────────────────────────────
 function MonthlyTab() {
@@ -426,56 +450,129 @@ function MonthlyTab() {
               </div>
 
               {/* Monthly products table */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 border-b border-gray-100">
-                      <tr>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Producto
-                        </th>
-                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Precio Mínimo
-                        </th>
-                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Precio Máximo
-                        </th>
-                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Precio Promedio
-                        </th>
-                        <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Variación
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {result.productos.map((prod, idx) => (
-                        <tr key={prod.producto_id ?? idx} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4">
-                            <p className="font-medium text-gray-900">{prod.producto_nombre}</p>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-right text-gray-600">
-                            {formatCurrency(prod.precio_minimo)}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-right text-gray-600">
-                            {formatCurrency(prod.precio_maximo)}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-right font-semibold text-gray-900">
-                            {formatCurrency(prod.precio_promedio)}
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <PriceVariationBadge variacion={prod.variacion_porcentual} />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <MonthlyTable productos={result.productos} />
             </div>
           )}
         </>
       )}
+    </div>
+  )
+}
+
+// ─── Entre Proveedores ─────────────────────────────────────────────────────────
+function ProvidersTab() {
+  const [result, setResult] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const res = await api.get('/facturas/comparar-proveedores/')
+        setResult(res.data)
+      } catch (err) {
+        console.error('Error fetching provider comparison:', err)
+        setResult({ error: 'Error al obtener la comparación.' })
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetch()
+  }, [])
+
+  if (loading) return <Spinner />
+
+  if (result?.error) {
+    return <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 text-sm">{result.error}</div>
+  }
+
+  if (!result?.productos?.length) {
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-lg p-4 text-sm">
+        {result?.mensaje || 'No hay productos compartidos entre proveedores.'}
+      </div>
+    )
+  }
+
+  const totalPages = Math.ceil(result.productos.length / 10)
+  const paginated = result.productos.slice((page - 1) * 10, page * 10)
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-primary-50 text-primary-700">
+          {result.total_productos} producto(s) compartidos entre proveedores
+        </span>
+      </div>
+
+      {paginated.map((prod) => (
+        <div key={prod.producto_id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-4 md:px-6 py-4 bg-gray-50 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <p className="font-semibold text-gray-900 text-sm md:text-base">{prod.producto_nombre}</p>
+            <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700 self-start sm:self-auto">
+              ★ {prod.mejor_proveedor} — {formatCurrency(prod.mejor_precio)}
+            </span>
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Proveedor</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Precio</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Diferencia</th>
+                  <th className="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Variación</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Factura</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Fecha</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {prod.proveedores.map((prov) => (
+                  <tr key={prov.proveedor_id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-3 text-sm font-medium text-gray-900">
+                      {prov.proveedor_nombre}
+                      {prov.proveedor_nombre === prod.mejor_proveedor && (
+                        <span className="ml-2 text-green-600 text-xs">★ Más barato</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-right font-semibold text-gray-900">{formatCurrency(prov.precio)}</td>
+                    <td className="px-6 py-3 text-sm text-right text-gray-600">{formatCurrency(prov.diferencia)}</td>
+                    <td className="px-6 py-3 text-center"><PriceVariationBadge variacion={prov.variacion_porcentual} /></td>
+                    <td className="px-6 py-3 text-sm text-right text-gray-500">{prov.factura || '—'}</td>
+                    <td className="px-6 py-3 text-sm text-right text-gray-500">{prov.fecha || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {prod.proveedores.map((prov) => (
+              <div key={prov.proveedor_id} className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="font-medium text-gray-900 text-sm">
+                    {prov.proveedor_nombre}
+                    {prov.proveedor_nombre === prod.mejor_proveedor && (
+                      <span className="ml-1 text-green-600 text-xs">★</span>
+                    )}
+                  </p>
+                  <PriceVariationBadge variacion={prov.variacion_porcentual} />
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div><span className="text-gray-500">Precio: </span><span className="font-semibold">{formatCurrency(prov.precio)}</span></div>
+                  <div><span className="text-gray-500">Dif: </span><span>{formatCurrency(prov.diferencia)}</span></div>
+                  <div><span className="text-gray-500">Factura: </span><span>{prov.factura || '—'}</span></div>
+                  <div><span className="text-gray-500">Fecha: </span><span>{prov.fecha || '—'}</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   )
 }
@@ -515,6 +612,7 @@ export default function PriceComparison() {
       {activeTab === 'auto' && <AutoTab />}
       {activeTab === 'manual' && <ManualTab />}
       {activeTab === 'monthly' && <MonthlyTab />}
+      {activeTab === 'providers' && <ProvidersTab />}
     </div>
   )
 }

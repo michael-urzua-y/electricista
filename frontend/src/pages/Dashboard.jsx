@@ -31,37 +31,30 @@ export default function Dashboard() {
   useEffect(() => {
     fetchDashboardData()
 
-    // Obtener intervalo de preferencia del usuario (default 30s para ser más conservador con recursos)
-    const intervalMs = parseInt(localStorage.getItem('dashboardRefreshInterval')) || 30000
-    
     // Solo hacer polling si el intervalo es mayor a 0
-    if (intervalMs > 0) {
+    if (refreshInterval > 0) {
+      const interval = setInterval(() => {
+        if (!document.hidden) {
+          fetchDashboardData()
+        }
+      }, refreshInterval)
+
       const handleVisibilityChange = () => {
         if (!document.hidden) {
-          // Solo hacer petición si la pestaña está visible
           fetchDashboardData()
         }
       }
-      
-      const interval = setInterval(() => {
-        // Verificar si la pestaña está visible antes de hacer la petición
-        if (!document.hidden) {
-          fetchDashboardData()
-        }
-      }, intervalMs)
-      
-      // Escuchar cambios de visibilidad de la pestaña
       document.addEventListener('visibilitychange', handleVisibilityChange)
-      
+
       return () => {
         clearInterval(interval)
         document.removeEventListener('visibilitychange', handleVisibilityChange)
       }
     }
-    
-    // Si intervalMs === 0, solo cargamos una vez (modo manual)
+
+    // Si refreshInterval === 0, solo cargamos una vez (modo manual)
     return () => {}
-  }, [])
+  }, [refreshInterval])
 
   const fetchDashboardData = async () => {
     try {
@@ -282,11 +275,12 @@ export default function Dashboard() {
              <div className="flex items-center gap-2">
                <label className="text-sm font-medium text-gray-700">Actualización:</label>
                <select
-                 value={refreshInterval === 0 ? 'manual' : refreshInterval/1000}
+                 value={refreshInterval === 0 ? '0' : String(refreshInterval / 1000)}
                  onChange={(e) => {
-                   const newInterval = parseInt(e.target.value) * 1000;
-                   setRefreshInterval(newInterval);
-                   localStorage.setItem('dashboardRefreshInterval', newInterval.toString());
+                   const val = parseInt(e.target.value)
+                   const newInterval = isNaN(val) ? 0 : val * 1000
+                   setRefreshInterval(newInterval)
+                   localStorage.setItem('dashboardRefreshInterval', newInterval.toString())
                  }}
                  className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                >

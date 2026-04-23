@@ -59,11 +59,19 @@ class ProviderViewSet(viewsets.ModelViewSet):
 
 class ProductViewSet(viewsets.ModelViewSet):
     """API para productos"""
-    queryset = Product.objects.filter(is_active=True).select_related('provider')
     serializer_class = ProductSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filterset_fields = ['provider', 'category']
     search_fields = ['name', 'brand', 'model']
+
+    def get_queryset(self):
+        qs = Product.objects.filter(is_active=True).select_related('provider')
+        provider = self.request.query_params.get('provider')
+        category = self.request.query_params.get('category')
+        if provider:
+            qs = qs.filter(provider_id=provider)
+        if category:
+            qs = qs.filter(category=category)
+        return qs
 
     @action(detail=True, methods=['get'])
     def price_history(self, request, pk=None):

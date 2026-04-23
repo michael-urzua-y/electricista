@@ -13,7 +13,7 @@ from .comparison_serializers import (
     ComparacionAutomaticaSerializer,
     ComparacionMensualSerializer,
 )
-from .comparison import obtener_factura_anterior, calcular_comparacion, comparar_mes as comparar_mes_service
+from .comparison import obtener_factura_anterior, calcular_comparacion, comparar_mes as comparar_mes_service, comparar_entre_proveedores
 from .ocr import OCRProcessor
 from .ai_parser import InvoiceAIParser
 from django.db import transaction
@@ -28,10 +28,18 @@ class FacturaViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        # Los usuarios solo ven sus facturas, los staff ven todas
         if user.is_staff:
-            return Invoice.objects.all().select_related('user', 'provider')
-        return Invoice.objects.filter(user=user).select_related('user', 'provider')
+            qs = Invoice.objects.all().select_related('user', 'provider')
+        else:
+            qs = Invoice.objects.filter(user=user).select_related('user', 'provider')
+        # Filtros opcionales
+        provider = self.request.query_params.get('provider')
+        status_filter = self.request.query_params.get('status')
+        if provider:
+            qs = qs.filter(provider_id=provider)
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        return qs
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -290,3 +298,9 @@ class FacturaViewSet(viewsets.ModelViewSet):
         )
         serializer = ComparacionMensualSerializer(resultado)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='comparar-proveedores')
+    def comparar_proveedores(self, request):
+        """Comparación de precios del mismo producto entre distintos proveedores."""
+        resultado = comparar_entre_proveedores(request.user)
+        return Response(resultado)
