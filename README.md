@@ -1,368 +1,264 @@
-# Electricista Pro - Dashboard de Gestión de Materiales
+# Electricista Pro — Dashboard de Gestión de Materiales
 
-Dashboard moderno y responsivo para que un electricista gestione sus compras de materiales, suba facturas (PDF/imágenes) y compare precios entre proveedores.
+Dashboard full-stack para que un electricista gestione sus compras de materiales: sube facturas (PDF/imágenes), extrae ítems automáticamente con OCR + IA, compara precios entre proveedores y calcula márgenes de ganancia.
 
-![Electricista Pro](https://img.shields.io/badge/Electricista-Pro-blue)
-
----
-
-## 📋 Características
-
-- **Autenticación segura**: JWT tokens con Django REST Framework
-- **Subida de facturas**: Soporta PDF e imágenes (JPG, PNG)
-- **OCR + IA**: Extrae automáticamente productos, precios y totales
-- **Comparación de precios**: Visualiza precios por proveedor
-- **Dashboard moderno**: React + Vite + TailwindCSS con gráficos interactivos
-- **Base de datos**: PostgreSQL
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![Django](https://img.shields.io/badge/Django-4.2-green)
+![React](https://img.shields.io/badge/React-18-61dafb)
+![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.3-38bdf8)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791)
 
 ---
 
-## 🏗️ Arquitectura
+## Características
+
+- **Autenticación JWT** — Login seguro con tokens de acceso y refresco (SimpleJWT)
+- **Subida de facturas** — Soporta PDF e imágenes (JPG, PNG)
+- **OCR + IA** — Extrae texto con Tesseract/PyMuPDF y parsea con Mistral AI (`mistral-large-latest`)
+- **Fuzzy matching de productos** — Evita duplicados usando similitud de texto (thefuzz, umbral 92%)
+- **Historial de precios** — Registra cada precio por producto y proveedor automáticamente
+- **Comparación de precios** — 4 modos: automática, manual, resumen mensual y entre proveedores
+- **Márgenes de ganancia** — Configurable por factura y por ítem individual
+- **Dashboard interactivo** — Gráficos de gasto mensual y distribución por proveedor (Recharts)
+- **Procesamiento asíncrono** — Celery + Redis para no bloquear al usuario al subir facturas
+- **Caché de proveedores** — Redis cache con invalidación automática
+- **Zona horaria Chile** — `America/Santiago`, moneda CLP
+
+---
+
+## Arquitectura
 
 ```
-electricista/
-├── backend/          # Django REST API
-│   ├── products/     # Productos, Proveedores, Historial precios
-│   └── invoices/     # Facturas, Ítems, OCR
-├── frontend/         # React + Vite + Tailwind
-├── docker-compose.yml
-├── Dockerfile
+electricista/                  ← raíz del proyecto Django
+├── electricista/              ← configuración del proyecto
+│   ├── settings.py            ← config DB, JWT, Celery, Redis, CORS
+│   ├── urls.py                ← router principal + endpoints JWT
+│   ├── celery.py              ← configuración de Celery
+│   └── wsgi.py / asgi.py
+│
+├── products/                  ← app de productos y proveedores
+│   ├── models.py              ← Provider, Product, PriceHistory, PriceAlert
+│   ├── views.py               ← ProviderViewSet, ProductViewSet, ComparacionViewSet
+│   └── serializers.py
+│
+├── invoices/                  ← app de facturas
+│   ├── models.py              ← Invoice, InvoiceItem
+│   ├── views.py               ← FacturaViewSet (CRUD + 4 endpoints de comparación)
+│   ├── services.py            ← process_invoice() — orquesta OCR → IA → DB
+│   ├── ocr.py                 ← OCRProcessor (PyMuPDF → Tesseract → PyPDF2)
+│   ├── ai_parser.py           ← InvoiceAIParser (Mistral API + parser básico regex)
+│   ├── comparison.py          ← lógica pura de comparación de precios
+│   ├── tasks.py               ← tarea Celery: process_invoice_task
+│   └── signals.py
+│
+├── api_views.py               ← CurrentUserView, DailyTotalsView
+│
+├── frontend/                  ← SPA React + Vite
+│   └── src/
+│       ├── pages/             ← Dashboard, Invoices, Products, Providers,
+│       │                         PriceComparison, Profile, Login
+│       ├── components/        ← ComparisonTable, PriceVariationBadge,
+│       │                         InvoiceSearchInput, Pagination
+│       ├── contexts/          ← AuthContext (JWT + localStorage)
+│       ├── services/          ← api.js (axios + interceptores)
+│       └── layouts/           ← Layout principal con sidebar
+│
+├── scripts/                   ← scripts de inicialización y utilidades
+├── docker-compose.yml         ← postgres, redis, backend, celery, frontend
+├── Dockerfile                 ← imagen Python 3.11 + Tesseract + poppler
 └── requirements.txt
 ```
 
 ---
 
-## 🚀 Instalación Rápida
-
-### Opción 1: Docker (Recomendado)
-
-```bash
-# 1. Clonar/copiar proyecto
-cd electricista
-
-# 2. Configurar variables de entorno
-cp .env.example .env
-# Editar .env y agregar tu API key de Mistral
-
-# 3. Levantar todos los servicios
-docker-compose up -d
-
-# 4. Ejecutar migraciones y crear superusuario
-docker-compose exec backend python manage.py migrate
-docker-compose exec backend python manage.py createsuperuser
-
-# 5. Acceder
-# - Frontend: http://localhost:5173
-# - Backend API: http://localhost:8000/api/
-# - Admin Django: http://localhost:8000/admin/
-```
-
-### Opción 2: Instalación Manual
-
-```bash
-# Backend
-cd electricista
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-
-# Configurar base de datos PostgreSQL
-# Editar settings.py o variables de entorno
-
-# Migraciones
-python manage.py migrate
-python manage.py createsuperuser
-python manage.py collectstatic
-
-# Ejecutar servidor
-python manage.py runserver
-
-# Frontend (en terminal separada)
-cd frontend
-npm install
-npm run dev
-```
-
-## 🔑 Configuración
-
-### Variables de Entorno (.env)
-
-```env
-# API Key de Mistral para OCR/IA
-MISTRAL_API_KEY=tu_api_key_aquí
-
-# Configuración de Django
-SECRET_KEY=tu-clave-secreta-generada
-DEBUG=True
-
-# Base de Datos (PostgreSQL)
-DATABASE_URL=postgres://user:password@db:5432/electricista
-
-# CORS
-CORS_ALLOWED_ORIGINS=http://localhost:5173
-```
-
-### API Keys Requeridas
-
-1. **Mistral AI** (gratis): Para el parseo de facturas
-   - Regístrate en https://console.mistral.ai
-   - Crea una API Key
-   - Agrégalo en `.env`
-
----
-
-## 📱 Uso del Dashboard
-
-### Login
-- Usuario demo: `demo` / `demo123` (o crear con createsuperuser)
-- Acceso al admin: http://localhost:8000/admin/
-
-### Subir Factura
-
-1. Ir a **Facturas** → **Subir Factura**
-2. Seleccionar archivo (PDF, JPG, PNG)
-3. Ingresar fecha de emisión
-4. El sistema procesará:
-   - Extracción de texto con OCR
-   - Parseo con IA usando Mistral
-   - Identificación de productos, precios y totales
-   - Guardado en base de datos
-
-### Gráficos
-
-- **Dashboard Principal**: Gasto mensual, distribución por proveedor
-- **Comparación de Precios**: Historial y alertas de subidas/bajadas
-- **Filtros**: Ver solo subidas, bajadas o todos
-
----
-
-## 🔧 APIs Disponibles
-
-### Autenticación
-- `POST /api/token/` - Obtener JWT token
-- `POST /api/token/refresh/` - Refrescar token
-- `POST /api/token/verify/` - Verificar token
-
-### Facturas
-- `GET /api/facturas/` - Listar facturas del usuario
-- `POST /api/facturas/` - Subir factura
-- `GET /api/facturas/{id}/` - Detalle con ítems
-- `GET /api/facturas/stats/` - Estadísticas
-
-### Productos
-- `GET /api/productos/` - Listar productos
-- `POST /api/productos/` - Crear producto
-- `PUT /api/productos/{id}/` - Actualizar
-- `GET /api/productos/{id}/price_history/` - Historial precios
-
----
-
-## 🛠️ Tecnologías
+## Stack tecnológico
 
 ### Backend
-- **Django 4.2** - Framework web
-- **Django REST Framework** - API REST
-- **PostgreSQL** - Base de datos
-- **Tesseract OCR** - Extracción de texto
-- **Mistral AI** - Parseo inteligente de facturas
+| Tecnología | Versión | Uso |
+|---|---|---|
+| Django | 4.2 | Framework web |
+| Django REST Framework | 3.14 | API REST |
+| SimpleJWT | 5.3 | Autenticación JWT |
+| PostgreSQL | 15 | Base de datos principal |
+| Redis | 7 | Broker Celery + caché |
+| Celery | 5.3 | Procesamiento asíncrono de facturas |
+| PyMuPDF (fitz) | 1.23 | Extracción de texto nativo en PDFs |
+| Tesseract OCR | — | OCR para PDFs escaneados e imágenes |
+| Mistral AI | mistral-large-latest | Parseo inteligente de facturas |
+| thefuzz | 0.20 | Fuzzy matching de nombres de productos |
+| django-redis | 5.4 | Caché de proveedores |
+| whitenoise | 6.6 | Servir archivos estáticos en producción |
+| gunicorn | 21.2 | Servidor WSGI en producción |
 
 ### Frontend
-- **React 18** - UI library
-- **Vite** - Build tool
-- **TailwindCSS 3.3** - Estilos
-- **Recharts** - Gráficos
-- **Axios** - HTTP client
-- **React Router** - Navegación
+| Tecnología | Versión | Uso |
+|---|---|---|
+| React | 18 | UI library |
+| Vite | 5 | Build tool y dev server |
+| TailwindCSS | 3.3 | Estilos utilitarios |
+| Recharts | 2.10 | Gráficos de barras interactivos |
+| Axios | 1.6 | Cliente HTTP con interceptores JWT |
+| React Router | 6.20 | Navegación SPA |
+| Heroicons | 2.0 | Iconografía |
+| date-fns | 2.30 | Formateo de fechas en español |
 
 ---
 
-## 📁 Estructura de Archivos
+## Modelos de datos
 
+### `products` app
+- **Provider** — nombre, sitio web, categoría, logo, activo/inactivo
+- **Product** — nombre, marca, modelo, categoría, unidad, proveedor FK
+- **PriceHistory** — precio por producto + proveedor + fecha (se crea automáticamente al procesar facturas)
+- **PriceAlert** — alerta de subida/bajada de precio con variación porcentual
+
+### `invoices` app
+- **Invoice** — archivo, proveedor, fecha emisión, total, subtotal, IVA, estado (`pending → processing → completed/failed`), margen general, texto OCR
+- **InvoiceItem** — descripción, cantidad, precio unitario, precio total, margen individual, precio de venta calculado, variación respecto a factura anterior
+
+---
+
+## API REST
+
+### Autenticación
 ```
-electricista/
-├── electricista/          # Configuración Django
-│   ├── settings.py
-│   └── urls.py
-├── products/              # Gestión de productos y proveedores
-│   ├── models.py
-│   ├── views.py
-│   ├── serializers.py
-│   └── admin.py
-├── invoices/              # Gestión de facturas y OCR
-│   ├── models.py
-│   ├── views.py
-│   ├── serializers.py
-│   ├── ocr.py            # OCR processor
-│   ├── ai_parser.py      # Mistral parser
-│   └── signals.py        # Auto-trigger
-├── frontend/
-│   ├── src/
-│   │   ├── pages/        # Dashboard, Invoices, Products, etc.
-│   │   ├── components/   # Componentes reutilizables
-│   │   ├── contexts/     # AuthContext
-│   │   ├── services/     # API client
-│   │   └── layouts/      # MainLayout
-│   └── package.json
-├── docker-compose.yml
-├── Dockerfile
-├── requirements.txt
-└── README.md
+POST /api/token/           → obtener access + refresh token
+POST /api/token/refresh/   → refrescar access token
+POST /api/token/verify/    → verificar token
+GET  /api/users/me/        → datos del usuario autenticado
+```
+
+### Proveedores
+```
+GET    /api/proveedores/              → listar (con caché Redis)
+POST   /api/proveedores/              → crear
+GET    /api/proveedores/{id}/         → detalle
+PATCH  /api/proveedores/{id}/         → actualizar
+DELETE /api/proveedores/{id}/         → eliminar
+POST   /api/proveedores/{id}/toggle_active/  → activar/desactivar
+```
+
+### Productos
+```
+GET  /api/productos/                        → listar (filtros: provider, category)
+GET  /api/productos/{id}/price_history/     → historial de precios
+GET  /api/productos/{id}/alerts/            → alertas de precio
+```
+
+### Facturas
+```
+GET    /api/facturas/                          → listar (filtros: provider, status)
+POST   /api/facturas/                          → subir factura (multipart/form-data)
+GET    /api/facturas/{id}/                     → detalle con ítems y variaciones
+PATCH  /api/facturas/{id}/update-item/         → actualizar margen de un ítem
+GET    /api/facturas/stats/                    → estadísticas del usuario
+GET    /api/facturas/diarios/?year=&month=     → totales diarios del mes
+```
+
+### Comparación de precios
+```
+GET /api/facturas/{id}/comparar-anterior/      → vs factura anterior del mismo proveedor
+GET /api/facturas/comparar-manual/?factura_base=&factura_comparar=  → comparación manual
+GET /api/facturas/comparar-mes/?proveedor_id=&year=&month=          → resumen mensual
+GET /api/facturas/comparar-proveedores/        → mismo producto entre distintos proveedores
+```
+
+### Comparación de tabla de precios
+```
+GET /api/comparacion/   → tabla de productos con precio más barato/caro por proveedor
 ```
 
 ---
 
-## 🧪 Testing
+## Flujo de procesamiento de facturas
+
+```
+Usuario sube archivo (PDF/JPG/PNG)
+        ↓
+Invoice guardada en estado "pending"
+        ↓
+Celery task: process_invoice_task(invoice_id)
+        ↓
+OCRProcessor.extract_text()
+  ├── PDF con texto nativo → PyMuPDF (fitz)
+  ├── PDF escaneado        → pdf2image + Tesseract (spa)
+  └── Imagen              → Tesseract (spa)
+        ↓
+InvoiceAIParser.parse(ocr_text)
+  ├── Mistral API (mistral-large-latest, temperature=0)
+  └── Fallback: parser regex columnar para facturas chilenas
+        ↓
+_process_items(): por cada ítem parseado
+  ├── _find_matching_product(): búsqueda exacta → fuzzy (umbral 92%)
+  ├── Si no existe → Product.objects.create()
+  ├── InvoiceItem.objects.create()
+  └── PriceHistory.objects.create()
+        ↓
+Invoice.total_amount calculado, status = "completed"
+```
+
+---
+
+## Instalación
+
+### Opción 1: Docker (recomendado)
 
 ```bash
-# Backend tests
-python manage.py test
-
-# Frontend tests (pendientes)
-npm test
-```
-
----
-
-## 📦 Dependencias
-
-Ver `requirements.txt` y `frontend/package.json` para lista completa.
-
-**Principales**:
-- Django 4.2
-- DRF 3.14
-- React 18
-- TailwindCSS 3.3
-- Celery 5.3
-- PostgreSQL + Redis
-
----
-
-## 📝 Notas de Implementación
-
-### OCR
-- Usa **Tesseract** con language pack `spa` (español)
-- Para PDFs, convierte páginas a imágenes con `pdf2image`
-- Fallback: PyPDF2 extrae texto nativo
-
-### Parseo de Facturas
-- Envía texto OCR a **Mistral AI** (modelo `mistral-small`)
-- Prompt estructurado extrae: proveedor, fecha, número, ítems, totales
-- Fallback: Parser básico con regex si API falla
-
-### Scraping
-- Selectores CSS por sitio
-- Headers con User-Agent real
-- Timeout y retry configurados
-- Solo sitios chilenos de retail
-
-### Alerta de Precios
-- Se genera cuando variación ≥ 10%
-- Registra historial de precios por proveedor
-- Notificación en dashboard con color (rojo/verde)
-
----
-
-## 🔮 Futuras Mejoras
-
-- [ ] Reconocimiento de productos con vision AI (GPT-4 Vision)
-- [ ] Notificaciones push/email de alertas
-- [ ] Importación masiva desde CSV
-- [ ] Reportes PDF de gastos
-- [ ] Integración con bancos (estados de cuenta)
-- [ ] App móvil (React Native)
-- [ ] Multi-idioma (español/inglés)
-- [ ] API pública para integraciones
-
----
-
-## 👨‍💻 Autor
-
-**Michael Urzúa**
-- Electricista + Desarrollador Full Stack
-- Este proyecto nace de una necesidad real: gestionar materiales y controlar precios
-
----
-
-## 📄 Licencia
-
-MIT License - Libre uso y modificación.
-
----
-
-## ⚡ ¿Preguntas?
-
-Revisa la documentación o crea un issue en el repositorio.
-
-- **Autenticación segura**: JWT tokens con Django REST Framework
-- **Subida de facturas**: Soporta PDF e imágenes (JPG, PNG)
-- **OCR + IA**: Extrae automáticamente productos, precios y totales
-- **Comparación de precios**: Visualiza precios por proveedor
-- **Dashboard moderno**: React + Vite + TailwindCSS con gráficos interactivos
-- **Base de datos**: PostgreSQL
-
----
-
-## 🏗️ Arquitectura
-
-```
-electricista/
-├── backend/          # Django REST API
-│   ├── products/     # Productos, Proveedores, Historial precios
-│   └── invoices/     # Facturas, Ítems, OCR
-├── frontend/         # React + Vite + Tailwind
-├── docker-compose.yml
-├── Dockerfile
-└── requirements.txt
-```
-
----
-
-## 🚀 Instalación Rápida
-
-### Opción 1: Docker (Recomendado)
-
-```bash
-# 1. Clonar/copiar proyecto
+# 1. Clonar el repositorio
+git clone <repo-url>
 cd electricista
 
 # 2. Configurar variables de entorno
 cp .env.example .env
-# Editar .env y agregar tu API key de Mistral
+# Editar .env y agregar MISTRAL_API_KEY y SECRET_KEY
 
 # 3. Levantar todos los servicios
 docker-compose up -d
 
-# 4. Ejecutar migraciones y crear superusuario
-docker-compose exec backend python manage.py migrate
+# 4. Crear superusuario (opcional)
 docker-compose exec backend python manage.py createsuperuser
 
 # 5. Acceder
-# - Frontend: http://localhost:5173
-# - Backend API: http://localhost:8000/api/
-# - Admin Django: http://localhost:8000/admin/
+#    Frontend:   http://localhost:5173
+#    Backend API: http://localhost:8000/api/
+#    Admin Django: http://localhost:8000/admin/
 ```
 
-### Opción 2: Instalación Manual
+Los servicios que levanta Docker:
+- `postgres` — PostgreSQL 15 en puerto 5433
+- `redis` — Redis 7 en puerto 6379
+- `backend` — Django + Gunicorn en puerto 8000 (ejecuta migraciones y `scripts/init_db.py` al iniciar)
+- `celery` — Worker Celery para procesamiento de facturas
+- `frontend` — Node 18 + Vite en puerto 5173
+
+### Opción 2: Instalación manual
 
 ```bash
 # Backend
-cd electricista
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate
 pip install -r requirements.txt
 
-# Configurar base de datos PostgreSQL
-# Editar settings.py o variables de entorno
+# Instalar Tesseract con soporte español
+# macOS:  brew install tesseract tesseract-lang
+# Ubuntu: apt install tesseract-ocr tesseract-ocr-spa poppler-utils
 
-# Migraciones
+# Configurar .env (ver sección Variables de entorno)
+cp .env.example .env
+
+# Migraciones y datos iniciales
 python manage.py migrate
+python -m scripts.init_db
 python manage.py createsuperuser
 python manage.py collectstatic
 
-# Ejecutar servidor
+# Iniciar backend
 python manage.py runserver
 
-# Frontend (en terminal separada)
+# En otra terminal: worker Celery
+celery -A electricista worker -l INFO
+
+# Frontend
 cd frontend
 npm install
 npm run dev
@@ -370,213 +266,100 @@ npm run dev
 
 ---
 
-## ⚙️ Configuración
+## Variables de entorno
 
-### Variables de Entorno
-
-```bash
-# .env
-SECRET_KEY=tu-clave-secreta-generada
+```env
+# Django
+SECRET_KEY=tu-clave-secreta-larga-y-aleatoria
 DEBUG=True
+
+# Base de datos PostgreSQL
 DB_NAME=electricista
 DB_USER=postgres
 DB_PASSWORD=postgres
 DB_HOST=localhost
 DB_PORT=5432
 
-# APIs
-MISTRAL_API_KEY=sk-...  # Obtener en https://console.mistral.ai
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# Mistral AI (requerido para parseo de facturas)
+# Obtener en: https://console.mistral.ai
+MISTRAL_API_KEY=sk-...
+
+# CORS (frontend URL)
+CORS_ALLOWED_ORIGINS=http://localhost:5173
+
+# Hosts permitidos
+ALLOWED_HOSTS=localhost,127.0.0.1
 ```
-
-### API Keys Requeridas
-
-1. **Mistral AI** (gratis): Para el parseo de facturas
-   - Regístrate en https://console.mistral.ai
-   - Crea una API Key
-   - Agrégalo en `.env`
 
 ---
 
-## 📱 Uso del Dashboard
+## Uso del dashboard
 
-### Login
-- Usuario demo: `demo` / `demo123` (o crear con createsuperuser)
-- Acceso al admin: http://localhost:8000/admin/
-
-### Subir Factura
-
+### Subir una factura
 1. Ir a **Facturas** → **Subir Factura**
-2. Seleccionar archivo (PDF, JPG, PNG)
-3. Ingresar fecha de emisión
-4. El sistema procesará:
-   - Extraer texto con OCR
-   - Parsear con IA usando Mistral
-   - Identificar productos, precios y totales
-   - Guardar en base de datos
+2. Seleccionar archivo PDF o imagen
+3. Completar fecha de emisión y proveedor (obligatorios)
+4. Opcionalmente ingresar número de factura y margen de ganancia general
+5. El sistema procesa en segundo plano: OCR → IA → ítems → historial de precios
+6. La tabla se actualiza automáticamente con polling cada 3 segundos mientras hay facturas en proceso
 
-### Gráficos
+### Ver detalle de factura
+- Click en el ícono de ojo en la tabla de facturas
+- Muestra todos los ítems con precio unitario, total, margen editable y precio de venta
+- La columna **Variación** compara cada producto con la factura anterior del mismo proveedor
+- El margen de cada ítem es editable directamente en la tabla
 
-- **Dashboard Principal**: Gasto mensual, distribución por proveedor
-- **Comparación de Precios**: Historial y alertas de subidas/bajadas
-- **Filtros**: Ver solo subidas, bajadas o todos
+### Comparación de precios
+La sección **Comparación de Precios** tiene 4 pestañas:
+- **Comparación Automática** — selecciona una factura y compara automáticamente con la anterior del mismo proveedor
+- **Comparación Manual** — elige dos facturas específicas del mismo proveedor para comparar
+- **Resumen Mensual** — estadísticas de precios (mín, máx, promedio, variación) por proveedor y mes
+- **Entre Proveedores** — productos que aparecen en facturas de 2+ proveedores, con el más barato destacado
 
----
-
-## 🔧 APIs Disponibles
-
-### Autenticación
-- `POST /api/token/` - Obtener JWT token
-- `POST /api/token/refresh/` - Refrescar token
-- `POST /api/token/verify/` - Verificar token
-
-### Facturas
-- `GET /api/facturas/` - Listar facturas del usuario
-- `POST /api/facturas/` - Subir factura
-- `GET /api/facturas/{id}/` - Detalle con ítems
-- `GET /api/facturas/stats/` - Estadísticas
-
-### Productos
-- `GET /api/productos/` - Listar productos
-- `POST /api/productos/` - Crear producto
-- `PUT /api/productos/{id}/` - Actualizar
-- `GET /api/productos/{id}/price_history/` - Historial precios
+### Dashboard
+- Selector de período (mes/año) con validación de períodos con datos
+- Gráfico de gasto mensual (click en una barra abre detalle diario)
+- Gráfico de distribución por proveedor
+- Configuración de actualización automática (5s, 10s, 30s, 1min o manual)
 
 ---
 
-## 🛠️ Tecnologías Utilizadas
-
-### Backend
-- **Django 4.2** - Framework web
-- **Django REST Framework** - API REST
-- **PostgreSQL** - Base de datos
-- **Tesseract OCR** - Extracción de texto
-- **Mistral AI** - Parseo inteligente de facturas
-
-### Frontend
-- **React 18** - UI library
-- **Vite** - Build tool
-- **TailwindCSS** - Estilos
-- **Recharts** - Gráficos
-- **Axios** - HTTP client
-- **React Router** - Navegación
-
----
-
-## 📁 Estructura de Archivos
-
-```
-electricista/
-├── electricista/          # Configuración Django
-│   ├── settings.py
-│   └── urls.py
-├── products/              # Gestión de productos y proveedores
-│   ├── models.py
-│   ├── views.py
-│   ├── serializers.py
-│   └── admin.py
-├── invoices/              # Gestión de facturas y OCR
-│   ├── models.py
-│   ├── views.py
-│   ├── serializers.py
-│   ├── ocr.py            # OCR processor
-│   ├── ai_parser.py      # Mistral parser
-│   └── signals.py        # Auto-trigger
-├── frontend/
-│   ├── src/
-│   │   ├── pages/        # Dashboard, Invoices, Products, etc.
-│   │   ├── components/   # Componentes reutilizables
-│   │   ├── contexts/     # AuthContext
-│   │   ├── services/     # API client
-│   │   └── layouts/      # MainLayout
-│   └── package.json
-├── docker-compose.yml
-├── Dockerfile
-├── requirements.txt
-└── README.md
-```
-
----
-
-## 🧪 Testing
+## Testing
 
 ```bash
-# Backend tests
+# Backend
 python manage.py test
 
-# Frontend tests (pendientes)
-npm test
+# Frontend (lint)
+cd frontend
+npm run lint
 ```
 
 ---
 
-## 📦 Dependencias
+## Futuras mejoras
 
-Ver `requirements.txt` y `frontend/package.json` para lista completa.
-
-** Principales **:
-- Django 4.2
-- DRF 3.14
-- React 18
-- TailwindCSS 3.3
-- Celery 5.3
-- PostgreSQL + Redis
-
----
-
-## 📝 Notas de Implementación
-
-### OCR
-- Usa **Tesseract** con language pack `spa` (español)
-- Para PDFs, convierte páginas a imágenes con `pdf2image`
-- Fallback: PyPDF2 extrae texto nativo
-
-### Parseo de Facturas
-- Envía texto OCR a **Mistral AI** (modelo `mistral-small`)
-- Prompt estructurado extrae: proveedor, fecha, número, ítems, totales
-- Fallback: Parser básico con regex si API falla
-
-### Scraping
-- Selectores CSS por sitio
-- Headers con User-Agent real
-- Timeout y retry configurados
-- Solo sitios chilenos de retail
-
-### Alerta de Precios
-- Se genera cuando variación ≥ 10%
-- Registra historial de precios por proveedor
-- Notificación en dashboard con color (rojo/verde)
-
----
-
-## 🔮 Futuras Mejoras
-
-- [ ] Reconocimiento de productos con vision AI (GPT-4 Vision)
-- [ ] Notificaciones push/email de alertas
-- [ ] Importación masiva desde CSV
-- [ ] Reportes PDF de gastos
-- [ ] Integración con bancos (estados de cuenta)
+- [ ] Notificaciones push/email cuando el precio sube más del umbral configurado
+- [ ] Importación masiva de facturas desde CSV
+- [ ] Reportes PDF de gastos mensuales
+- [ ] Reconocimiento de productos con visión IA (GPT-4 Vision)
 - [ ] App móvil (React Native)
-- [ ] Multi-idioma (español/inglés)
-- [ ] API pública para integraciones
+- [ ] Multi-usuario con roles (admin, operador, solo lectura)
+- [ ] Integración con SII (Servicio de Impuestos Internos de Chile)
 
 ---
 
-## 👨‍💻 Autor
+## Autor
 
-**Michael Urzúa**
-- Electricista + Desarrollador Full Stack
-- Este proyecto nace de una necesidad real: gestionar materiales y controlar precios
-
----
-
-## 📄 Licencia
-
-MIT License - Libre uso y modificación.
+**Michael Urzúa** — Electricista + Desarrollador Full Stack  
+Proyecto nacido de una necesidad real: controlar los precios de materiales y calcular márgenes de ganancia directamente desde las facturas de compra.
 
 ---
 
-## ⚡ ¿Preguntas?
+## Licencia
 
-Revisa la documentación o crea un issue en el repositorio.
-
-¡Gracias por usar Electricista Pro!
+MIT License — libre uso y modificación.
