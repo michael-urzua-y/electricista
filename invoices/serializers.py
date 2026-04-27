@@ -14,13 +14,14 @@ User = get_user_model()
 
 class InvoiceItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
+    sell_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = InvoiceItem
         fields = ['id', 'description', 'quantity', 'unit_price', 'total_price',
                   'unit_measure', 'product', 'product_name', 'confidence',
-                  'needs_review', 'notes']
-        read_only_fields = ['id', 'total_price']
+                  'needs_review', 'notes', 'markup_percentage', 'sell_price']
+        read_only_fields = ['id', 'total_price', 'sell_price']
 
 
 class InvoiceItemDetailSerializer(InvoiceItemSerializer):
@@ -91,7 +92,7 @@ class InvoiceUploadSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Invoice
-        fields = ['file', 'invoice_number', 'issue_date', 'provider']
+        fields = ['file', 'invoice_number', 'issue_date', 'provider', 'markup_percentage']
         extra_kwargs = {
             'file': {'required': True},
             'issue_date': {'required': True}
@@ -99,24 +100,30 @@ class InvoiceUploadSerializer(serializers.ModelSerializer):
 
     def validate_file(self, value):
         """Validar tipo de archivo"""
-        allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png']
-        filename = value.name
-        ext = filename.lower().rsplit('.', 1)[-1] if '.' in filename else ''
-        dotted_ext = f'.{ext}'
-        
-        logger.info(f"[UPLOAD] Validando archivo: {filename}, extensión: {dotted_ext}, tamaño: {value.size} bytes")
-        
-        if dotted_ext not in allowed_extensions:
-            error_msg = f'Tipo de archivo no permitido. Use: {", ".join(allowed_extensions)}'
-            logger.warning(f"[UPLOAD] Extensión no permitida: {dotted_ext}")
-            raise serializers.ValidationError(error_msg)
-        
         # Límite de 10MB
         max_size = 10 * 1024 * 1024
         if value.size > max_size:
             error_msg = f'El archivo no puede superar 10MB. Tamaño actual: {value.size/1024/1024:.2f}MB'
             logger.warning(f"[UPLOAD] Archivo demasiado grande: {value.size} bytes")
             raise serializers.ValidationError(error_msg)
+
+        # Validar tipo MIME real inspeccionando los bytes (Seguridad Extrema)
+        import magic
+        file_header = value.read(2048)  # Leer primeros bytes
+        value.seek(0)  # Devolver el puntero al inicio para que Django pueda guardarlo
+        
+        mime_type = magic.from_buffer(file_header, mime=True)
+        allowed_mimes = ['application/pdf', 'image/jpeg', 'image/png']
+        
+        if mime_type not in allowed_mimes:
+            logger.warning(f"[UPLOAD] PELIGRO: Intento de subida inválida. MIME detectado: {mime_type}")
+            raise serializers.ValidationError(f'Archivo no válido por seguridad. Se detectó: {mime_type}')
+
+        # Capa extra: Validar extensión
+        allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png']
+        filename = value.name.lower()
+        if not any(filename.endswith(ext) for ext in allowed_extensions):
+            raise serializers.ValidationError('La extensión del archivo no coincide con el formato permitido.')
         
         logger.info(f"[UPLOAD] Archivo validado correctamente")
         return value
@@ -130,5 +137,3 @@ class InvoiceUploadSerializer(serializers.ModelSerializer):
         if value < date(2020, 1, 1):
             raise serializers.ValidationError('La fecha no puede ser anterior a 2020')
         return value
-
-

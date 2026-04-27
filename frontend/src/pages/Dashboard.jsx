@@ -238,6 +238,47 @@ export default function Dashboard() {
     { title: 'Productos Comparados', value: comparison.length, icon: CurrencyDollarIcon, color: 'bg-purple-500', lightColor: 'bg-purple-50', textColor: 'text-purple-700' }
   ]
 
+  // Tooltip personalizado para el gráfico de Detalle Diario
+  const CustomDailyTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      
+      // Buscamos en el estado local (allInvoices) las facturas de ese día exacto
+      const facturasDelDia = allInvoices.filter(inv => {
+        if (!inv.issue_date && !inv.created_at) return false;
+        const invDate = (inv.issue_date || inv.created_at).split('T')[0];
+        const [y, m, d] = invDate.split('-');
+        // Comparamos contra el dato del gráfico (data.date) cubriendo formatos YYYY-MM-DD y DD/MM/YYYY
+        return (
+          invDate === data.date || 
+          invDate === label ||
+          `${d}/${m}/${y}` === data.date ||
+          `${d}/${m}/${y}` === label
+        );
+      });
+
+      // Obtenemos los proveedores únicos de ese día excluyendo nulos
+      const proveedoresUnicos = Array.from(new Set(facturasDelDia.map(i => i.provider_name).filter(Boolean)));
+
+      let proveedorText = proveedoresUnicos.length > 0 
+        ? proveedoresUnicos.join(' y ') 
+        : (data.proveedor || data.provider_name || 'No especificado');
+
+      return (
+        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+          <p className="text-sm font-semibold text-gray-700 mb-1">{label}</p>
+          <p className="text-sm text-blue-600 font-medium">
+            Total: {formatCurrency(payload[0].value)}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Proveedor: <span className="font-medium text-gray-700">{proveedorText}</span>
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -463,7 +504,7 @@ export default function Dashboard() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                       <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
                       <YAxis stroke="#64748b" fontSize={12} />
-                      <Tooltip formatter={(value) => formatCurrency(value)} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                      <Tooltip content={<CustomDailyTooltip />} cursor={{ fill: '#f8fafc' }} />
                       <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                         {dailyData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

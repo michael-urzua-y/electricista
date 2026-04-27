@@ -4,24 +4,31 @@ import api from '../services/api'
 export default function Products() {
   const [products, setProducts] = useState([])
   const [providers, setProviders] = useState([])
-  const [selectedProvider, setSelectedProvider] = useState('')
+  // selectedProvider stores the provider object { id, name } or null
+  const [selectedProvider, setSelectedProvider] = useState(null)
   const [loading, setLoading] = useState(true)
   const [currentPages, setCurrentPages] = useState({})
   const itemsPerPage = 10
 
-  // Reset current page when provider filter changes
+  // Reset pagination when provider filter changes
   useEffect(() => {
     setCurrentPages({})
   }, [selectedProvider])
 
   useEffect(() => {
-    fetchProducts()
     fetchProviders()
   }, [])
 
-  const fetchProducts = async () => {
+  // Re-fetch products whenever the selected provider changes
+  useEffect(() => {
+    fetchProducts(selectedProvider?.id ?? null)
+  }, [selectedProvider])
+
+  const fetchProducts = async (providerId) => {
+    setLoading(true)
     try {
-      const res = await api.get('/productos/')
+      const params = providerId ? { provider: providerId } : {}
+      const res = await api.get('/productos/', { params })
       const data = Array.isArray(res.data) ? res.data : res.data.results || []
       setProducts(data)
     } catch (error) {
@@ -41,31 +48,45 @@ export default function Products() {
     }
   }
 
-  // Filtrar productos por proveedor seleccionado
-  const filteredProducts = selectedProvider
-    ? products.filter(p => p.provider_names?.includes(selectedProvider))
-    : products
+  const handleProviderChange = (e) => {
+    const id = e.target.value
+    if (!id) {
+      setSelectedProvider(null)
+    } else {
+      const found = providers.find(p => String(p.id) === String(id))
+      setSelectedProvider(found ?? null)
+    }
+  }
 
-  // Agrupamos productos por proveedor para mostrar tablas separadas
+  // When a specific provider is selected, show one table for that provider.
+  // When showing all, group products by each provider they belong to.
   const productsByProvider = {}
   if (selectedProvider) {
-    productsByProvider[selectedProvider] = filteredProducts
+    productsByProvider[selectedProvider.name] = products
   } else {
-    filteredProducts.forEach(p => {
-      p.provider_names?.forEach(provName => {
+    products.forEach(p => {
+      const names = p.provider_names?.length > 0 ? p.provider_names : ['Sin proveedor']
+      names.forEach(provName => {
         if (!productsByProvider[provName]) {
           productsByProvider[provName] = []
         }
-        if (!productsByProvider[provName].find(item => item.id === p.id)) {
+        if (!productsByProvider[provName].some(item => item.id === p.id)) {
           productsByProvider[provName].push(p)
         }
       })
     })
   }
 
-  // Handlers de paginación
   const goToPage = (providerName, page) => {
     setCurrentPages(prev => ({ ...prev, [providerName]: page }))
+  }
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('es-CL', {
+      style: 'currency',
+      currency: 'CLP',
+      minimumFractionDigits: 0,
+    }).format(value)
   }
 
   if (loading) {
@@ -76,34 +97,31 @@ export default function Products() {
     )
   }
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('es-CL', {
-      style: 'currency',
-      currency: 'CLP',
-      minimumFractionDigits: 0
-    }).format(value)
-  }
-
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header con selector de proveedor */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Productos</h1>
           <p className="text-gray-500 mt-1">
-            {selectedProvider ? `Productos de ${selectedProvider}` : 'Todos los productos por proveedor'}
+            {selectedProvider
+              ? `Productos de ${selectedProvider.name}`
+              : 'Todos los productos por proveedor'}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-gray-700">Filtrar por proveedor:</label>
+          <label htmlFor="provider-filter" className="text-sm font-medium text-gray-700">
+            Filtrar por proveedor:
+          </label>
           <select
-            value={selectedProvider}
-            onChange={(e) => setSelectedProvider(e.target.value)}
+            id="provider-filter"
+            value={selectedProvider?.id ?? ''}
+            onChange={handleProviderChange}
             className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 outline-none"
           >
             <option value="">Todos los proveedores</option>
             {providers.map(p => (
-              <option key={p.id} value={p.name}>{p.name}</option>
+              <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
         </div>
@@ -136,6 +154,7 @@ export default function Products() {
                     </span>
                   )}
                 </div>
+
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b border-gray-100">
@@ -143,35 +162,83 @@ export default function Products() {
                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Producto</th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Categoría</th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Último Precio</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Margen (%)</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-green-600 uppercase tracking-wider">A Cobrar</th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Proveedores</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {paginatedProducts.map(product => (
-                        <tr key={product.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4">
-                            <div>
-                              <p className="font-medium text-gray-900">{product.name}</p>
-                              {product.brand && <p className="text-xs text-gray-500">Marca: {product.brand}</p>}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
-                            {product.category || 'General'}
-                          </td>
-                          <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                            {product.latest_price ? formatCurrency(product.latest_price.price) : 'Sin precio'}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
-                            {product.provider_names?.length > 0 
-                              ? product.provider_names.join(', ')
-                              : 'Sin proveedores'
-                            }
-                          </td>
-                        </tr>
-                      ))}
+                      {paginatedProducts.map(product => {
+                        // When viewing all providers, markup/sell_price may be a dict keyed by provider name
+                        const markupRaw = product.markup_percentage
+                        const sellRaw = product.sell_price
+
+                        const markupValue = (() => {
+                          if (!markupRaw || markupRaw === '0') return 0
+                          if (typeof markupRaw === 'object') {
+                            return Math.round(Number(markupRaw[providerName] ?? 0))
+                          }
+                          return Math.round(Number(markupRaw))
+                        })()
+
+                        const price = product.latest_price ? Number(product.latest_price.price) : 0
+
+                        const sellValue = (() => {
+                          if (!sellRaw) return price > 0 && markupValue > 0 ? price * (1 + markupValue / 100) : 0
+                          if (typeof sellRaw === 'object') {
+                            const v = sellRaw[providerName]
+                            return v ? Number(v) : (price > 0 && markupValue > 0 ? price * (1 + markupValue / 100) : 0)
+                          }
+                          return Number(sellRaw)
+                        })()
+
+                        return (
+                          <tr key={product.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4">
+                              <div>
+                                <p className="font-medium text-gray-900">{product.name}</p>
+                                {product.brand && (
+                                  <p className="text-xs text-gray-500">Marca: {product.brand}</p>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600">
+                              {product.category || 'General'}
+                            </td>
+                            <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                              {product.latest_price
+                                ? (
+                                  <span>
+                                    {formatCurrency(product.latest_price.price)}
+                                    {!selectedProvider && (
+                                      <span className="ml-1 text-xs font-normal text-gray-400">
+                                        ({product.latest_price.provider})
+                                      </span>
+                                    )}
+                                  </span>
+                                )
+                                : 'Sin precio'}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              {markupValue > 0
+                                ? <span className="font-medium text-gray-900">{markupValue}%</span>
+                                : <span className="text-gray-400">0%</span>}
+                            </td>
+                            <td className="px-6 py-4 text-sm font-bold text-green-600">
+                              {sellValue > 0 ? formatCurrency(sellValue) : '—'}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600">
+                              {product.provider_names?.length > 0
+                                ? product.provider_names.join(', ')
+                                : 'Sin proveedores'}
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
+
                 {/* Paginación */}
                 {totalPages > 1 && (
                   <div className="flex items-center justify-between px-6 py-3 bg-gray-50 border-t border-gray-100">
@@ -190,7 +257,9 @@ export default function Products() {
                         .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
                         .map((p, idx, arr) => (
                           <span key={p} className="flex items-center">
-                            {idx > 0 && arr[idx - 1] !== p - 1 && <span className="px-2">...</span>}
+                            {idx > 0 && arr[idx - 1] !== p - 1 && (
+                              <span className="px-2">...</span>
+                            )}
                             <button
                               onClick={() => goToPage(providerName, p)}
                               className={`px-3 py-1 text-sm rounded ${

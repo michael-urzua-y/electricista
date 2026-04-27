@@ -1,14 +1,15 @@
 from datetime import date
+from decimal import Decimal
 
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 import logging
 from .models import Invoice, InvoiceItem
 from products.models import Provider
-from .serializers import InvoiceListSerializer, InvoiceDetailSerializer, InvoiceUploadSerializer
+from .serializers import InvoiceListSerializer, InvoiceDetailSerializer, InvoiceUploadSerializer, InvoiceItemSerializer
 from .comparison_serializers import (
     ComparacionAutomaticaSerializer,
     ComparacionMensualSerializer,
@@ -16,6 +17,8 @@ from .comparison_serializers import (
 from .comparison import obtener_factura_anterior, calcular_comparacion, comparar_mes as comparar_mes_service, comparar_entre_proveedores
 from .ocr import OCRProcessor
 from .ai_parser import InvoiceAIParser
+from .services import process_invoice
+from .tasks import process_invoice_task
 from django.db import transaction
 
 logger = logging.getLogger(__name__)
@@ -78,106 +81,11 @@ class FacturaViewSet(viewsets.ModelViewSet):
         user = self.request.user
         provider = serializer.validated_data.get('provider')
         
-        try:
-            # Guardar factura inicial (user asignado desde perform_create)
-            invoice = serializer.save(user=user)
-            invoice.status = 'processing'
-            invoice.save()
-            
-            # --- OCR ---
-            ocr_processor = OCRProcessor()
-            file_path = invoice.file.path
-            file_type = invoice.file_type or file_path.split('.')[-1].lower()
-            ocr_text = ocr_processor.extract_text(
-                file_path=file_path,
-                file_type=file_type
-            )
-            invoice.ocr_text = ocr_text
-            
-            # --- IA Parser ---
-            parser = InvoiceAIParser()
-            parsed_data = parser.parse(ocr_text)
-            
-            # --- Guardar ítems y calcular total ---
-            total_amount = 0
-            with transaction.atomic():
-                for item_data in parsed_data.get('items', []):
-                    desc = item_data.get('description', '')
-                    quantity = item_data.get('quantity', 1) or 1
-                    unit_price = item_data.get('unit_price')
-                    total_price = item_data.get('total_price')
-                    
-                    # Calcular precios faltantes
-                    if unit_price is None and total_price is not None:
-                        try:
-                            unit_price = float(total_price) / float(quantity)
-                        except:
-                            unit_price = 0
-                    if total_price is None and unit_price is not None:
-                        try:
-                            total_price = float(unit_price) * float(quantity)
-                        except:
-                            total_price = 0
-                    
-                    item_total = total_price or 0
-                    total_amount += item_total
-                    
-                    # Buscar o crear producto (genérico, sin proveedor fijo)
-                    product = None
-                    if desc:
-                        from products.models import Product
-                        # Buscar por nombre exacto (case-insensitive)
-                        product = Product.objects.filter(
-                            name__iexact=desc[:200],
-                            is_active=True
-                        ).first()
-                        if not product:
-                            # Crear producto genérico (sin proveedor)
-                            product = Product.objects.create(
-                                name=desc[:200],
-                                provider=None,  # NO asignamos proveedor aquí
-                                category='general',
-                                is_active=True
-                            )
-                            logger.info(f"Producto creado: {product.name}")
-                        # Si existe, lo usamos (no cambiamos su provider)
-                    
-                    invoice_item = InvoiceItem.objects.create(
-                        invoice=invoice,
-                        product=product,
-                        description=desc,
-                        quantity=quantity,
-                        unit_price=unit_price,
-                        total_price=total_price,
-                        unit_measure=item_data.get('unit_measure'),
-                        needs_review=product is None
-                    )
-                    
-                    # Si el ítem tiene producto vinculado, registrar en historial de precios
-                    if product and unit_price:
-                        from products.models import PriceHistory
-                        PriceHistory.objects.create(
-                            product=product,
-                            provider=provider,
-                            price=unit_price,
-                            currency=invoice.currency
-                        )
-                
-                # Actualizar factura
-                invoice.total_amount = total_amount
-                invoice.status = 'completed'
-                invoice.save()
-                
-        except Exception as e:
-            logger.error(f"Error procesando factura: {e}", exc_info=True)
-            # Si ya creamos la factura, marcarla como fallida
-            try:
-                invoice.status = 'failed'
-                invoice.processing_notes = str(e)
-                invoice.save()
-            except:
-                pass
-            raise
+        # 1. Guardar registro inicial en la DB
+        invoice = serializer.save(user=user)
+        
+        # 2. Enviar a Celery para procesar en segundo plano SIN bloquear al usuario
+        process_invoice_task.delay(invoice.id)
         
         return invoice
 
@@ -192,6 +100,28 @@ class FacturaViewSet(viewsets.ModelViewSet):
             avg_amount=Avg('total_amount')
         )
         return Response(stats)
+
+    @action(detail=True, methods=['patch'], url_path='update-item',
+            parser_classes=[JSONParser, MultiPartParser])
+    def update_item(self, request, pk=None):
+        """Permite actualizar el porcentaje de ganancia de un producto específico en la factura"""
+        invoice = self.get_object()
+        item_id = request.data.get('item_id')
+        
+        if not item_id:
+            return Response({'error': 'item_id es requerido'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        item = get_object_or_404(InvoiceItem, pk=item_id, invoice=invoice)
+        
+        if 'markup_percentage' in request.data:
+            try:
+                item.markup_percentage = Decimal(str(request.data['markup_percentage']))
+                item.save()
+            except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                
+        serializer = InvoiceItemSerializer(item)
+        return Response(serializer.data)
 
     # ------------------------------------------------------------------
     # Endpoints de comparación de precios

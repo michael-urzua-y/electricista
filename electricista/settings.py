@@ -28,7 +28,7 @@ SECRET_KEY = secret_key
 if not SECRET_KEY:
     raise ValueError("SECRET_KEY environment variable is required for security")
 
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 # Redis Configuration with error handling
 REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
@@ -134,7 +134,7 @@ MISTRAL_API_KEY = os.getenv('MISTRAL_API_KEY', '')
 # Configuración JWT
 from datetime import timedelta
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=8),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
@@ -167,8 +167,8 @@ LOGIN_REDIRECT_URL = '/'
 LOGIN_URL = 'rest_framework.authtoken.obtain_auth_token'
 
 # Internationalization
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+LANGUAGE_CODE = 'es-cl'
+TIME_ZONE = 'America/Santiago'
 USE_I18N = True
 USE_TZ = True
 
@@ -179,3 +179,10 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# --- CELERY CONFIGURATION ---
+CELERY_BROKER_URL = 'redis://redis:6379/0'
+CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+

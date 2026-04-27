@@ -19,6 +19,10 @@ requests==2.31.0
 # Cache
 django-redis==5.4.0
 
+# Tareas asíncronas (Celery)
+celery==5.3.6
+redis==5.0.1
+
 # Base de datos
 psycopg2-binary==2.9.9
 dj-database-url==2.1.0
@@ -44,3 +48,7 @@ factory-boy==3.3.0
 # Production server
 gunicorn==21.2.0
 whitenoise==6.6.0
+
+# Seguridad y Similitud de Texto
+thefuzz==0.20.0
+python-magic==0.4.27

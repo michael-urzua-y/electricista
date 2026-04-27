@@ -79,10 +79,13 @@ class OCRProcessor:
                     with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
                         tmp.write(file_content)
                         tmp_path = tmp.name
-                    images = pdf2image.convert_from_path(tmp_path, dpi=300)
-                    os.unlink(tmp_path)
+                    try:
+                        # Limitar la conversión a las primeras 5 páginas para evitar DoS
+                        images = pdf2image.convert_from_path(tmp_path, dpi=300, first_page=1, last_page=5)
+                    finally:
+                        os.unlink(tmp_path)
                 elif file_path:
-                    images = pdf2image.convert_from_path(file_path, dpi=300)
+                    images = pdf2image.convert_from_path(file_path, dpi=300, first_page=1, last_page=5)
 
                 for img in images:
                     text = pytesseract.image_to_string(img, lang='spa')

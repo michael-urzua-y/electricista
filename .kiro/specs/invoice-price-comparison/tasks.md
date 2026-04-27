@@ -53,6 +53,12 @@ Implementación incremental de la funcionalidad de comparación de precios entre
     - Verificar que los precios mínimo, máximo y promedio son correctos para cada producto, y que la variación se calcula entre primera y última factura del período
     - **Valida: Requisitos 4.3, 4.4**
 
+  - [x] 1.9 Implementar la función `comparar_entre_proveedores`
+    - Recibe `user` y compara precios del mismo producto entre distintos proveedores
+    - Para cada producto que aparece en facturas de 2+ proveedores, muestra el precio más reciente de cada proveedor
+    - Identifica cuál es el proveedor más barato y calcula la variación respecto al más barato
+    - Retorna dict con lista de productos y sus precios por proveedor
+
 - [x] 2. Checkpoint — Verificar lógica de negocio
   - Asegurar que todos los tests pasan, preguntar al usuario si surgen dudas.
 
@@ -88,7 +94,12 @@ Implementación incremental de la funcionalidad de comparación de precios entre
     - Llamar a `comparar_mes` del servicio y retornar respuesta serializada
     - _Requisitos: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-  - [ ]* 3.5 Escribir tests de propiedad para control de acceso y validaciones de endpoints
+  - [x] 3.5 Agregar endpoint `comparar_proveedores` en `FacturaViewSet`
+    - Agregar `@action(detail=False, methods=['get'], url_path='comparar-proveedores')` en `invoices/views.py`
+    - Llamar a `comparar_entre_proveedores` del servicio
+    - Retornar respuesta con lista de productos y sus precios por proveedor
+
+  - [ ]* 3.6 Escribir tests de propiedad para control de acceso y validaciones de endpoints
     - **Propiedad 5: Control de acceso a comparaciones**
     - **Propiedad 6: Validación de mismo proveedor en comparación manual**
     - **Propiedad 7: Validación de estado completado en comparación manual**
@@ -132,8 +143,8 @@ Implementación incremental de la funcionalidad de comparación de precios entre
 
 - [x] 7. Refactorizar página `PriceComparison.jsx` con tabs y secciones
   - [x] 7.1 Implementar estructura de tabs en `PriceComparison.jsx`
-    - Reestructurar la página existente con tres tabs: "Comparación Automática", "Comparación Manual", "Resumen Mensual"
-    - Mantener la tabla comparativa existente de proveedores como contenido por defecto o sección adicional
+    - Reestructurar la página existente con cuatro tabs: "Comparación Automática", "Comparación Manual", "Resumen Mensual", "Entre Proveedores"
+    - Mantener la funcionalidad de comparación entre proveedores como cuarto tab
     - _Requisitos: 5.1, 6.1, 7.1_
 
   - [x] 7.2 Implementar tab de Comparación Automática
@@ -161,12 +172,20 @@ Implementación incremental de la funcionalidad de comparación de precios entre
     - Manejar caso sin facturas en el período (mostrar mensaje informativo)
     - _Requisitos: 7.1, 7.2, 7.3, 7.4_
 
+  - [x] 7.5 Implementar tab de Entre Proveedores
+    - Mostrar comparación de precios del mismo producto entre distintos proveedores
+    - Llamar a `GET /api/facturas/comparar-proveedores/`
+    - Mostrar el proveedor más barato para cada producto
+    - Mostrar variación de precio respecto al más barato
+    - Incluir información de factura y fecha para cada proveedor
+
 - [x] 8. Agregar indicadores de variación en detalle de factura (`Invoices.jsx`)
-  - Modificar el modal de detalle de factura en `Invoices.jsx`
-  - Agregar columna "Variación" en la tabla de ítems que muestre `PriceVariationBadge` cuando existan datos de variación
-  - Mostrar etiqueta "Nuevo" para ítems sin equivalente en la factura anterior
-  - Consumir los datos de variación del endpoint de detalle enriquecido
-  - _Requisitos: 8.1, 8.2, 8.3_
+  - [x] 8.1 Modificar el modal de detalle de factura en `Invoices.jsx`
+    - Agregar columna "Variación" en la tabla de ítems que muestre `PriceVariationBadge` cuando existan datos de variación
+    - Mostrar etiqueta "Nuevo" para ítems sin equivalente en la factura anterior
+    - Consumir los datos de variación del endpoint de detalle enriquecido
+    - Agregar tooltip explicativo del sistema de variaciones
+    - _Requisitos: 8.1, 8.2, 8.3_
 
 - [x] 9. Checkpoint final — Verificar integración completa
   - Asegurar que todos los tests pasan, preguntar al usuario si surgen dudas.

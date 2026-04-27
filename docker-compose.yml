@@ -68,6 +68,28 @@ services:
     networks:
       - electricista_net
 
+  celery:
+    build: .
+    container_name: electricista_celery
+    command: celery -A electricista worker -l INFO
+    volumes:
+      - .:/app
+      - media_volume:/app/media
+    environment:
+      DEBUG: "False"
+      DB_NAME: electricista
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - electricista_net
+
   frontend:
     image: node:18-alpine
     container_name: electricista_frontend

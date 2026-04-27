@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../services/api'
 import {
   PlusIcon,
   DocumentIcon,
@@ -26,7 +26,8 @@ export default function Invoices() {
     file: null,
     issue_date: '',
     invoice_number: '',
-    provider: ''
+    provider: '',
+    markup_percentage: 0
   })
   const [formErrors, setFormErrors] = useState({})
 
@@ -56,7 +57,7 @@ export default function Invoices() {
 
   const fetchInvoices = async () => {
     try {
-      const res = await axios.get('/api/facturas/')
+      const res = await api.get('/facturas/')
       const data = Array.isArray(res.data) ? res.data : (res.data.results || [])
       console.log('Fetched invoices:', data)
       
@@ -85,7 +86,7 @@ export default function Invoices() {
 
   const fetchProviders = async () => {
     try {
-      const res = await axios.get('/api/proveedores/')
+      const res = await api.get('/proveedores/')
       setProviders(Array.isArray(res.data) ? res.data : res.data.results || [])
     } catch (error) {
       console.error('Error fetching providers:', error)
@@ -96,7 +97,7 @@ export default function Invoices() {
     setLoadingDetail(true)
     setSelectedInvoice(invoice)
     try {
-      const res = await axios.get(`/api/facturas/${invoice.id}/`)
+      const res = await api.get(`/facturas/${invoice.id}/`)
       setSelectedInvoice(res.data)
     } catch (error) {
       console.error('Error fetching invoice detail:', error)
@@ -151,12 +152,13 @@ export default function Invoices() {
       if (formData.invoice_number) {
         formDataToSend.append('invoice_number', formData.invoice_number)
       }
+      formDataToSend.append('markup_percentage', formData.markup_percentage)
 
-      await axios.post('/api/facturas/', formDataToSend, {
+      await api.post('/facturas/', formDataToSend, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
-      setFormData({ file: null, issue_date: '', invoice_number: '', provider: '' })
+      setFormData({ file: null, issue_date: '', invoice_number: '', provider: '', markup_percentage: 0 })
       setShowModal(false)
       fetchInvoices()
     } catch (error) {
@@ -208,6 +210,22 @@ export default function Invoices() {
     return null
   }
 
+  const updateItemMarkup = async (itemId, newMarkup) => {
+    const parsedMarkup = newMarkup === '' ? 0 : parseInt(newMarkup, 10);
+    try {
+      await api.patch(`/facturas/${selectedInvoice.id}/update-item/`, {
+        item_id: itemId,
+        markup_percentage: parsedMarkup
+      });
+      // Recargar el detalle de la factura para obtener los nuevos precios calculados
+      fetchInvoiceDetail(selectedInvoice);
+      setNotification({ type: 'success', message: 'Margen actualizado correctamente' });
+    } catch (error) {
+      console.error('Error actualizando el margen:', error);
+      setNotification({ type: 'error', message: 'Error al actualizar el margen' });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -231,7 +249,7 @@ export default function Invoices() {
           <div className="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 animate-fade-in">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900">Subir Nueva Factura</h2>
-              <button onClick={() => { setShowModal(false); setFormData({ file: null, issue_date: '', invoice_number: '' }); setFormErrors({}) }} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => { setShowModal(false); setFormData({ file: null, issue_date: '', invoice_number: '', provider: '', markup_percentage: 0 }); setFormErrors({}) }} className="text-gray-400 hover:text-gray-600">
                 <XMarkIcon className="w-6 h-6" />
               </button>
             </div>
@@ -309,10 +327,32 @@ export default function Invoices() {
                  />
                </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Margen de Ganancia General (%)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    name="markup_percentage"
+                    value={formData.markup_percentage}
+                    onChange={handleChange}
+                    min="0"
+                    step="1"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 outline-none pr-8"
+                    placeholder="Ej: 15"
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <span className="text-gray-500 sm:text-sm">%</span>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Este margen se aplicará a todos los productos por defecto.</p>
+              </div>
+
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => { setShowModal(false); setFormData({ file: null, issue_date: '', invoice_number: '' }); setFormErrors({}) }}
+                  onClick={() => { setShowModal(false); setFormData({ file: null, issue_date: '', invoice_number: '', provider: '', markup_percentage: 0 }); setFormErrors({}) }}
                   className="flex-1 px-4 py-3 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   Cancelar
@@ -495,6 +535,8 @@ export default function Invoices() {
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-600">Cant.</th>
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-600">P. Unit.</th>
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-600">Total</th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-600">Margen (%)</th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-600">A Cobrar</th>
                           <th className="px-4 py-3 text-center text-xs font-medium text-gray-600">
                             <span className="inline-flex items-center gap-1">
                               Variación
@@ -527,6 +569,26 @@ export default function Invoices() {
                             <td className="px-4 py-3 text-sm text-right">{Math.round(Number(item.quantity))}</td>
                             <td className="px-4 py-3 text-sm text-right">{formatCurrency(item.unit_price)}</td>
                             <td className="px-4 py-3 text-sm text-right">{formatCurrency(item.total_price)}</td>
+                            <td className="px-4 py-3 text-sm text-right">
+                              <div className="flex items-center justify-end">
+                                <input
+                                key={`markup-${item.id}-${Math.round(Number(item.markup_percentage || 0))}`}
+                                  type="number"
+                                className="w-16 px-2 py-1 text-right border border-gray-300 rounded focus:ring-primary-500 focus:border-primary-500 bg-white"
+                                defaultValue={Math.round(Number(item.markup_percentage || 0))}
+                                  onBlur={(e) => {
+                                  const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                                  if(val !== Math.round(Number(item.markup_percentage || 0))) {
+                                     updateItemMarkup(item.id, val);
+                                    }
+                                  }}
+                                />
+                                <span className="ml-1 text-gray-500">%</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-right font-bold text-green-600">
+                              {item.sell_price ? formatCurrency(item.sell_price) : 'N/A'}
+                            </td>
                             <td className="px-4 py-3 text-sm text-center">
                               {renderVariacion(item.variacion)}
                             </td>

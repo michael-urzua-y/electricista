@@ -3,6 +3,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.core.cache import cache
+from django.db.models import Prefetch
+from invoices.models import InvoiceItem
 from .models import Provider, Product, PriceHistory, PriceAlert
 from .serializers import ProviderSerializer, ProductSerializer, PriceHistorySerializer, PriceAlertSerializer
 
@@ -62,16 +64,27 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = [permissions.IsAuthenticated]
     search_fields = ['name', 'brand', 'model']
+    pagination_class = None  # Desactiva la paginación para ver todos los productos juntos
 
     def get_queryset(self):
-        qs = Product.objects.filter(is_active=True).select_related('provider')
+        qs = Product.objects.filter(is_active=True).select_related('provider').order_by('-id')
         provider = self.request.query_params.get('provider')
         category = self.request.query_params.get('category')
         if provider:
-            qs = qs.filter(provider_id=provider)
+            # Filtrar por productos que tienen historial de precios con este proveedor
+            # (no por el campo FK provider del producto, que puede ser None)
+            qs = qs.filter(price_history__provider_id=provider).distinct()
         if category:
             qs = qs.filter(category=category)
         return qs
+
+    def get_serializer_context(self):
+        """Pasa provider_id al serializer para filtrar latest_price correctamente."""
+        context = super().get_serializer_context()
+        provider_id = self.request.query_params.get('provider')
+        if provider_id:
+            context['provider_id'] = provider_id
+        return context
 
     @action(detail=True, methods=['get'])
     def price_history(self, request, pk=None):

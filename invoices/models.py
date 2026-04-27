@@ -25,6 +25,7 @@ class Invoice(models.Model):
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, verbose_name='Monto total')
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, verbose_name='Impuestos')
     subtotal_amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, verbose_name='Subtotal')
+    markup_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name='Margen de ganancia general (%)')
     currency = models.CharField(max_length=3, default='CLP', verbose_name='Moneda')
     file = models.FileField(upload_to=invoice_upload_path, verbose_name='Archivo')
     file_type = models.CharField(max_length=10, blank=True, null=True, verbose_name='Tipo archivo')
@@ -56,6 +57,7 @@ class InvoiceItem(models.Model):
     quantity = models.DecimalField(max_digits=10, decimal_places=2, default=1, verbose_name='Cantidad')
     unit_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, verbose_name='Precio unitario')
     total_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, verbose_name='Precio total')
+    markup_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name='Ganancia (%)')
     unit_measure = models.CharField(max_length=20, blank=True, null=True, verbose_name='Unidad de medida')
     confidence = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, verbose_name='Confianza extracción (%)')
     needs_review = models.BooleanField(default=False, verbose_name='Requiere revisión')
@@ -65,6 +67,15 @@ class InvoiceItem(models.Model):
         ordering = ['id']
         verbose_name = 'Ítem de Factura'
         verbose_name_plural = 'Ítems de Facturas'
+
+    @property
+    def sell_price(self):
+        """Calcula el valor a cobrar (Costo + Margen)"""
+        if self.unit_price is not None:
+            from decimal import Decimal
+            margin = (self.unit_price * self.markup_percentage) / Decimal('100')
+            return self.unit_price + margin
+        return None
 
     def __str__(self):
         return f"{self.description[:50]} - {self.quantity} x ${self.unit_price}"
