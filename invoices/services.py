@@ -154,14 +154,6 @@ def process_invoice(invoice_id: int) -> None:
                 file_content=file_content,
                 file_type=file_type,
             )
-        elif invoice.file:
-            # Flujo legacy: leer desde archivo físico (compatibilidad)
-            file_path = invoice.file.path
-            file_type = file_type or file_path.split('.')[-1].lower()
-            invoice.ocr_text = ocr_processor.extract_text(
-                file_path=file_path,
-                file_type=file_type,
-            )
         else:
             raise ValueError("La factura no tiene archivo ni datos binarios")
 

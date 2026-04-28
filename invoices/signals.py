@@ -12,11 +12,9 @@ logger = logging.getLogger(__name__)
 @receiver(pre_save, sender=Invoice)
 def set_file_type(sender, instance, **kwargs):
     """Auto-determinar tipo de archivo basado en extensión"""
-    if instance.file and not instance.file_type:
-        filename = instance.file.name
-        ext = os.path.splitext(filename)[1].lower().lstrip('.')
-        if ext in ['pdf', 'jpg', 'jpeg', 'png']:
-            instance.file_type = ext
+    # El file_type ahora se determina en perform_create de views.py
+    # Este signal ya no es necesario pero lo dejamos por compatibilidad
+    pass
 
 
 @receiver(post_save, sender=InvoiceItem)

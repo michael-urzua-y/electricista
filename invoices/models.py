@@ -47,8 +47,8 @@ class Invoice(models.Model):
         return f"Factura {self.invoice_number or self.id} - {self.user.username}"
 
     def get_file_extension(self):
-        if self.file:
-            return os.path.splitext(self.file.name)[1].lower()
+        if self.file_type:
+            return f'.{self.file_type}'
         return ''
 
 
