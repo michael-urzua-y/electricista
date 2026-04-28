@@ -17,10 +17,13 @@ from products.models import Provider
 
 User = get_user_model()
 
+# Leer contraseña del usuario demo desde env var
+demo_password = os.getenv('DEMO_PASSWORD', 'demo123')
+
 # Crear superusuario demo
 if not User.objects.filter(username='demo').exists():
-    User.objects.create_superuser('demo', 'demo@example.com', 'demo123')
-    print("✅ Usuario demo creado: demo / demo123")
+    User.objects.create_superuser('demo', 'demo@example.com', demo_password)
+    print(f"✅ Usuario demo creado: demo / {demo_password}")
 else:
     print("ℹ️ Usuario demo ya existe")
 

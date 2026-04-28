@@ -1,0 +1,10 @@
+-r requirements.txt
+
+# Desarrollo y Debug
+django-debug-toolbar==4.2.0
+ipython==8.17.2
+
+# Testing
+pytest==7.4.3
+pytest-django==4.7.0
+factory-boy==3.3.0

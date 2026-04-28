@@ -19,7 +19,7 @@ const CATEGORY_OPTIONS = [
   { value: 'general', label: 'General' },
 ]
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 20
 
 export default function Providers() {
   const [providers, setProviders] = useState([])

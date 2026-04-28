@@ -7,7 +7,7 @@
  *   totalItems   - number (opcional, para mostrar "X registros")
  *   pageSize     - number (opcional)
  */
-export default function Pagination({ currentPage, totalPages, onPageChange, totalItems, pageSize = 10 }) {
+export default function Pagination({ currentPage, totalPages, onPageChange, totalItems, pageSize = 20 }) {
   if (totalPages <= 1) return null
 
   const pages = []

@@ -32,9 +32,6 @@ class Invoice(models.Model):
     file_name = models.CharField(max_length=255, blank=True, null=True, verbose_name='Nombre original')
     file_type = models.CharField(max_length=10, blank=True, null=True, verbose_name='Tipo archivo')
     file_size = models.PositiveIntegerField(blank=True, null=True, verbose_name='Tamaño (bytes)')
-    
-    # Campo legacy - se eliminará después de migrar datos
-    file = models.FileField(upload_to=invoice_upload_path, verbose_name='Archivo', blank=True, null=True)
     ocr_text = models.TextField(blank=True, null=True, verbose_name='Texto OCR extraído')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='Estado')
     processing_notes = models.TextField(blank=True, null=True, verbose_name='Notas procesamiento')
