@@ -73,19 +73,22 @@ class FacturaViewSet(viewsets.ModelViewSet):
         """
         Procesa la factura:
         1. Lee el archivo en memoria y guarda como binario en BD
-        2. Elimina el archivo físico
+        2. NO guarda archivo físico en el filesystem
         3. Envía a Celery para procesar OCR + IA en segundo plano
         """
         user = self.request.user
         uploaded_file = self.request.FILES.get('file')
 
-        # Leer el archivo en memoria antes de guardarlo
+        # Leer el archivo completo en memoria
         file_content = uploaded_file.read() if uploaded_file else None
         file_name = uploaded_file.name if uploaded_file else None
         file_size = len(file_content) if file_content else None
         file_ext = file_name.rsplit('.', 1)[-1].lower() if file_name and '.' in file_name else None
 
-        # Guardar sin archivo físico (no pasamos 'file' al serializer)
+        # Guardar SIN el campo 'file' para evitar escritura en filesystem
+        # Excluimos 'file' de validated_data antes de guardar
+        serializer.validated_data.pop('file', None)
+
         invoice = serializer.save(
             user=user,
             file_data=file_content,
