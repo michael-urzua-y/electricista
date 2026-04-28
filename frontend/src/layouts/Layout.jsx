@@ -65,7 +65,7 @@ export default function Layout() {
         sidebarCollapsed ? 'w-20' : 'w-64'
       }`}>
         <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-          {!sidebarCollapsed && <span className="text-lg font-bold text-primary-900">Menú</span>}
+          {!sidebarCollapsed && <span className="text-lg font-bold text-primary-900">Monayelectric</span>}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="flex items-center justify-center p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
