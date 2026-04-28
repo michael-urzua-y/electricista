@@ -37,10 +37,10 @@ export default function Layout() {
             end={item.to === '/'}
             onClick={() => setSidebarOpen(false)}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                 isActive
-                  ? `${item.bg} ${item.color}`
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-yellow-500 text-gray-900 font-bold'
+                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               } ${sidebarCollapsed ? 'justify-center' : ''}`
             }
             title={sidebarCollapsed ? item.label : ''}
@@ -61,14 +61,22 @@ export default function Layout() {
     <div className="min-h-screen bg-gray-50 flex">
 
       {/* ── Desktop Sidebar ── */}
-      <aside className={`hidden lg:flex lg:flex-col bg-white border-r border-gray-200 fixed h-full z-10 transition-all duration-300 ${
+      <aside className={`hidden lg:flex lg:flex-col bg-gray-900 border-r border-gray-700 fixed h-full z-10 transition-all duration-300 ${
         sidebarCollapsed ? 'w-20' : 'w-64'
       }`}>
-        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-          {!sidebarCollapsed && <span className="text-lg font-bold text-primary-900">Monayelectric</span>}
+        <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+          {!sidebarCollapsed && (
+            <div className="flex items-center gap-2">
+              <img src="/monayelectric-logo.png" alt="Monayelectric" className="w-8 h-8" />
+              <span className="text-base font-bold text-white">Monayelectric</span>
+            </div>
+          )}
+          {sidebarCollapsed && (
+            <img src="/monayelectric-logo.png" alt="Monayelectric" className="w-8 h-8 mx-auto" />
+          )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="flex items-center justify-center p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="flex items-center justify-center p-2 text-gray-400 hover:text-yellow-400 hover:bg-gray-800 rounded-lg transition-colors ml-auto"
             title={sidebarCollapsed ? 'Expandir' : 'Contraer'}
           >
             <Bars3Icon className="w-5 h-5" />
@@ -87,20 +95,16 @@ export default function Layout() {
 
       {/* ── Mobile Sidebar ── */}
       <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-30 flex flex-col transform transition-transform duration-300 lg:hidden ${
+        className={`fixed top-0 left-0 h-full w-64 bg-gray-900 border-r border-gray-700 z-30 flex flex-col transform transition-transform duration-300 lg:hidden ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-6 border-b border-gray-100">
-          <h1 className="text-xl font-bold text-primary-900 flex items-center gap-3">
-            <img 
-              src="/monayelectric-logo.png" 
-              alt="Monayelectric" 
-              className="w-12 h-12"
-            />
-            Monayelectric
-          </h1>
-          <p className="text-xs text-gray-500 mt-1">Gestión de materiales</p>
+        <div className="p-6 border-b border-gray-700 flex items-center gap-3">
+          <img src="/monayelectric-logo.png" alt="Monayelectric" className="w-10 h-10" />
+          <div>
+            <h1 className="text-base font-bold text-white">Monayelectric</h1>
+            <p className="text-xs text-gray-400">Gestión de materiales</p>
+          </div>
         </div>
         <SidebarContent />
       </aside>
@@ -111,44 +115,40 @@ export default function Layout() {
       }`}>
 
         {/* Desktop top bar */}
-        <header className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+        <header className="sticky top-0 z-10 bg-gray-900 border-b border-gray-700 px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
           {/* Mobile hamburguesa */}
           <div className="flex items-center gap-3 lg:hidden">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-gray-400 hover:text-yellow-400 hover:bg-gray-800 rounded-lg transition-colors"
               aria-label="Abrir menú"
             >
               <Bars3Icon className="w-6 h-6" />
             </button>
-            <span className="text-lg font-bold text-primary-900 flex items-center gap-2">
-              <img 
-                src="/monayelectric-logo.png" 
-                alt="Monayelectric" 
-                className="w-8 h-8"
-              />
+            <span className="text-base font-bold text-white flex items-center gap-2">
+              <img src="/monayelectric-logo.png" alt="Monayelectric" className="w-7 h-7" />
               Monayelectric
             </span>
           </div>
 
-          {/* User info and logout - Always visible */}
+          {/* User info and logout */}
           <div className="ml-auto flex items-center gap-3 sm:gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                <UserIcon className="w-5 h-5 text-primary-700" />
+              <div className="w-8 h-8 rounded-full bg-yellow-500 flex items-center justify-center flex-shrink-0">
+                <UserIcon className="w-4 h-4 text-gray-900" />
               </div>
               <div className="hidden sm:block text-left">
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-semibold text-white">
                   {user?.username || 'Usuario'}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                   {user?.email || ''}
                 </p>
               </div>
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors whitespace-nowrap"
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 border border-gray-700 hover:border-yellow-500 rounded-lg transition-all whitespace-nowrap"
               title="Cerrar sesión"
             >
               <ArrowRightOnRectangleIcon className="w-4 h-4" />

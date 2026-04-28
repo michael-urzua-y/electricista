@@ -45,19 +45,19 @@ export default function Login() {
         {/* Login card - Diseño profesional con mejor contraste */}
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
           {/* Header con fondo oscuro */}
-          <div className="bg-gray-900 px-8 py-10 flex flex-col items-center justify-center border-b-4 border-yellow-500">
+          <div className="bg-gray-900 px-8 py-14 flex flex-col items-center justify-center border-b-4 border-yellow-500">
             <img 
               src="/monayelectric-logo.png" 
               alt="Monayelectric" 
-              className="w-16 h-16 drop-shadow-lg mb-3"
+              className="w-20 h-20 drop-shadow-lg mb-4"
             />
             <h1 className="text-2xl font-bold text-white">Monayelectric</h1>
-            <p className="text-gray-300 text-sm mt-1">Gestión de materiales</p>
+            <p className="text-gray-400 text-sm mt-1 tracking-wide uppercase">Gestión de materiales</p>
           </div>
 
           {/* Form */}
-          <div className="px-8 py-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">Iniciar sesión</h2>
+          <div className="px-8 py-10">
+            <h2 className="text-xl font-bold text-gray-900 mb-8 text-center">Iniciar sesión</h2>
 
             {error && (
               <div className="mb-5 p-3 rounded-lg bg-red-50 border border-red-300 text-red-700 text-sm font-medium">
