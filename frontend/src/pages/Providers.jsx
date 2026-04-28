@@ -202,109 +202,99 @@ export default function Providers() {
         </div>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Nombre
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Categoría
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Sitio Web
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Estado
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {providers.map((provider) => (
-                <tr key={provider.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {provider.logo_url ? (
-                        <img
-                          src={provider.logo_url}
-                          alt={provider.name}
-                          className="w-8 h-8 rounded object-cover mr-3"
-                          onError={(e) => {
-                            e.target.style.display = 'none'
-                            e.target.nextSibling?.style.display === 'flex'
-                          }}
-                        />
-                      ) : null}
-                      <div className="text-sm font-medium text-gray-900">
-                        {provider.name}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                      {getCategoryLabel(provider.category)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {provider.website ? (
-                      <a
-                        href={provider.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary-600 hover:text-primary-700"
-                      >
-                        Visitar
-                      </a>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        provider.is_active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {provider.is_active ? (
-                        <>
-                          <CheckCircleIcon className="w-3 h-3" />
-                          Activo
-                        </>
-                      ) : (
-                        <>
-                          <ExclamationCircleIcon className="w-3 h-3" />
-                          Inactivo
-                        </>
-                      )}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => openModal(provider)}
-                        className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
-                        title="Editar"
-                      >
-                        <PencilSquareIcon className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => setShowDeleteConfirm(provider)}
-                        className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                        title="Eliminar"
-                      >
-                        <TrashIcon className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </td>
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sitio Web</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {providers.map((provider) => (
+                  <tr key={provider.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        {provider.logo_url && (
+                          <img
+                            src={provider.logo_url}
+                            alt={provider.name}
+                            className="w-8 h-8 rounded object-cover flex-shrink-0"
+                            onError={(e) => { e.target.style.display = 'none' }}
+                          />
+                        )}
+                        <span className="text-sm font-medium text-gray-900">{provider.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        {getCategoryLabel(provider.category)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {provider.website ? (
+                        <a href={provider.website} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-700">Visitar</a>
+                      ) : <span className="text-gray-400">—</span>}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${provider.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                        {provider.is_active ? <><CheckCircleIcon className="w-3 h-3" />Activo</> : <><ExclamationCircleIcon className="w-3 h-3" />Inactivo</>}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => openModal(provider)} className="p-2 text-gray-400 hover:text-primary-600 transition-colors" title="Editar">
+                          <PencilSquareIcon className="w-5 h-5" />
+                        </button>
+                        <button onClick={() => setShowDeleteConfirm(provider)} className="p-2 text-gray-400 hover:text-red-600 transition-colors" title="Eliminar">
+                          <TrashIcon className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="sm:hidden divide-y divide-gray-200">
+            {providers.map((provider) => (
+              <div key={provider.id} className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {provider.logo_url && (
+                      <img src={provider.logo_url} alt={provider.name} className="w-8 h-8 rounded object-cover" onError={(e) => { e.target.style.display = 'none' }} />
+                    )}
+                    <span className="font-medium text-gray-900">{provider.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => openModal(provider)} className="p-2 text-gray-400 hover:text-primary-600 transition-colors">
+                      <PencilSquareIcon className="w-5 h-5" />
+                    </button>
+                    <button onClick={() => setShowDeleteConfirm(provider)} className="p-2 text-gray-400 hover:text-red-600 transition-colors">
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    {getCategoryLabel(provider.category)}
+                  </span>
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${provider.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                    {provider.is_active ? <><CheckCircleIcon className="w-3 h-3" />Activo</> : <><ExclamationCircleIcon className="w-3 h-3" />Inactivo</>}
+                  </span>
+                  {provider.website && (
+                    <a href={provider.website} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:text-primary-700">Visitar sitio</a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

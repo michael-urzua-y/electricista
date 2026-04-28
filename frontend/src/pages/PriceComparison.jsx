@@ -590,8 +590,8 @@ export default function PriceComparison() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex gap-6" aria-label="Tabs">
+      <div className="border-b border-gray-200 overflow-x-auto">
+        <nav className="-mb-px flex gap-4 min-w-max" aria-label="Tabs">
           {TABS.map((tab) => (
             <button
               key={tab.key}

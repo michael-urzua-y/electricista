@@ -291,58 +291,54 @@ export default function Dashboard() {
     <>
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
             <p className="text-gray-500 mt-1">Resumen de compras y precios</p>
           </div>
-           {/* Selector de mes/año + botón refrescar + configuración de actualización */}
-           <div className="flex items-center gap-4">
-             <div className="flex items-center gap-2">
-               <CalendarIcon className="w-5 h-5 text-gray-400" />
-               <label className="text-sm font-medium text-gray-700">Período:</label>
-               <input
-                 type="month"
-                 value={selectedYear && selectedMonth ? `${selectedYear}-${String(selectedMonth).padStart(2, '0')}` : ''}
-                 onChange={handlePeriodChange}
-                 min={minPeriod}
-                 max={maxPeriod}
-                 disabled={!minPeriod}
-                 className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
-               />
-             </div>
-             
-             {/* Configuración de actualización automática */}
-             <div className="flex items-center gap-2">
-               <label className="text-sm font-medium text-gray-700">Actualización:</label>
-               <select
-                 value={refreshInterval === 0 ? '0' : String(refreshInterval / 1000)}
-                 onChange={(e) => {
-                   const val = parseInt(e.target.value)
-                   const newInterval = isNaN(val) ? 0 : val * 1000
-                   setRefreshInterval(newInterval)
-                   localStorage.setItem('dashboardRefreshInterval', newInterval.toString())
-                 }}
-                 className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-               >
-                 <option value="0">Manual</option>
-                 <option value="5">5s</option>
-                 <option value="10">10s</option>
-                 <option value="15">15s</option>
-                 <option value="30">30s</option>
-                 <option value="60">1min</option>
-               </select>
-             </div>
-             
-             <button
-               onClick={fetchDashboardData}
-               disabled={loading}
-               className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors disabled:opacity-50"
-               title="Actualizar datos"
-             >
-               <ArrowPathIcon className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-             </button>
-           </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
+              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Período:</label>
+              <input
+                type="month"
+                value={selectedYear && selectedMonth ? `${selectedYear}-${String(selectedMonth).padStart(2, '0')}` : ''}
+                onChange={handlePeriodChange}
+                min={minPeriod}
+                max={maxPeriod}
+                disabled={!minPeriod}
+                className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Actualización:</label>
+              <select
+                value={refreshInterval === 0 ? '0' : String(refreshInterval / 1000)}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value)
+                  const newInterval = isNaN(val) ? 0 : val * 1000
+                  setRefreshInterval(newInterval)
+                  localStorage.setItem('dashboardRefreshInterval', newInterval.toString())
+                }}
+                className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="0">Manual</option>
+                <option value="5">5s</option>
+                <option value="10">10s</option>
+                <option value="15">15s</option>
+                <option value="30">30s</option>
+                <option value="60">1min</option>
+              </select>
+            </div>
+            <button
+              onClick={fetchDashboardData}
+              disabled={loading}
+              className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors disabled:opacity-50"
+              title="Actualizar datos"
+            >
+              <ArrowPathIcon className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </div>
 
         {/* Stats cards */}
