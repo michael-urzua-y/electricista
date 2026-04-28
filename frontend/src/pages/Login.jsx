@@ -66,7 +66,7 @@ export default function Login() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label htmlFor="username" className="block text-sm font-semibold text-gray-800 mb-2">
+                <label htmlFor="username" className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
                   Usuario
                 </label>
                 <input
@@ -76,13 +76,13 @@ export default function Login() {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   autoComplete="username"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 outline-none transition-all bg-white text-gray-900 font-medium"
-                  placeholder="demo"
+                  className="w-full px-4 py-3 bg-gray-100 border-0 border-b-2 border-transparent rounded-lg focus:bg-white focus:border-yellow-500 focus:ring-0 outline-none transition-all text-gray-900 font-medium placeholder-gray-400"
+                  placeholder="Ingresa tu usuario"
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-semibold text-gray-800 mb-2">
+                <label htmlFor="password" className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
                   Contraseña
                 </label>
                 <div className="relative">
@@ -93,13 +93,13 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="current-password"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 outline-none transition-all pr-12 bg-white text-gray-900 font-medium"
-                    placeholder="demo123"
+                    className="w-full px-4 py-3 bg-gray-100 border-0 border-b-2 border-transparent rounded-lg focus:bg-white focus:border-yellow-500 focus:ring-0 outline-none transition-all pr-12 text-gray-900 font-medium placeholder-gray-400"
+                    placeholder="Ingresa tu contraseña"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                     aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   >
                     {showPassword ? (
