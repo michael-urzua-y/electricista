@@ -198,6 +198,17 @@ export default function Dashboard() {
     }
   }
 
+  // Crear mapa de colores consistente para proveedores en el modal
+  const getProviderColorMap = () => {
+    const allProviders = Array.from(new Set(dailyData.flatMap(d => Object.keys(d.providers || {}))))
+    const colorMap = {}
+    const colorPalette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1']
+    allProviders.forEach((provider, idx) => {
+      colorMap[provider] = colorPalette[idx % colorPalette.length]
+    })
+    return colorMap
+  }
+
   // Cerrar modal
   const closeDailyModal = () => {
     setShowDailyModal(false)
@@ -258,17 +269,18 @@ export default function Dashboard() {
       const data = payload[0].payload
       const providers = data.providers || {}
       const providerList = Object.entries(providers).sort((a, b) => b[1] - a[1])
+      const colorMap = getProviderColorMap()
 
       return (
         <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-xl">
           <p className="text-sm font-bold text-gray-900 mb-3">{label}</p>
           <div className="space-y-2 max-w-xs">
-            {providerList.map(([provider, amount], idx) => (
+            {providerList.map(([provider, amount]) => (
               <div key={provider} className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <div 
                     className="w-3 h-3 rounded-full flex-shrink-0" 
-                    style={{ backgroundColor: getProviderColor(provider, idx) }}
+                    style={{ backgroundColor: colorMap[provider] }}
                   />
                   <span className="text-xs text-gray-700 font-medium truncate">{provider}</span>
                 </div>
@@ -504,7 +516,7 @@ export default function Dashboard() {
                 </div>
               ) : dailyData.length > 0 ? (
                 <div>
-                  <div className="h-80 mb-6">
+                  <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={dailyData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -512,40 +524,21 @@ export default function Dashboard() {
                         <YAxis stroke="#64748b" fontSize={12} />
                         <Tooltip content={<CustomDailyTooltip />} cursor={{ fill: '#f8fafc' }} />
                         {/* Barras apiladas por proveedor */}
-                        {Array.from(new Set(dailyData.flatMap(d => Object.keys(d.providers || {})))).map((provider, idx) => (
-                          <Bar 
-                            key={provider}
-                            dataKey={`providers.${provider}`}
-                            stackId="providers"
-                            fill={getProviderColor(provider, idx)}
-                            radius={idx === 0 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                            name={provider}
-                          />
-                        ))}
+                        {Array.from(new Set(dailyData.flatMap(d => Object.keys(d.providers || {})))).map((provider) => {
+                          const colorMap = getProviderColorMap()
+                          return (
+                            <Bar 
+                              key={provider}
+                              dataKey={`providers.${provider}`}
+                              stackId="providers"
+                              fill={colorMap[provider]}
+                              radius={[0, 0, 0, 0]}
+                              name={provider}
+                            />
+                          )
+                        })}
                       </BarChart>
                     </ResponsiveContainer>
-                  </div>
-                  
-                  {/* Leyenda de proveedores */}
-                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-3">Desglose por Proveedor</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {Array.from(new Set(dailyData.flatMap(d => Object.keys(d.providers || {})))).map((provider, idx) => {
-                        const totalProvider = dailyData.reduce((sum, day) => sum + (day.providers[provider] || 0), 0)
-                        return (
-                          <div key={provider} className="flex items-center gap-2">
-                            <div 
-                              className="w-3 h-3 rounded-full flex-shrink-0" 
-                              style={{ backgroundColor: getProviderColor(provider, idx) }}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-gray-600 truncate">{provider}</p>
-                              <p className="text-sm font-semibold text-gray-900">{formatCurrency(totalProvider)}</p>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
                   </div>
                 </div>
               ) : (
