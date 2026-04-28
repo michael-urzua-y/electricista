@@ -57,7 +57,6 @@ export default function Login() {
 
           {/* Form */}
           <div className="px-8 py-10">
-            <h2 className="text-xl font-bold text-gray-900 mb-8 text-center">Iniciar sesión</h2>
 
             {error && (
               <div className="mb-5 p-3 rounded-lg bg-red-50 border border-red-300 text-red-700 text-sm font-medium">
@@ -65,7 +64,7 @@ export default function Login() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label htmlFor="username" className="block text-sm font-semibold text-gray-800 mb-2">
                   Usuario
@@ -77,7 +76,7 @@ export default function Login() {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   autoComplete="username"
-                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 outline-none transition-all bg-white text-gray-900 font-medium"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 outline-none transition-all bg-white text-gray-900 font-medium"
                   placeholder="demo"
                 />
               </div>
@@ -94,7 +93,7 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="current-password"
-                    className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 outline-none transition-all pr-12 bg-white text-gray-900 font-medium"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 outline-none transition-all pr-12 bg-white text-gray-900 font-medium"
                     placeholder="demo123"
                   />
                   <button
@@ -112,21 +111,23 @@ export default function Login() {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 text-gray-900 font-bold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-8 shadow-lg"
-              >
-                {loading ? (
-                  <span className="inline-flex items-center gap-2">
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Iniciando sesión...
-                  </span>
-                ) : 'Iniciar sesión'}
-              </button>
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 text-gray-900 font-bold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                >
+                  {loading ? (
+                    <span className="inline-flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Iniciando sesión...
+                    </span>
+                  ) : 'Iniciar sesión'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
