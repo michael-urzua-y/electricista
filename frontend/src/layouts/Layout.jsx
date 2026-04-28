@@ -2,13 +2,8 @@ import { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  HomeIcon,
-  DocumentDuplicateIcon,
-  CubeIcon,
-  ChartBarIcon,
   UserIcon,
-  ArrowRightOnRectangleIcon,
-  BuildingStorefrontIcon,
+  ArrowRightStartIcon,
   Bars3Icon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
@@ -24,11 +19,11 @@ export default function Layout() {
   }
 
   const navItems = [
-    { to: '/',            icon: HomeIcon,                label: 'Dashboard',   color: 'text-blue-500',   bg: 'bg-blue-50'   },
-    { to: '/facturas',    icon: DocumentDuplicateIcon,   label: 'Facturas',    color: 'text-violet-500', bg: 'bg-violet-50' },
-    { to: '/productos',   icon: CubeIcon,                label: 'Productos',   color: 'text-emerald-500',bg: 'bg-emerald-50'},
-    { to: '/comparacion', icon: ChartBarIcon,            label: 'Comparación', color: 'text-orange-500', bg: 'bg-orange-50' },
-    { to: '/proveedores', icon: BuildingStorefrontIcon,  label: 'Proveedores', color: 'text-pink-500',   bg: 'bg-pink-50'   },
+    { to: '/',            emoji: '🏠', label: 'Dashboard',   color: 'text-blue-600',    bg: 'bg-blue-50'    },
+    { to: '/facturas',    emoji: '📄', label: 'Facturas',    color: 'text-violet-600',  bg: 'bg-violet-50'  },
+    { to: '/productos',   emoji: '📦', label: 'Productos',   color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { to: '/comparacion', emoji: '📊', label: 'Comparación', color: 'text-orange-600',  bg: 'bg-orange-50'  },
+    { to: '/proveedores', emoji: '🏪', label: 'Proveedores', color: 'text-pink-600',    bg: 'bg-pink-50'    },
   ]
 
   const SidebarContent = () => (
@@ -58,7 +53,7 @@ export default function Layout() {
           >
             {({ isActive }) => (
               <>
-                <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? item.color : 'text-gray-400'}`} />
+                <span className="text-xl flex-shrink-0">{item.emoji}</span>
                 {item.label}
               </>
             )}
@@ -84,7 +79,7 @@ export default function Layout() {
           onClick={handleLogout}
           className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
         >
-          <ArrowRightOnRectangleIcon className="w-4 h-4" />
+          <ArrowRightStartIcon className="w-4 h-4" />
           Cerrar sesión
         </button>
       </div>
