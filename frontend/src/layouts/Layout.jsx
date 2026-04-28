@@ -6,14 +6,12 @@ import {
   Bars3Icon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
-  ChevronDownIcon,
 } from '@heroicons/react/24/outline'
 
 export default function Layout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [userMenuOpen, setUserMenuOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -103,6 +101,7 @@ export default function Layout() {
 
         {/* Desktop top bar */}
         <header className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+          {/* Mobile hamburguesa */}
           <div className="flex items-center gap-3 lg:hidden">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -116,43 +115,29 @@ export default function Layout() {
             </span>
           </div>
 
-          {/* User menu - Desktop */}
-          <div className="ml-auto flex items-center gap-4">
-            <div className="relative">
-              <button
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                  <UserIcon className="w-5 h-5 text-primary-700" />
-                </div>
-                <div className="hidden sm:block text-left">
-                  <p className="text-sm font-medium text-gray-900">
-                    {user?.username || 'Usuario'}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {user?.email || ''}
-                  </p>
-                </div>
-                <ChevronDownIcon className={`w-4 h-4 text-gray-500 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {/* Dropdown menu */}
-              {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                  <button
-                    onClick={() => {
-                      handleLogout()
-                      setUserMenuOpen(false)
-                    }}
-                    className="flex items-center gap-2 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors rounded-lg"
-                  >
-                    <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                    Cerrar sesión
-                  </button>
-                </div>
-              )}
+          {/* User info and logout - Always visible */}
+          <div className="ml-auto flex items-center gap-3 sm:gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+                <UserIcon className="w-5 h-5 text-primary-700" />
+              </div>
+              <div className="hidden sm:block text-left">
+                <p className="text-sm font-medium text-gray-900">
+                  {user?.username || 'Usuario'}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {user?.email || ''}
+                </p>
+              </div>
             </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors whitespace-nowrap"
+              title="Cerrar sesión"
+            >
+              <ArrowRightOnRectangleIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Cerrar sesión</span>
+            </button>
           </div>
         </header>
 
