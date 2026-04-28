@@ -38,21 +38,21 @@ export default function Login() {
         loading="eager"
         decoding="async"
       />
-      <div className="absolute inset-0 bg-gray-900/60" />
+      <div className="absolute inset-0 bg-black/70" />
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-md">
-        {/* Login card - Diseño limpio y profesional */}
-        <div className="bg-white/98 backdrop-blur-md rounded-3xl shadow-2xl overflow-hidden">
-          {/* Header con logo */}
-          <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-8 py-12 flex flex-col items-center justify-center">
+        {/* Login card - Diseño profesional con mejor contraste */}
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+          {/* Header con fondo oscuro */}
+          <div className="bg-gray-900 px-8 py-10 flex flex-col items-center justify-center border-b-4 border-yellow-500">
             <img 
               src="/monayelectric-logo.png" 
               alt="Monayelectric" 
-              className="w-20 h-20 drop-shadow-lg mb-4"
+              className="w-16 h-16 drop-shadow-lg mb-3"
             />
             <h1 className="text-2xl font-bold text-white">Monayelectric</h1>
-            <p className="text-primary-100 text-sm mt-1">Gestión de materiales</p>
+            <p className="text-gray-300 text-sm mt-1">Gestión de materiales</p>
           </div>
 
           {/* Form */}
@@ -60,14 +60,14 @@ export default function Login() {
             <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">Iniciar sesión</h2>
 
             {error && (
-              <div className="mb-5 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
+              <div className="mb-5 p-3 rounded-lg bg-red-50 border border-red-300 text-red-700 text-sm font-medium">
                 {error}
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="username" className="block text-sm font-semibold text-gray-800 mb-2">
                   Usuario
                 </label>
                 <input
@@ -77,13 +77,13 @@ export default function Login() {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   autoComplete="username"
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all bg-white text-gray-900"
+                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 outline-none transition-all bg-white text-gray-900 font-medium"
                   placeholder="demo"
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="password" className="block text-sm font-semibold text-gray-800 mb-2">
                   Contraseña
                 </label>
                 <div className="relative">
@@ -94,13 +94,13 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="current-password"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all pr-12 bg-white text-gray-900"
+                    className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 outline-none transition-all pr-12 bg-white text-gray-900 font-medium"
                     placeholder="demo123"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
                     aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   >
                     {showPassword ? (
@@ -115,7 +115,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-semibold py-2.5 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+                className="w-full bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 text-gray-900 font-bold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-6 shadow-lg"
               >
                 {loading ? (
                   <span className="inline-flex items-center gap-2">
@@ -129,13 +129,15 @@ export default function Login() {
               </button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-gray-200 text-center text-xs text-gray-500">
-              <p>Demo: <span className="font-medium text-gray-700">demo</span> / <span className="font-medium text-gray-700">demo123</span></p>
+            <div className="mt-6 pt-6 border-t-2 border-gray-200 text-center text-xs text-gray-600">
+              <p className="font-medium">Credenciales de prueba:</p>
+              <p className="mt-1">Usuario: <span className="font-bold text-gray-900">demo</span></p>
+              <p>Contraseña: <span className="font-bold text-gray-900">demo123</span></p>
             </div>
           </div>
         </div>
 
-        <p className="text-center text-xs text-gray-300 mt-6">© 2026 Monayelectric</p>
+        <p className="text-center text-xs text-gray-400 mt-6">© 2026 Monayelectric</p>
       </div>
     </div>
   )
