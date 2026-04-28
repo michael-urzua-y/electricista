@@ -46,19 +46,30 @@ class DailyTotalsView(APIView):
             issue_date__year=year,
             issue_date__month=month,
             status='completed'
-        )
+        ).select_related('provider')
 
-        # Agrupar por fecha
+        # Agrupar por fecha y proveedor
         daily_data = {}
         for inv in invoices:
             date_str = inv.issue_date.strftime('%Y-%m-%d')
-            daily_data[date_str] = daily_data.get(date_str, 0) + float(inv.total_amount or 0)
+            provider_name = inv.provider.name if inv.provider else 'Sin proveedor'
+            amount = float(inv.total_amount or 0)
+            
+            if date_str not in daily_data:
+                daily_data[date_str] = {'total': 0, 'providers': {}}
+            
+            daily_data[date_str]['total'] += amount
+            daily_data[date_str]['providers'][provider_name] = daily_data[date_str]['providers'].get(provider_name, 0) + amount
 
         # Ordenar por fecha
         sorted_days = sorted(daily_data.items())
         result = [
-            {'date': day, 'total': total}
-            for day, total in sorted_days
+            {
+                'date': day,
+                'total': data['total'],
+                'providers': data['providers']
+            }
+            for day, data in sorted_days
         ]
 
         return Response(result)

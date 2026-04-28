@@ -3,6 +3,20 @@ import { CurrencyDollarIcon, DocumentTextIcon, ArrowTrendingUpIcon, CalendarIcon
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import api from '../services/api'
 
+// Colores profesionales para proveedores
+const PROVIDER_COLORS = {
+  'Proveedor A': '#3b82f6',
+  'Proveedor B': '#10b981',
+  'Proveedor C': '#f59e0b',
+  'Proveedor D': '#ef4444',
+  'Proveedor E': '#8b5cf6',
+  'Sin proveedor': '#6b7280'
+}
+
+const getProviderColor = (provider, index) => {
+  return PROVIDER_COLORS[provider] || ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1'][index % 10]
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState({ totalInvoices: 0, totalSpent: 0, avgAmount: 0 })
   const [recentInvoices, setRecentInvoices] = useState([])
@@ -238,46 +252,41 @@ export default function Dashboard() {
     { title: 'Productos Comparados', value: comparison.length, icon: CurrencyDollarIcon, color: 'bg-purple-500', lightColor: 'bg-purple-50', textColor: 'text-purple-700' }
   ]
 
-  // Tooltip personalizado para el gráfico de Detalle Diario
+  // Tooltip personalizado para el gráfico de Detalle Diario (Barras apiladas)
   const CustomDailyTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      
-      // Buscamos en el estado local (allInvoices) las facturas de ese día exacto
-      const facturasDelDia = allInvoices.filter(inv => {
-        if (!inv.issue_date && !inv.created_at) return false;
-        const invDate = (inv.issue_date || inv.created_at).split('T')[0];
-        const [y, m, d] = invDate.split('-');
-        // Comparamos contra el dato del gráfico (data.date) cubriendo formatos YYYY-MM-DD y DD/MM/YYYY
-        return (
-          invDate === data.date || 
-          invDate === label ||
-          `${d}/${m}/${y}` === data.date ||
-          `${d}/${m}/${y}` === label
-        );
-      });
-
-      // Obtenemos los proveedores únicos de ese día excluyendo nulos
-      const proveedoresUnicos = Array.from(new Set(facturasDelDia.map(i => i.provider_name).filter(Boolean)));
-
-      let proveedorText = proveedoresUnicos.length > 0 
-        ? proveedoresUnicos.join(' y ') 
-        : (data.proveedor || data.provider_name || 'No especificado');
+      const data = payload[0].payload
+      const providers = data.providers || {}
+      const providerList = Object.entries(providers).sort((a, b) => b[1] - a[1])
 
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="text-sm font-semibold text-gray-700 mb-1">{label}</p>
-          <p className="text-sm text-blue-600 font-medium">
-            Total: {formatCurrency(payload[0].value)}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Proveedor: <span className="font-medium text-gray-700">{proveedorText}</span>
-          </p>
+        <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-xl">
+          <p className="text-sm font-bold text-gray-900 mb-3">{label}</p>
+          <div className="space-y-2 max-w-xs">
+            {providerList.map(([provider, amount], idx) => (
+              <div key={provider} className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div 
+                    className="w-3 h-3 rounded-full flex-shrink-0" 
+                    style={{ backgroundColor: getProviderColor(provider, idx) }}
+                  />
+                  <span className="text-xs text-gray-700 font-medium truncate">{provider}</span>
+                </div>
+                <span className="text-xs font-semibold text-gray-900 whitespace-nowrap">
+                  {formatCurrency(amount)}
+                </span>
+              </div>
+            ))}
+            <div className="border-t border-gray-200 pt-2 mt-2 flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-900">Total:</span>
+              <span className="text-sm font-bold text-blue-600">{formatCurrency(data.total)}</span>
+            </div>
+          </div>
         </div>
-      );
+      )
     }
-    return null;
-  };
+    return null
+  }
 
   if (loading) {
     return (
@@ -494,20 +503,50 @@ export default function Dashboard() {
                   <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
                 </div>
               ) : dailyData.length > 0 ? (
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dailyData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
-                      <YAxis stroke="#64748b" fontSize={12} />
-                      <Tooltip content={<CustomDailyTooltip />} cursor={{ fill: '#f8fafc' }} />
-                      <Bar dataKey="total" radius={[4, 4, 0, 0]}>
-                        {dailyData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                <div>
+                  <div className="h-80 mb-6">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={dailyData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
+                        <YAxis stroke="#64748b" fontSize={12} />
+                        <Tooltip content={<CustomDailyTooltip />} cursor={{ fill: '#f8fafc' }} />
+                        {/* Barras apiladas por proveedor */}
+                        {Array.from(new Set(dailyData.flatMap(d => Object.keys(d.providers || {})))).map((provider, idx) => (
+                          <Bar 
+                            key={provider}
+                            dataKey={`providers.${provider}`}
+                            stackId="providers"
+                            fill={getProviderColor(provider, idx)}
+                            radius={idx === 0 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                            name={provider}
+                          />
                         ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {/* Leyenda de proveedores */}
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-3">Desglose por Proveedor</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {Array.from(new Set(dailyData.flatMap(d => Object.keys(d.providers || {})))).map((provider, idx) => {
+                        const totalProvider = dailyData.reduce((sum, day) => sum + (day.providers[provider] || 0), 0)
+                        return (
+                          <div key={provider} className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full flex-shrink-0" 
+                              style={{ backgroundColor: getProviderColor(provider, idx) }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-gray-600 truncate">{provider}</p>
+                              <p className="text-sm font-semibold text-gray-900">{formatCurrency(totalProvider)}</p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-64 text-gray-400">No hay datos diarios para este mes</div>
