@@ -21,7 +21,7 @@ class Invoice(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='invoices', verbose_name='Usuario')
     provider = models.ForeignKey('products.Provider', on_delete=models.SET_NULL, blank=True, null=True, related_name='invoices', verbose_name='Proveedor')
     invoice_number = models.CharField(max_length=100, blank=True, null=True, verbose_name='Número de factura')
-    issue_date = models.DateField(verbose_name='Fecha emisión', null=True, blank=True)
+    issue_date = models.DateField(verbose_name='Fecha emisión', null=True, blank=True, db_index=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, verbose_name='Monto total')
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, verbose_name='Impuestos')
     subtotal_amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, verbose_name='Subtotal')
@@ -33,15 +33,22 @@ class Invoice(models.Model):
     file_type = models.CharField(max_length=10, blank=True, null=True, verbose_name='Tipo archivo')
     file_size = models.PositiveIntegerField(blank=True, null=True, verbose_name='Tamaño (bytes)')
     ocr_text = models.TextField(blank=True, null=True, verbose_name='Texto OCR extraído')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='Estado')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='Estado', db_index=True)
     processing_notes = models.TextField(blank=True, null=True, verbose_name='Notas procesamiento')
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-issue_date']
         verbose_name = 'Factura'
         verbose_name_plural = 'Facturas'
+        # Índices para optimizar queries
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['provider', 'issue_date']),
+            models.Index(fields=['user', 'created_at']),
+            models.Index(fields=['status', 'created_at']),
+        ]
 
     def __str__(self):
         return f"Factura {self.invoice_number or self.id} - {self.user.username}"
@@ -70,6 +77,11 @@ class InvoiceItem(models.Model):
         ordering = ['id']
         verbose_name = 'Ítem de Factura'
         verbose_name_plural = 'Ítems de Facturas'
+        # Índices para optimizar queries
+        indexes = [
+            models.Index(fields=['invoice', 'product']),
+            models.Index(fields=['product', 'unit_price']),
+        ]
 
     @property
     def sell_price(self):

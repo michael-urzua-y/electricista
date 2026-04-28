@@ -1,7 +1,10 @@
 import logging
+import re
 from decimal import Decimal
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+from datetime import timedelta
 from .models import Invoice, InvoiceItem
 from .comparison import calcular_variacion
 from products.models import Provider
@@ -142,12 +145,67 @@ class InvoiceUploadSerializer(serializers.ModelSerializer):
         logger.info(f"[UPLOAD] Archivo validado correctamente: {value.name}")
         return value
 
+    def validate_invoice_number(self, value):
+        """Validar formato del número de factura"""
+        if value:  # Es opcional
+            # Permitir: números, letras, guiones, espacios (máx 50 caracteres)
+            if not re.match(r'^[A-Z0-9\-\s]{1,50}$', value, re.IGNORECASE):
+                raise serializers.ValidationError(
+                    'Número de factura inválido. Solo se permiten letras, números, guiones y espacios.'
+                )
+            # Evitar inyección de comandos
+            if any(char in value for char in ['<', '>', '"', "'", '&', ';', '|', '\\', '/']):
+                raise serializers.ValidationError('Número de factura contiene caracteres no permitidos.')
+        return value
+
     def validate_issue_date(self, value):
-        """Validar que la fecha no sea futura y no sea muy antigua"""
+        """Validar que la fecha sea válida y razonable"""
         from datetime import date
         today = date.today()
+        
+        # No puede ser futura
         if value > today:
-            raise serializers.ValidationError('La fecha de emisión no puede ser futura')
+            raise serializers.ValidationError('La fecha de emisión no puede ser futura.')
+        
+        # No puede ser muy antigua (más de 2 años)
+        if (today - value).days > 730:
+            raise serializers.ValidationError('La fecha no puede ser anterior a 2 años.')
+        
+        # No puede ser anterior a 2020
         if value < date(2020, 1, 1):
-            raise serializers.ValidationError('La fecha no puede ser anterior a 2020')
+            raise serializers.ValidationError('La fecha no puede ser anterior a 2020.')
+        
+        logger.info(f"[INVOICE] Date validated: {value}")
         return value
+
+    def validate_markup_percentage(self, value):
+        """Validar porcentaje de margen"""
+        if value < 0:
+            raise serializers.ValidationError('El margen no puede ser negativo.')
+        if value > 500:
+            raise serializers.ValidationError('El margen no puede ser mayor a 500%.')
+        return value
+
+    def validate(self, data):
+        """Validación a nivel de objeto"""
+        # Validar que el proveedor existe y está activo
+        provider = data.get('provider')
+        if provider and not provider.is_active:
+            raise serializers.ValidationError(
+                {'provider': 'El proveedor está inactivo.'}
+            )
+        
+        # Validar que el usuario no ha subido demasiadas facturas hoy
+        user = self.context['request'].user
+        today = timezone.now().date()
+        invoices_today = Invoice.objects.filter(
+            user=user,
+            created_at__date=today
+        ).count()
+        
+        if invoices_today >= 50:  # Límite de 50 facturas por día
+            raise serializers.ValidationError(
+                {'file': 'Límite de 50 facturas por día alcanzado.'}
+            )
+        
+        return data

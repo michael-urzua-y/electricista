@@ -85,6 +85,11 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Seguridad personalizada
+    'electricista.middleware.RateLimitMiddleware',
+    'electricista.middleware.SecurityHeadersMiddleware',
+    'electricista.middleware.SecurityLoggingMiddleware',
+    'electricista.middleware.CSPMiddleware',
 ]
 
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:8000').split(',')]
@@ -161,6 +166,38 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 
+# HTTPS en producción (solo si hay certificado SSL)
+SECURE_SSL_REDIRECT = False  # Desactivado en desarrollo/local, activar en producción con certificado
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0  # 1 año en producción
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
+
+# Cookies seguras
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Strict'
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Strict'
+
+# Configurar Sentry para error tracking
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.celery import CeleryIntegration
+from sentry_sdk.integrations.redis import RedisIntegration
+
+sentry_dsn = os.getenv('SENTRY_DSN', '')
+if sentry_dsn:
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        integrations=[
+            DjangoIntegration(),
+            CeleryIntegration(),
+            RedisIntegration(),
+        ],
+        traces_sample_rate=0.1 if not DEBUG else 1.0,
+        send_default_pii=False,
+        environment="production" if not DEBUG else "development",
+    )
+
 # Configuraciones de autenticación
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -217,7 +254,7 @@ structlog.configure(
 LANGUAGE_CODE = 'es-cl'
 TIME_ZONE = 'America/Santiago'
 USE_I18N = True
-USE_TZ = True
+USE_TZ = True  # Important: Keep this True for proper timezone handling
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'

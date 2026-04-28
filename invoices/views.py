@@ -7,6 +7,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
+from django.db.models import Prefetch
 import logging
 from .models import Invoice, InvoiceItem
 from products.models import Provider
@@ -33,9 +34,22 @@ class FacturaViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.is_staff:
-            qs = Invoice.objects.all().select_related('user', 'provider')
+            qs = Invoice.objects.all()
         else:
-            qs = Invoice.objects.filter(user=user).select_related('user', 'provider')
+            qs = Invoice.objects.filter(user=user)
+        
+        # Optimizaciones de performance
+        if self.action == 'list':
+            qs = qs.select_related('user', 'provider').only(
+                'id', 'invoice_number', 'issue_date', 'total_amount', 'status',
+                'provider__name', 'user__username', 'file_name', 'file_type',
+                'created_at'
+            )
+        elif self.action == 'retrieve':
+            qs = qs.select_related('user', 'provider').prefetch_related(
+                Prefetch('items', queryset=InvoiceItem.objects.select_related('product'))
+            )
+        
         # Filtros opcionales
         provider = self.request.query_params.get('provider')
         status_filter = self.request.query_params.get('status')
@@ -43,6 +57,7 @@ class FacturaViewSet(viewsets.ModelViewSet):
             qs = qs.filter(provider_id=provider)
         if status_filter:
             qs = qs.filter(status=status_filter)
+        
         return qs
 
     def get_serializer_class(self):

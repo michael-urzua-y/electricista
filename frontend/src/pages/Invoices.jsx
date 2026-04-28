@@ -151,6 +151,8 @@ export default function Invoices() {
     try {
       const formDataToSend = new FormData()
       formDataToSend.append('file', formData.file)
+      // Ensure date is sent in YYYY-MM-DD format without timezone conversion
+      // The HTML date input already provides this format
       formDataToSend.append('issue_date', formData.issue_date)
       formDataToSend.append('provider', formData.provider)
       if (formData.invoice_number) {
@@ -459,7 +461,7 @@ export default function Invoices() {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">
-                          {invoice.issue_date ? format(new Date(invoice.issue_date), 'dd/MM/yyyy', { locale: es }) : 'N/A'}
+                          {invoice.issue_date ? format(new Date(invoice.issue_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: es }) : 'N/A'}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">{invoice.provider_name || 'Sin proveedor'}</td>
                         <td className="px-6 py-4 text-sm font-semibold text-gray-900">{formatCurrency(invoice.total_amount)}</td>
@@ -515,7 +517,7 @@ export default function Invoices() {
                 <div>
                   <p className="text-xs font-medium text-gray-500 uppercase">Fecha</p>
                   <p className="mt-1 text-gray-900">
-                    {selectedInvoice.issue_date ? format(new Date(selectedInvoice.issue_date), 'dd/MM/yyyy', { locale: es }) : 'N/A'}
+                    {selectedInvoice.issue_date ? format(new Date(selectedInvoice.issue_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: es }) : 'N/A'}
                   </p>
                 </div>
                  <div>

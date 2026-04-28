@@ -60,10 +60,16 @@ function AutoTab() {
     setLoading(true)
     try {
       const res = await api.get(`/facturas/${id}/comparar-anterior/`)
-      setResult(res.data)
+      // Asegurar que el resultado tiene la estructura correcta
+      if (res.data && typeof res.data === 'object') {
+        setResult(res.data)
+      } else {
+        setResult({ error: 'Respuesta inválida del servidor.' })
+      }
     } catch (err) {
       console.error('Error comparing:', err)
-      setResult({ error: 'Error al obtener la comparación.' })
+      const errorMsg = err.response?.data?.detail || err.response?.data?.error || 'Error al obtener la comparación.'
+      setResult({ error: errorMsg })
     } finally {
       setLoading(false)
     }
@@ -183,10 +189,16 @@ function ManualTab() {
       const res = await api.get('/facturas/comparar-manual/', {
         params: { factura_base: baseId, factura_comparar: compareId },
       })
-      setResult(res.data)
+      // Asegurar que el resultado tiene la estructura correcta
+      if (res.data && typeof res.data === 'object') {
+        setResult(res.data)
+      } else {
+        setError('Respuesta inválida del servidor.')
+      }
     } catch (err) {
       const msg = err.response?.data?.error || err.response?.data?.detail || 'Error al comparar facturas.'
       setError(msg)
+      console.error('Error comparing:', err)
     } finally {
       setLoading(false)
     }
@@ -343,10 +355,16 @@ function MonthlyTab() {
       const res = await api.get('/facturas/comparar-mes/', {
         params: { proveedor_id: selectedProvider, year, month },
       })
-      setResult(res.data)
+      // Asegurar que el resultado tiene la estructura correcta
+      if (res.data && typeof res.data === 'object') {
+        setResult(res.data)
+      } else {
+        setResult({ error: 'Respuesta inválida del servidor.' })
+      }
     } catch (err) {
       console.error('Error fetching monthly comparison:', err)
-      setResult({ error: 'Error al obtener el resumen mensual.' })
+      const errorMsg = err.response?.data?.detail || err.response?.data?.error || 'Error al obtener el resumen mensual.'
+      setResult({ error: errorMsg })
     } finally {
       setLoading(false)
     }
@@ -469,10 +487,16 @@ function ProvidersTab() {
     const fetch = async () => {
       try {
         const res = await api.get('/facturas/comparar-proveedores/')
-        setResult(res.data)
+        // Asegurar que el resultado tiene la estructura correcta
+        if (res.data && typeof res.data === 'object') {
+          setResult(res.data)
+        } else {
+          setResult({ error: 'Respuesta inválida del servidor.' })
+        }
       } catch (err) {
         console.error('Error fetching provider comparison:', err)
-        setResult({ error: 'Error al obtener la comparación.' })
+        const errorMsg = err.response?.data?.detail || err.response?.data?.error || 'Error al obtener la comparación.'
+        setResult({ error: errorMsg })
       } finally {
         setLoading(false)
       }

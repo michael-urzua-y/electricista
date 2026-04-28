@@ -42,3 +42,9 @@ whitenoise==6.6.0
 # Seguridad y Similitud de Texto
 thefuzz==0.20.0
 python-magic==0.4.27
+
+# Error tracking y monitoreo
+sentry-sdk==1.40.0
+
+# Rate limiting
+django-ratelimit==4.1.0
