@@ -33,7 +33,7 @@ export default function Dashboard() {
   const [refreshInterval, setRefreshInterval] = useState(() => {
     const stored = localStorage.getItem('dashboardRefreshInterval');
     const parsed = stored ? parseInt(stored) : null;
-    return (!isNaN(parsed) && parsed > 0) ? parsed : 30000;
+    return (!isNaN(parsed) && parsed > 0) ? parsed : 0; // Default: Manual (0)
   })
 
   // Modal de detalle diario

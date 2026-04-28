@@ -5,12 +5,15 @@ import {
   UserIcon,
   Bars3Icon,
   XMarkIcon,
+  ArrowRightOnRectangleIcon,
+  ChevronDownIcon,
 } from '@heroicons/react/24/outline'
 
 export default function Layout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -59,29 +62,6 @@ export default function Layout() {
           </NavLink>
         ))}
       </nav>
-
-      <div className="p-4 border-t border-gray-100">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-            <UserIcon className="w-5 h-5 text-primary-700" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
-              {user?.username || 'Usuario'}
-            </p>
-            <p className="text-xs text-gray-500 truncate">
-              {user?.email || ''}
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-        >
-          <span className="text-lg">🚪</span>
-          Cerrar sesión
-        </button>
-      </div>
     </>
   )
 
@@ -121,18 +101,59 @@ export default function Layout() {
       {/* ── Main content ── */}
       <div className="flex-1 flex flex-col lg:ml-64">
 
-        {/* Mobile top bar */}
-        <header className="lg:hidden sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Abrir menú"
-          >
-            <Bars3Icon className="w-6 h-6" />
-          </button>
-          <span className="text-lg font-bold text-primary-900 flex items-center gap-1">
-            <span>⚡</span> Electricista Pro
-          </span>
+        {/* Desktop top bar */}
+        <header className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3 lg:hidden">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Abrir menú"
+            >
+              <Bars3Icon className="w-6 h-6" />
+            </button>
+            <span className="text-lg font-bold text-primary-900 flex items-center gap-1">
+              <span>⚡</span> Electricista Pro
+            </span>
+          </div>
+
+          {/* User menu - Desktop */}
+          <div className="ml-auto flex items-center gap-4">
+            <div className="relative">
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+                  <UserIcon className="w-5 h-5 text-primary-700" />
+                </div>
+                <div className="hidden sm:block text-left">
+                  <p className="text-sm font-medium text-gray-900">
+                    {user?.username || 'Usuario'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {user?.email || ''}
+                  </p>
+                </div>
+                <ChevronDownIcon className={`w-4 h-4 text-gray-500 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Dropdown menu */}
+              {userMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                  <button
+                    onClick={() => {
+                      handleLogout()
+                      setUserMenuOpen(false)
+                    }}
+                    className="flex items-center gap-2 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors rounded-lg"
+                  >
+                    <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                    Cerrar sesión
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </header>
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
