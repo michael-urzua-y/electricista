@@ -29,20 +29,6 @@ export default function Layout() {
 
   const SidebarContent = () => (
     <>
-      <div className={`p-6 border-b border-gray-100 ${sidebarCollapsed ? 'flex items-center justify-center' : ''}`}>
-        {sidebarCollapsed ? (
-          <span className="text-2xl">⚡</span>
-        ) : (
-          <>
-            <h1 className="text-xl font-bold text-primary-900 flex items-center gap-2">
-              <span className="text-2xl">⚡</span>
-              Electricista Pro
-            </h1>
-            <p className="text-xs text-gray-500 mt-1">Gestión de materiales</p>
-          </>
-        )}
-      </div>
-
       <nav className="p-4 space-y-1 flex-1">
         {navItems.map((item) => (
           <NavLink
@@ -78,16 +64,17 @@ export default function Layout() {
       <aside className={`hidden lg:flex lg:flex-col bg-white border-r border-gray-200 fixed h-full z-10 transition-all duration-300 ${
         sidebarCollapsed ? 'w-20' : 'w-64'
       }`}>
-        <SidebarContent />
-        <div className="p-4 border-t border-gray-100">
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+          {!sidebarCollapsed && <span className="text-lg font-bold text-primary-900">Menú</span>}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="w-full flex items-center justify-center p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="flex items-center justify-center p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             title={sidebarCollapsed ? 'Expandir' : 'Contraer'}
           >
             <Bars3Icon className="w-5 h-5" />
           </button>
         </div>
+        <SidebarContent />
       </aside>
 
       {/* ── Mobile overlay ── */}
@@ -104,13 +91,12 @@ export default function Layout() {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex items-center justify-end p-3 border-b border-gray-100">
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"
-          >
-            <XMarkIcon className="w-5 h-5" />
-          </button>
+        <div className="p-6 border-b border-gray-100">
+          <h1 className="text-xl font-bold text-primary-900 flex items-center gap-2">
+            <span className="text-2xl">⚡</span>
+            Electricista Pro
+          </h1>
+          <p className="text-xs text-gray-500 mt-1">Gestión de materiales</p>
         </div>
         <SidebarContent />
       </aside>
