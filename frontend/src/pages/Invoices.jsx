@@ -9,6 +9,9 @@ import {
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import PriceVariationBadge from '../components/PriceVariationBadge'
+import Pagination from '../components/Pagination'
+
+const PAGE_SIZE = 10
 
 export default function Invoices() {
   const [invoices, setInvoices] = useState([])
@@ -20,6 +23,7 @@ export default function Invoices() {
   const [notification, setNotification] = useState(null)
   const [providers, setProviders] = useState([])
   const [loadingDetail, setLoadingDetail] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -395,96 +399,96 @@ export default function Invoices() {
       )}
 
       {/* Invoices table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Factura</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Proveedor</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Total</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Estado</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loading ? (
-                <tr>
-                  <td colSpan="6" className="px-6 py-8 text-center text-gray-400">Cargando...</td>
-                </tr>
-              ) : invoices.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center">
-                      <DocumentIcon className="w-12 h-12 text-gray-300 mb-3" />
-                      <p className="text-gray-500">No hay facturas registradas</p>
-                      <button
-                        onClick={() => setShowModal(true)}
-                        className="mt-4 text-primary-600 hover:text-primary-700 font-medium"
-                      >
-                        Subir tu primera factura
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                invoices.map((invoice) => (
-                  <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {invoice.invoice_number || `#${invoice.id}`}
-                        </p>
-                        {invoice.tiene_archivo && (
-                          <button
-                            onClick={() => handleVerFactura(invoice.id)}
-                            className="text-xs text-primary-600 hover:underline flex items-center gap-1"
-                          >
-                            <DocumentIcon className="w-3 h-3" />
-                            Ver factura
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {invoice.issue_date ? format(new Date(invoice.issue_date), 'dd/MM/yyyy', { locale: es }) : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {invoice.provider_name || 'Sin proveedor'}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                      {formatCurrency(invoice.total_amount)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full ${getStatusColor(invoice.status)}`}>
-                        {(invoice.status === 'pending' || invoice.status === 'processing') && (
-                          <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                        )}
-                        {getStatusLabel(invoice.status)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => fetchInvoiceDetail(invoice)}
-                          className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                          title="Ver detalles"
-                        >
-                          <EyeIcon className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </td>
+      {(() => {
+        const totalPages = Math.ceil(invoices.length / PAGE_SIZE)
+        const paginated = invoices.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+        return (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Contador */}
+            {invoices.length > 0 && (
+              <div className="px-6 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                <span className="text-sm text-gray-500">
+                  {invoices.length} factura(s) en total
+                </span>
+                {totalPages > 1 && (
+                  <span className="text-sm text-gray-500">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Factura</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Proveedor</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Total</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Estado</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {loading ? (
+                    <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-400">Cargando...</td></tr>
+                  ) : invoices.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center">
+                          <DocumentIcon className="w-12 h-12 text-gray-300 mb-3" />
+                          <p className="text-gray-500">No hay facturas registradas</p>
+                          <button onClick={() => setShowModal(true)} className="mt-4 text-primary-600 hover:text-primary-700 font-medium">
+                            Subir tu primera factura
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    paginated.map((invoice) => (
+                      <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="font-medium text-gray-900">{invoice.invoice_number || `#${invoice.id}`}</p>
+                            {invoice.tiene_archivo && (
+                              <button onClick={() => handleVerFactura(invoice.id)} className="text-xs text-primary-600 hover:underline flex items-center gap-1 mt-0.5">
+                                <DocumentIcon className="w-3 h-3" />
+                                Ver factura
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {invoice.issue_date ? format(new Date(invoice.issue_date), 'dd/MM/yyyy', { locale: es }) : 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{invoice.provider_name || 'Sin proveedor'}</td>
+                        <td className="px-6 py-4 text-sm font-semibold text-gray-900">{formatCurrency(invoice.total_amount)}</td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full ${getStatusColor(invoice.status)}`}>
+                            {(invoice.status === 'pending' || invoice.status === 'processing') && (
+                              <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                            )}
+                            {getStatusLabel(invoice.status)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <button onClick={() => fetchInvoiceDetail(invoice)} className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors" title="Ver detalles">
+                            <EyeIcon className="w-5 h-5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+          </div>
+        )
+      })()}
 
       {/* Invoice Detail Modal */}
       {selectedInvoice && (

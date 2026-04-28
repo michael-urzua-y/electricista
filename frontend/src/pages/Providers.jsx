@@ -9,6 +9,7 @@ import {
   ExclamationCircleIcon
 } from '@heroicons/react/24/outline'
 import api from '../services/api'
+import Pagination from '../components/Pagination'
 
 const CATEGORY_OPTIONS = [
   { value: 'electricidad', label: 'Electricidad' },
@@ -17,6 +18,8 @@ const CATEGORY_OPTIONS = [
   { value: 'herramientas', label: 'Herramientas' },
   { value: 'general', label: 'General' },
 ]
+
+const PAGE_SIZE = 10
 
 export default function Providers() {
   const [providers, setProviders] = useState([])
@@ -32,6 +35,7 @@ export default function Providers() {
   })
   const [formErrors, setFormErrors] = useState({})
   const [saving, setSaving] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     fetchProviders()
@@ -201,7 +205,16 @@ export default function Providers() {
           </button>
         </div>
       ) : (
+        (() => {
+          const totalPages = Math.ceil(providers.length / PAGE_SIZE)
+          const paginated = providers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+          return (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          {/* Contador */}
+          <div className="px-6 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+            <span className="text-sm text-gray-500">{providers.length} proveedor(es) en total</span>
+            {totalPages > 1 && <span className="text-sm text-gray-500">Página {currentPage} de {totalPages}</span>}
+          </div>
           {/* Desktop table */}
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full divide-y divide-gray-200">
@@ -215,17 +228,12 @@ export default function Providers() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {providers.map((provider) => (
+                {paginated.map((provider) => (
                   <tr key={provider.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {provider.logo_url && (
-                          <img
-                            src={provider.logo_url}
-                            alt={provider.name}
-                            className="w-8 h-8 rounded object-cover flex-shrink-0"
-                            onError={(e) => { e.target.style.display = 'none' }}
-                          />
+                          <img src={provider.logo_url} alt={provider.name} className="w-8 h-8 rounded object-cover flex-shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
                         )}
                         <span className="text-sm font-medium text-gray-900">{provider.name}</span>
                       </div>
@@ -236,9 +244,7 @@ export default function Providers() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      {provider.website ? (
-                        <a href={provider.website} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-700">Visitar</a>
-                      ) : <span className="text-gray-400">—</span>}
+                      {provider.website ? <a href={provider.website} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-700">Visitar</a> : <span className="text-gray-400">—</span>}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${provider.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
@@ -247,12 +253,8 @@ export default function Providers() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => openModal(provider)} className="p-2 text-gray-400 hover:text-primary-600 transition-colors" title="Editar">
-                          <PencilSquareIcon className="w-5 h-5" />
-                        </button>
-                        <button onClick={() => setShowDeleteConfirm(provider)} className="p-2 text-gray-400 hover:text-red-600 transition-colors" title="Eliminar">
-                          <TrashIcon className="w-5 h-5" />
-                        </button>
+                        <button onClick={() => openModal(provider)} className="p-2 text-gray-400 hover:text-primary-600 transition-colors" title="Editar"><PencilSquareIcon className="w-5 h-5" /></button>
+                        <button onClick={() => setShowDeleteConfirm(provider)} className="p-2 text-gray-400 hover:text-red-600 transition-colors" title="Eliminar"><TrashIcon className="w-5 h-5" /></button>
                       </div>
                     </td>
                   </tr>
@@ -260,42 +262,34 @@ export default function Providers() {
               </tbody>
             </table>
           </div>
-
           {/* Mobile cards */}
           <div className="sm:hidden divide-y divide-gray-200">
-            {providers.map((provider) => (
+            {paginated.map((provider) => (
               <div key={provider.id} className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {provider.logo_url && (
-                      <img src={provider.logo_url} alt={provider.name} className="w-8 h-8 rounded object-cover" onError={(e) => { e.target.style.display = 'none' }} />
-                    )}
+                    {provider.logo_url && <img src={provider.logo_url} alt={provider.name} className="w-8 h-8 rounded object-cover" onError={(e) => { e.target.style.display = 'none' }} />}
                     <span className="font-medium text-gray-900">{provider.name}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => openModal(provider)} className="p-2 text-gray-400 hover:text-primary-600 transition-colors">
-                      <PencilSquareIcon className="w-5 h-5" />
-                    </button>
-                    <button onClick={() => setShowDeleteConfirm(provider)} className="p-2 text-gray-400 hover:text-red-600 transition-colors">
-                      <TrashIcon className="w-5 h-5" />
-                    </button>
+                    <button onClick={() => openModal(provider)} className="p-2 text-gray-400 hover:text-primary-600 transition-colors"><PencilSquareIcon className="w-5 h-5" /></button>
+                    <button onClick={() => setShowDeleteConfirm(provider)} className="p-2 text-gray-400 hover:text-red-600 transition-colors"><TrashIcon className="w-5 h-5" /></button>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                    {getCategoryLabel(provider.category)}
-                  </span>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{getCategoryLabel(provider.category)}</span>
                   <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${provider.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                     {provider.is_active ? <><CheckCircleIcon className="w-3 h-3" />Activo</> : <><ExclamationCircleIcon className="w-3 h-3" />Inactivo</>}
                   </span>
-                  {provider.website && (
-                    <a href={provider.website} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:text-primary-700">Visitar sitio</a>
-                  )}
+                  {provider.website && <a href={provider.website} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:text-primary-700">Visitar sitio</a>}
                 </div>
               </div>
             ))}
           </div>
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
         </div>
+          )
+        })()
       )}
 
       {/* Add/Edit Modal */}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
+import Pagination from '../components/Pagination'
 
 export default function Products() {
   const [products, setProducts] = useState([])
@@ -241,46 +242,13 @@ export default function Products() {
 
                 {/* Paginación */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-between px-6 py-3 bg-gray-50 border-t border-gray-100">
-                    <span className="text-sm text-gray-600">
-                      Mostrando {startIdx + 1}–{Math.min(startIdx + itemsPerPage, prodList.length)} de {prodList.length}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => goToPage(providerName, Math.max(1, currentPage - 1))}
-                        disabled={currentPage === 1}
-                        className="px-3 py-1 text-sm border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Anterior
-                      </button>
-                      {Array.from({ length: totalPages }, (_, i) => i + 1)
-                        .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                        .map((p, idx, arr) => (
-                          <span key={p} className="flex items-center">
-                            {idx > 0 && arr[idx - 1] !== p - 1 && (
-                              <span className="px-2">...</span>
-                            )}
-                            <button
-                              onClick={() => goToPage(providerName, p)}
-                              className={`px-3 py-1 text-sm rounded ${
-                                p === currentPage
-                                  ? 'bg-primary-600 text-white'
-                                  : 'border hover:bg-gray-100'
-                              }`}
-                            >
-                              {p}
-                            </button>
-                          </span>
-                        ))}
-                      <button
-                        onClick={() => goToPage(providerName, Math.min(totalPages, currentPage + 1))}
-                        disabled={currentPage === totalPages}
-                        className="px-3 py-1 text-sm border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Siguiente
-                      </button>
-                    </div>
-                  </div>
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={(p) => goToPage(providerName, p)}
+                    totalItems={prodList.length}
+                    pageSize={itemsPerPage}
+                  />
                 )}
               </div>
             )

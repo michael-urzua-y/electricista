@@ -24,11 +24,11 @@ export default function Layout() {
   }
 
   const navItems = [
-    { to: '/', icon: HomeIcon, label: 'Dashboard' },
-    { to: '/facturas', icon: DocumentDuplicateIcon, label: 'Facturas' },
-    { to: '/productos', icon: CubeIcon, label: 'Productos' },
-    { to: '/comparacion', icon: ChartBarIcon, label: 'Comparación' },
-    { to: '/proveedores', icon: BuildingStorefrontIcon, label: 'Proveedores' },
+    { to: '/',            icon: HomeIcon,                label: 'Dashboard',   color: 'text-blue-500',   bg: 'bg-blue-50'   },
+    { to: '/facturas',    icon: DocumentDuplicateIcon,   label: 'Facturas',    color: 'text-violet-500', bg: 'bg-violet-50' },
+    { to: '/productos',   icon: CubeIcon,                label: 'Productos',   color: 'text-emerald-500',bg: 'bg-emerald-50'},
+    { to: '/comparacion', icon: ChartBarIcon,            label: 'Comparación', color: 'text-orange-500', bg: 'bg-orange-50' },
+    { to: '/proveedores', icon: BuildingStorefrontIcon,  label: 'Proveedores', color: 'text-pink-500',   bg: 'bg-pink-50'   },
   ]
 
   const SidebarContent = () => (
@@ -46,17 +46,22 @@ export default function Layout() {
           <NavLink
             key={item.to}
             to={item.to}
+            end={item.to === '/'}
             onClick={() => setSidebarOpen(false)}
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-primary-50 text-primary-700'
+                  ? `${item.bg} ${item.color}`
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               }`
             }
           >
-            <item.icon className="w-5 h-5 flex-shrink-0" />
-            {item.label}
+            {({ isActive }) => (
+              <>
+                <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? item.color : 'text-gray-400'}`} />
+                {item.label}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
