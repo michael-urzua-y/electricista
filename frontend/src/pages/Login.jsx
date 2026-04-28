@@ -128,12 +128,6 @@ export default function Login() {
                 ) : 'Iniciar sesión'}
               </button>
             </form>
-
-            <div className="mt-6 pt-6 border-t-2 border-gray-200 text-center text-xs text-gray-600">
-              <p className="font-medium">Credenciales de prueba:</p>
-              <p className="mt-1">Usuario: <span className="font-bold text-gray-900">demo</span></p>
-              <p>Contraseña: <span className="font-bold text-gray-900">demo123</span></p>
-            </div>
           </div>
         </div>
 
