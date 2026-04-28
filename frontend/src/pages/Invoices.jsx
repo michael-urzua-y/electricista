@@ -420,14 +420,15 @@ export default function Invoices() {
                         <p className="font-medium text-gray-900">
                           {invoice.invoice_number || `#${invoice.id}`}
                         </p>
-                        {invoice.file && (
+                        {invoice.tiene_archivo && (
                           <a
-                            href={invoice.file}
+                            href={`/api/facturas/${invoice.id}/ver-factura/`}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-xs text-primary-600 hover:underline"
+                            className="text-xs text-primary-600 hover:underline flex items-center gap-1"
                           >
-                            Ver archivo
+                            <DocumentIcon className="w-3 h-3" />
+                            Ver factura
                           </a>
                         )}
                       </div>

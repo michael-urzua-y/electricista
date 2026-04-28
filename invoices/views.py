@@ -6,6 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from django.http import HttpResponse
 import logging
 from .models import Invoice, InvoiceItem
 from products.models import Provider
@@ -70,23 +71,32 @@ class FacturaViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """
-        Procesa la factura inmediatamente (síncrono):
-        1. Guarda factura en estado 'processing'
-        2. Extrae texto con OCR
-        3. Parsea con IA (Mistral)
-        4. Crea InvoiceItems
-        5. Calcula total_amount
-        6. Marca 'completed'
+        Procesa la factura:
+        1. Lee el archivo en memoria y guarda como binario en BD
+        2. Elimina el archivo físico
+        3. Envía a Celery para procesar OCR + IA en segundo plano
         """
         user = self.request.user
-        provider = serializer.validated_data.get('provider')
-        
-        # 1. Guardar registro inicial en la DB
-        invoice = serializer.save(user=user)
-        
-        # 2. Enviar a Celery para procesar en segundo plano SIN bloquear al usuario
+        uploaded_file = self.request.FILES.get('file')
+
+        # Leer el archivo en memoria antes de guardarlo
+        file_content = uploaded_file.read() if uploaded_file else None
+        file_name = uploaded_file.name if uploaded_file else None
+        file_size = len(file_content) if file_content else None
+        file_ext = file_name.rsplit('.', 1)[-1].lower() if file_name and '.' in file_name else None
+
+        # Guardar sin archivo físico (no pasamos 'file' al serializer)
+        invoice = serializer.save(
+            user=user,
+            file_data=file_content,
+            file_name=file_name,
+            file_size=file_size,
+            file_type=file_ext,
+        )
+
+        # Enviar a Celery para procesar OCR + IA en segundo plano
         process_invoice_task.delay(invoice.id)
-        
+
         return invoice
 
     @action(detail=False, methods=['get'])
@@ -122,6 +132,41 @@ class FacturaViewSet(viewsets.ModelViewSet):
                 
         serializer = InvoiceItemSerializer(item)
         return Response(serializer.data)
+
+    # ------------------------------------------------------------------
+    # Endpoint para visualizar el archivo original de la factura
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=['get'], url_path='ver-factura')
+    def ver_factura(self, request, pk=None):
+        """Reconstruye y sirve el archivo original de la factura desde binario en BD."""
+        user = request.user
+        if user.is_staff:
+            invoice = get_object_or_404(Invoice, pk=pk)
+        else:
+            invoice = get_object_or_404(Invoice, pk=pk, user=user)
+
+        if not invoice.file_data:
+            return Response(
+                {'error': 'No hay archivo disponible para esta factura'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Determinar content type
+        file_type = (invoice.file_type or '').lower()
+        content_type_map = {
+            'pdf':  'application/pdf',
+            'png':  'image/png',
+            'jpg':  'image/jpeg',
+            'jpeg': 'image/jpeg',
+        }
+        content_type = content_type_map.get(file_type, 'application/octet-stream')
+        file_name = invoice.file_name or f'factura_{invoice.id}.{file_type}'
+
+        # Reconstruir el archivo desde binario y enviarlo al navegador
+        response = HttpResponse(bytes(invoice.file_data), content_type=content_type)
+        response['Content-Disposition'] = f'inline; filename="{file_name}"'
+        return response
 
     # ------------------------------------------------------------------
     # Endpoints de comparación de precios

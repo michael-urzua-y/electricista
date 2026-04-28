@@ -27,8 +27,14 @@ class Invoice(models.Model):
     subtotal_amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, verbose_name='Subtotal')
     markup_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name='Margen de ganancia general (%)')
     currency = models.CharField(max_length=3, default='CLP', verbose_name='Moneda')
-    file = models.FileField(upload_to=invoice_upload_path, verbose_name='Archivo')
+    # Almacenamiento binario en BD (más eficiente)
+    file_data = models.BinaryField(blank=True, null=True, verbose_name='Datos del archivo')
+    file_name = models.CharField(max_length=255, blank=True, null=True, verbose_name='Nombre original')
     file_type = models.CharField(max_length=10, blank=True, null=True, verbose_name='Tipo archivo')
+    file_size = models.PositiveIntegerField(blank=True, null=True, verbose_name='Tamaño (bytes)')
+    
+    # Campo legacy - se eliminará después de migrar datos
+    file = models.FileField(upload_to=invoice_upload_path, verbose_name='Archivo', blank=True, null=True)
     ocr_text = models.TextField(blank=True, null=True, verbose_name='Texto OCR extraído')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='Estado')
     processing_notes = models.TextField(blank=True, null=True, verbose_name='Notas procesamiento')

@@ -133,7 +133,7 @@ def _process_items(invoice: Invoice, items_data: list) -> float:
 def process_invoice(invoice_id: int) -> None:
     """
     Servicio principal para procesar una factura:
-    1. OCR del archivo
+    1. OCR desde binario almacenado en BD (no requiere archivo físico)
     2. Parseo con IA (Mistral)
     3. Creación de InvoiceItems y PriceHistory
     4. Actualización del total y estado
@@ -143,11 +143,27 @@ def process_invoice(invoice_id: int) -> None:
     invoice.save()
 
     try:
-        # 1. OCR
+        # 1. OCR — leer desde binario en BD
         ocr_processor = OCRProcessor()
-        file_path = invoice.file.path
-        file_type = invoice.file_type or file_path.split('.')[-1].lower()
-        invoice.ocr_text = ocr_processor.extract_text(file_path=file_path, file_type=file_type)
+        file_type = (invoice.file_type or '').lower()
+
+        if invoice.file_data:
+            # Nuevo flujo: leer desde binario en BD
+            file_content = bytes(invoice.file_data)
+            invoice.ocr_text = ocr_processor.extract_text(
+                file_content=file_content,
+                file_type=file_type,
+            )
+        elif invoice.file:
+            # Flujo legacy: leer desde archivo físico (compatibilidad)
+            file_path = invoice.file.path
+            file_type = file_type or file_path.split('.')[-1].lower()
+            invoice.ocr_text = ocr_processor.extract_text(
+                file_path=file_path,
+                file_type=file_type,
+            )
+        else:
+            raise ValueError("La factura no tiene archivo ni datos binarios")
 
         # 2. Parseo IA
         parsed_data = InvoiceAIParser().parse(invoice.ocr_text)

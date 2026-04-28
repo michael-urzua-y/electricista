@@ -129,6 +129,10 @@ DATABASES = {
     }
 }
 
+# Validar que siempre se use PostgreSQL
+if not os.getenv('DB_NAME'):
+    raise ValueError("DB_NAME environment variable is required. SQLite is not supported in this project.")
+
 MISTRAL_API_KEY = os.getenv('MISTRAL_API_KEY', '')
 
 # Configuración JWT
