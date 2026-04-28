@@ -3,7 +3,6 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
   UserIcon,
-  ArrowRightStartIcon,
   Bars3Icon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
@@ -79,7 +78,7 @@ export default function Layout() {
           onClick={handleLogout}
           className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
         >
-          <ArrowRightStartIcon className="w-4 h-4" />
+          <span className="text-lg">🚪</span>
           Cerrar sesión
         </button>
       </div>
