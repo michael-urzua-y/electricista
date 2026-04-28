@@ -48,7 +48,7 @@ export default function Login() {
             <img 
               src="/monayelectric-logo.png" 
               alt="Monayelectric" 
-              className="w-20 h-20 drop-shadow-lg"
+              className="w-32 h-32 drop-shadow-lg"
             />
           </div>
           <h1 className="text-3xl font-bold text-white drop-shadow-lg">Monayelectric</h1>

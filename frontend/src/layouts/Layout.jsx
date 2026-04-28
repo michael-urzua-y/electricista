@@ -92,11 +92,11 @@ export default function Layout() {
         }`}
       >
         <div className="p-6 border-b border-gray-100">
-          <h1 className="text-xl font-bold text-primary-900 flex items-center gap-2">
+          <h1 className="text-xl font-bold text-primary-900 flex items-center gap-3">
             <img 
               src="/monayelectric-logo.png" 
               alt="Monayelectric" 
-              className="w-8 h-8"
+              className="w-12 h-12"
             />
             Monayelectric
           </h1>
@@ -121,11 +121,11 @@ export default function Layout() {
             >
               <Bars3Icon className="w-6 h-6" />
             </button>
-            <span className="text-lg font-bold text-primary-900 flex items-center gap-1">
+            <span className="text-lg font-bold text-primary-900 flex items-center gap-2">
               <img 
                 src="/monayelectric-logo.png" 
                 alt="Monayelectric" 
-                className="w-6 h-6"
+                className="w-8 h-8"
               />
               Monayelectric
             </span>
