@@ -38,16 +38,17 @@ export function AuthProvider({ children }) {
 
   const login = async (username, password) => {
     const res = await axios.post(`${API_URL}/token/`, { username, password })
-    const access = res.data.access
+    const { access, refresh } = res.data
     localStorage.setItem('token', access)
-    setToken(access)  // <-- actualizar estado
+    localStorage.setItem('refreshToken', refresh)
+    setToken(access)
     axios.defaults.headers.common['Authorization'] = `Bearer ${access}`
-    // fetchUser() será llamado automáticamente por el useEffect que escucha [token]
     return res.data
   }
 
   const logout = () => {
     localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
     setToken(null)
     setUser(null)
     delete axios.defaults.headers.common['Authorization']

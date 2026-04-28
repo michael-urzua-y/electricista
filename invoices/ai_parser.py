@@ -71,7 +71,9 @@ Texto de la factura:
             return self._basic_parse(ocr_text)
 
         try:
-            prompt = self.PROMPT_TEMPLATE.format(text=ocr_text[:8000])  # Limitar tamaño
+            # Sanitizar el texto OCR para prevenir prompt injection
+            safe_text = self._sanitize_ocr_text(ocr_text)
+            prompt = self.PROMPT_TEMPLATE.format(text=safe_text[:8000])  # Limitar tamaño
 
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
@@ -123,6 +125,29 @@ Texto de la factura:
         except Exception as e:
             logger.error(f"Error inesperado en parser IA: {e}")
             return self._basic_parse(ocr_text)
+
+    def _sanitize_ocr_text(self, text):
+        """
+        Elimina patrones de prompt injection del texto OCR antes de enviarlo a la IA.
+        Remueve instrucciones que intenten manipular el comportamiento del modelo.
+        """
+        import re
+        # Eliminar patrones comunes de prompt injection
+        injection_patterns = [
+            r'ignore\s+(previous|all|above)\s+instructions?',
+            r'forget\s+(everything|all|previous)',
+            r'you\s+are\s+now\s+a',
+            r'act\s+as\s+(a|an)',
+            r'new\s+instructions?:',
+            r'system\s*:',
+            r'<\s*/?system\s*>',
+            r'<\s*/?prompt\s*>',
+            r'<\s*/?instruction\s*>',
+        ]
+        sanitized = text
+        for pattern in injection_patterns:
+            sanitized = re.sub(pattern, '[REDACTED]', sanitized, flags=re.IGNORECASE)
+        return sanitized
 
     def _extract_json(self, text):
         """Extrae JSON de texto que puede tener markdown"""

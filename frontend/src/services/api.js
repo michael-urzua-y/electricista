@@ -22,11 +22,34 @@ api.interceptors.request.use((config) => {
 // Response interceptor para manejar errores
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      window.location.href = '/login'
+  async (error) => {
+    const originalRequest = error.config
+
+    // Si es 401 y no hemos reintentado aún, intentar renovar el token
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true
+
+      try {
+        const refreshToken = localStorage.getItem('refreshToken')
+        if (!refreshToken) throw new Error('No refresh token')
+
+        const res = await axios.post(`${API_URL}/token/refresh/`, { refresh: refreshToken })
+        const newAccess = res.data.access
+
+        localStorage.setItem('token', newAccess)
+        api.defaults.headers.common['Authorization'] = `Bearer ${newAccess}`
+        originalRequest.headers['Authorization'] = `Bearer ${newAccess}`
+
+        return api(originalRequest)
+      } catch (refreshError) {
+        // Refresh falló — limpiar sesión y redirigir
+        localStorage.removeItem('token')
+        localStorage.removeItem('refreshToken')
+        window.location.href = '/login'
+        return Promise.reject(refreshError)
+      }
     }
+
     return Promise.reject(error)
   }
 )

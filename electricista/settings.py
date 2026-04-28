@@ -20,9 +20,10 @@ if env_path.exists():
                 key, value = line.split('=', 1)
                 os.environ.setdefault(key.strip(), value.strip())
 
-# Debug: verificar que SECRET_KEY se cargue
+# Debug: verificar que SECRET_KEY se cargue (solo en desarrollo)
 secret_key = os.getenv('SECRET_KEY')
-print(f"DEBUG: SECRET_KEY from env: {secret_key[:20] if secret_key else 'None'}...")
+if os.getenv('DEBUG', 'False') == 'True':
+    print(f"DEBUG: SECRET_KEY from env: {secret_key[:10] if secret_key else 'None'}...")
 
 SECRET_KEY = secret_key
 if not SECRET_KEY:
@@ -68,6 +69,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'products',
     'invoices',
@@ -138,9 +140,9 @@ MISTRAL_API_KEY = os.getenv('MISTRAL_API_KEY', '')
 # Configuración JWT
 from datetime import timedelta
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': False,
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=2),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
