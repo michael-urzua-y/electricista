@@ -210,6 +210,22 @@ export default function Invoices() {
     return null
   }
 
+  const handleVerFactura = async (invoiceId) => {
+    try {
+      const res = await api.get(`/facturas/${invoiceId}/ver-factura/`, {
+        responseType: 'blob'
+      })
+      const blob = new Blob([res.data], { type: res.headers['content-type'] })
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+      // Liberar la URL temporal después de un momento
+      setTimeout(() => URL.revokeObjectURL(url), 10000)
+    } catch (error) {
+      console.error('Error al obtener la factura:', error)
+      setNotification({ type: 'error', message: 'No se pudo cargar el archivo de la factura' })
+    }
+  }
+
   const updateItemMarkup = async (itemId, newMarkup) => {
     const parsedMarkup = newMarkup === '' ? 0 : parseInt(newMarkup, 10);
     try {
@@ -421,15 +437,13 @@ export default function Invoices() {
                           {invoice.invoice_number || `#${invoice.id}`}
                         </p>
                         {invoice.tiene_archivo && (
-                          <a
-                            href={`/api/facturas/${invoice.id}/ver-factura/`}
-                            target="_blank"
-                            rel="noreferrer"
+                          <button
+                            onClick={() => handleVerFactura(invoice.id)}
                             className="text-xs text-primary-600 hover:underline flex items-center gap-1"
                           >
                             <DocumentIcon className="w-3 h-3" />
                             Ver factura
-                          </a>
+                          </button>
                         )}
                       </div>
                     </td>

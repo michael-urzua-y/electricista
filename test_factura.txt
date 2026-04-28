@@ -1,0 +1,14 @@
+FACTURA DE PRUEBA
+==================
+
+Número: 001
+Fecha: 27/04/2026
+Proveedor: VITEL S.A.
+RUT: 12.345.678-9
+
+PRODUCTOS:
+- Cable 2.5mm x 100m    $15.000
+- Interruptor 10A       $2.500
+- Enchufe doble         $1.200
+
+TOTAL: $18.700
