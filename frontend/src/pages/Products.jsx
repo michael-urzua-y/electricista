@@ -9,7 +9,7 @@ export default function Products() {
   const [selectedProvider, setSelectedProvider] = useState(null)
   const [loading, setLoading] = useState(true)
   const [currentPages, setCurrentPages] = useState({})
-  const itemsPerPage = 20
+  const itemsPerPage = 10
 
   // Reset pagination when provider filter changes
   useEffect(() => {

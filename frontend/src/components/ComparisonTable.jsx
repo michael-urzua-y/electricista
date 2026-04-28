@@ -2,7 +2,7 @@ import { useState } from 'react'
 import PriceVariationBadge from './PriceVariationBadge'
 import Pagination from './Pagination'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 10
 
 const formatCurrency = (value) => {
   if (value === null || value === undefined) return '—'
