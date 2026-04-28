@@ -47,7 +47,7 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/15 backdrop-blur-sm mb-4">
             <span className="text-4xl">⚡</span>
           </div>
-          <h1 className="text-3xl font-bold text-white drop-shadow-lg">Electricista Pro</h1>
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">Monayelectric</h1>
           <p className="text-gray-200 mt-2 drop-shadow">Dashboard de gestión de materiales</p>
         </div>
 
@@ -128,7 +128,7 @@ export default function Login() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-gray-300/70 mt-6">© 2026 Electricista Pro</p>
+        <p className="text-center text-xs text-gray-300/70 mt-6">© 2026 Monayelectric</p>
       </div>
     </div>
   )

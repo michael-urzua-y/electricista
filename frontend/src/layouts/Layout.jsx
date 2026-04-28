@@ -94,7 +94,7 @@ export default function Layout() {
         <div className="p-6 border-b border-gray-100">
           <h1 className="text-xl font-bold text-primary-900 flex items-center gap-2">
             <span className="text-2xl">⚡</span>
-            Electricista Pro
+            Monayelectric
           </h1>
           <p className="text-xs text-gray-500 mt-1">Gestión de materiales</p>
         </div>
@@ -118,7 +118,7 @@ export default function Layout() {
               <Bars3Icon className="w-6 h-6" />
             </button>
             <span className="text-lg font-bold text-primary-900 flex items-center gap-1">
-              <span>⚡</span> Electricista Pro
+              <span>⚡</span> Monayelectric
             </span>
           </div>
 
