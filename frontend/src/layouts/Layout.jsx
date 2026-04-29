@@ -134,7 +134,11 @@ export default function Layout() {
 
           {/* User info and logout */}
           <div className="ml-auto flex items-center gap-3 sm:gap-4">
-            <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/perfil')}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              title="Mi Perfil"
+            >
               <div className="w-8 h-8 rounded-full bg-yellow-500 flex items-center justify-center flex-shrink-0">
                 <UserIcon className="w-4 h-4 text-gray-900" />
               </div>
@@ -142,11 +146,11 @@ export default function Layout() {
                 <p className="text-sm font-semibold text-white">
                   {user?.username || 'Usuario'}
                 </p>
-                <p className="text-xs text-gray-400">
-                  {user?.email || ''}
+                <p className="text-xs text-yellow-400">
+                  Mi Perfil
                 </p>
               </div>
-            </div>
+            </button>
             <button
               onClick={handleLogout}
               className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 border border-gray-700 hover:border-yellow-500 rounded-lg transition-all whitespace-nowrap"
