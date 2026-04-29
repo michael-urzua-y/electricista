@@ -127,6 +127,17 @@ def _process_items(invoice: Invoice, items_data: list) -> float:
                 currency=invoice.currency,
             )
 
+        # Actualizar stock del producto sumando la cantidad comprada (atómico)
+        if product and quantity:
+            from decimal import Decimal, InvalidOperation
+            from django.db.models import F
+            try:
+                qty_decimal = Decimal(str(quantity))
+                Product.objects.filter(pk=product.pk).update(stock=F('stock') + qty_decimal)
+                logger.info(f"Stock actualizado para producto {product.name}: +{qty_decimal}")
+            except (InvalidOperation, Exception) as e:
+                logger.warning(f"No se pudo actualizar stock del producto {product.id}: {e}")
+
     return total_amount
 
 
