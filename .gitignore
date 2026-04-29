@@ -75,3 +75,4 @@ secrets/
 
 # Testing artifacts
 .hypothesis/
+.pytest_cache/

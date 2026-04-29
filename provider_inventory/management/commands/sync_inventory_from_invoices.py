@@ -6,12 +6,8 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from decimal import Decimal
 
-from invoices.models import Invoice, InvoiceItem
-from provider_inventory.models import (
-    ProviderInventory,
-    ProviderInventoryAuditLog,
-    ProviderInventoryPriceHistory,
-)
+from invoices.models import Invoice
+from provider_inventory.models import ProviderInventory, ProviderInventoryAuditLog
 
 
 class Command(BaseCommand):
@@ -21,7 +17,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--reset',
             action='store_true',
-            help='Borra todo el inventario antes de sincronizar (útil para re-sincronizar)',
+            help='Borra todo el inventario antes de sincronizar',
         )
 
     def handle(self, *args, **options):
@@ -38,9 +34,7 @@ class Command(BaseCommand):
         total_invoices = invoices.count()
         self.stdout.write(f'Procesando {total_invoices} facturas completadas...')
 
-        created = 0
-        updated = 0
-        skipped = 0
+        created = updated = skipped = 0
 
         for invoice in invoices:
             for item in invoice.items.all():
@@ -63,7 +57,6 @@ class Command(BaseCommand):
                         quantity_before = inventory.stock_quantity
                         inventory.stock_quantity += item.quantity
 
-                        # Actualizar precio si hay uno más reciente
                         if item.unit_price and (
                             inventory.unit_price is None or
                             item.unit_price > inventory.unit_price
@@ -73,16 +66,6 @@ class Command(BaseCommand):
                         inventory.last_invoice_id = invoice.id
                         inventory.save()
 
-                        # Registrar en price history
-                        if item.unit_price:
-                            ProviderInventoryPriceHistory.objects.get_or_create(
-                                inventory=inventory,
-                                unit_price=item.unit_price,
-                                invoice_id=invoice.id,
-                                defaults={'source': 'invoice'}
-                            )
-
-                        # Audit log
                         ProviderInventoryAuditLog.objects.create(
                             inventory=inventory,
                             action='increment',
@@ -110,7 +93,4 @@ class Command(BaseCommand):
             f'\n   Actualizados:     {updated}'
             f'\n   Omitidos:         {skipped}'
         ))
-
-        # Mostrar resumen del inventario
-        total = ProviderInventory.objects.count()
-        self.stdout.write(f'\n📦 Total en ProviderInventory: {total} registros')
+        self.stdout.write(f'\n📦 Total en ProviderInventory: {ProviderInventory.objects.count()} registros')

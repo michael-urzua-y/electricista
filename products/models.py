@@ -80,30 +80,3 @@ class PriceHistory(models.Model):
 
     def __str__(self):
         return f"{self.product.name} - {self.provider.name}: ${self.price}"
-
-
-class PriceAlert(models.Model):
-    """Alertas de cambio de precio"""
-    ALERT_TYPE_CHOICES = [
-        ('increase', 'Subida'),
-        ('decrease', 'Bajada'),
-        ('threshold', 'Umbral'),
-    ]
-
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='alerts', verbose_name='Producto')
-    provider = models.ForeignKey(Provider, on_delete=models.CASCADE, verbose_name='Proveedor')
-    alert_type = models.CharField(max_length=10, choices=ALERT_TYPE_CHOICES, verbose_name='Tipo')
-    previous_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Precio anterior')
-    current_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Precio actual')
-    variation_percent = models.DecimalField(max_digits=6, decimal_places=2, verbose_name='Variación %')
-    threshold_value = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True, verbose_name='Umbral configurado')
-    is_read = models.BooleanField(default=False, verbose_name='Leída')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha creación')
-
-    class Meta:
-        ordering = ['-created_at']
-        verbose_name = 'Alerta de Precio'
-        verbose_name_plural = 'Alertas de Precios'
-
-    def __str__(self):
-        return f"Alerta {self.alert_type} para {self.product.name}"

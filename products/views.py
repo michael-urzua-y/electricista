@@ -5,8 +5,8 @@ from django.shortcuts import get_object_or_404
 from django.core.cache import cache
 from django.db.models import Prefetch
 from invoices.models import InvoiceItem
-from .models import Provider, Product, PriceHistory, PriceAlert
-from .serializers import ProviderSerializer, ProductSerializer, PriceHistorySerializer, PriceAlertSerializer
+from .models import Provider, Product, PriceHistory
+from .serializers import ProviderSerializer, ProductSerializer, PriceHistorySerializer
 
 
 class ProviderViewSet(viewsets.ModelViewSet):
@@ -92,14 +92,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         product = self.get_object()
         history = product.price_history.all().select_related('provider')
         serializer = PriceHistorySerializer(history, many=True)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=['get'])
-    def alerts(self, request, pk=None):
-        """Obtener alertas de un producto"""
-        product = self.get_object()
-        alerts = product.alerts.all().select_related('provider')
-        serializer = PriceAlertSerializer(alerts, many=True)
         return Response(serializer.data)
 
 

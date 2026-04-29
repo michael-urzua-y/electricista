@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Provider, Product, PriceHistory, PriceAlert
+from .models import Provider, Product, PriceHistory
 
 
 @admin.register(Provider)
@@ -21,13 +21,5 @@ class ProductAdmin(admin.ModelAdmin):
 class PriceHistoryAdmin(admin.ModelAdmin):
     list_display = ['product', 'provider', 'price', 'currency', 'recorded_at']
     list_filter = ['provider', 'currency', 'recorded_at']
-    search_fields = ['product__name']
-    raw_id_fields = ['product', 'provider']
-
-
-@admin.register(PriceAlert)
-class PriceAlertAdmin(admin.ModelAdmin):
-    list_display = ['product', 'provider', 'alert_type', 'variation_percent', 'is_read', 'created_at']
-    list_filter = ['alert_type', 'is_read', 'created_at']
     search_fields = ['product__name']
     raw_id_fields = ['product', 'provider']

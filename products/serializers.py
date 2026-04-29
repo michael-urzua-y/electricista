@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Provider, Product, PriceHistory, PriceAlert
+from .models import Provider, Product, PriceHistory
 
 
 class ProviderSerializer(serializers.ModelSerializer):
@@ -223,15 +223,3 @@ class PriceHistorySerializer(serializers.ModelSerializer):
         fields = ['id', 'product', 'product_name', 'provider', 'provider_name',
                   'price', 'currency', 'recorded_at', 'source_url']
         read_only_fields = ['id', 'recorded_at']
-
-
-class PriceAlertSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source='product.name', read_only=True)
-    provider_name = serializers.CharField(source='provider.name', read_only=True)
-
-    class Meta:
-        model = PriceAlert
-        fields = ['id', 'product', 'product_name', 'provider', 'provider_name',
-                  'alert_type', 'previous_price', 'current_price', 'variation_percent',
-                  'threshold_value', 'is_read', 'created_at']
-        read_only_fields = ['id', 'created_at']
