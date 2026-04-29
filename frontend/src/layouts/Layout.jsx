@@ -25,6 +25,7 @@ export default function Layout() {
     { to: '/productos',   emoji: '📦', label: 'Productos',   color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { to: '/comparacion', emoji: '📊', label: 'Comparación', color: 'text-orange-600',  bg: 'bg-orange-50'  },
     { to: '/proveedores', emoji: '🏪', label: 'Proveedores', color: 'text-pink-600',    bg: 'bg-pink-50'    },
+    { to: '/cotizaciones', emoji: '📋', label: 'Cotizaciones', color: 'text-yellow-600', bg: 'bg-yellow-50' },
   ]
 
   const SidebarContent = () => (

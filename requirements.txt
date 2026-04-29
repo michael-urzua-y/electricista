@@ -48,3 +48,6 @@ sentry-sdk==1.40.0
 
 # Rate limiting
 django-ratelimit==4.1.0
+
+# Generación de PDF
+weasyprint==62.3

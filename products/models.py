@@ -1,6 +1,16 @@
 from django.db import models
 
 
+UNIT_CHOICES = [
+    ('unidad', 'Unidad'),
+    ('metro', 'Metro'),
+    ('rollo', 'Rollo'),
+    ('caja', 'Caja'),
+    ('kg', 'Kilogramo'),
+    ('litro', 'Litro'),
+]
+
+
 class Provider(models.Model):
     """Modelo para proveedores de materiales"""
     CATEGORY_CHOICES = [
@@ -35,7 +45,11 @@ class Product(models.Model):
     model = models.CharField(max_length=100, blank=True, null=True, verbose_name='Modelo')
     provider = models.ForeignKey(Provider, on_delete=models.SET_NULL, blank=True, null=True, related_name='products', verbose_name='Proveedor')
     category = models.CharField(max_length=50, blank=True, null=True, verbose_name='Categoría')
-    unit = models.CharField(max_length=20, default='unidad', verbose_name='Unidad')
+    unit = models.CharField(max_length=20, choices=UNIT_CHOICES, default='unidad', blank=True, verbose_name='Unidad')
+    stock = models.DecimalField(
+        max_digits=12, decimal_places=3,
+        default=0, verbose_name='Stock disponible'
+    )
     image_url = models.URLField(blank=True, null=True, verbose_name='Imagen URL')
     is_active = models.BooleanField(default=True, verbose_name='Activo')
     created_at = models.DateTimeField(auto_now_add=True)

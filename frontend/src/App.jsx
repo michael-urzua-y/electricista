@@ -8,6 +8,8 @@ import Products from './pages/Products'
 import PriceComparison from './pages/PriceComparison'
 import Profile from './pages/Profile'
 import Providers from './pages/Providers'
+import Quotes from './pages/Quotes'
+import QuoteDetail from './pages/QuoteDetail'
 
 function PrivateRoute({ children }) {
   const { token, loading } = useAuth()
@@ -32,6 +34,8 @@ function App() {
             <Route path="proveedores" element={<Providers />} />
             <Route path="comparacion" element={<PriceComparison />} />
             <Route path="perfil" element={<Profile />} />
+            <Route path="cotizaciones" element={<Quotes />} />
+            <Route path="cotizaciones/:id" element={<QuoteDetail />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

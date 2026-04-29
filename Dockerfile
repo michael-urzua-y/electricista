@@ -11,6 +11,12 @@ RUN apt-get update && apt-get install -y \
     poppler-utils \
     libmagic1 \
     curl \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    libcairo2 \
+    libgdk-pixbuf-xlib-2.0-0 \
+    libffi-dev \
+    shared-mime-info \
     && rm -rf /var/lib/apt/lists/*
 
 # Establecer directorio de trabajo

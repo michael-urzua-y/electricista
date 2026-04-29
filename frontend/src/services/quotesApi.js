@@ -1,0 +1,36 @@
+import api from './api'
+
+export const getCompanyProfile = () =>
+  api.get('/empresa/perfil/')
+
+export const saveCompanyProfile = (data) =>
+  api.put('/empresa/perfil/', data)
+
+export const patchCompanyProfile = (data) =>
+  api.patch('/empresa/perfil/', data)
+
+export const getProductCatalog = (search = '') =>
+  api.get(`/cotizaciones/productos/${search ? `?search=${encodeURIComponent(search)}` : ''}`)
+
+export const getQuotes = (status = '', page = 1) => {
+  const params = new URLSearchParams()
+  if (status) params.append('status', status)
+  if (page > 1) params.append('page', page)
+  const query = params.toString()
+  return api.get(`/cotizaciones/${query ? `?${query}` : ''}`)
+}
+
+export const getQuote = (id) =>
+  api.get(`/cotizaciones/${id}/`)
+
+export const createQuote = (data) =>
+  api.post('/cotizaciones/', data)
+
+export const updateQuote = (id, data) =>
+  api.patch(`/cotizaciones/${id}/`, data)
+
+export const changeQuoteStatus = (id, status) =>
+  api.post(`/cotizaciones/${id}/cambiar-estado/`, { status })
+
+export const downloadQuotePdf = (id) =>
+  api.get(`/cotizaciones/${id}/pdf/`, { responseType: 'blob' })

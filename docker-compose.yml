@@ -60,6 +60,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+      SECRET_KEY: "django-insecure-cgzg=^e9d66t37cb)b=myj_r3^%wj+quj9&12he4yl_&-6tv^m"
     depends_on:
       postgres:
         condition: service_healthy
@@ -84,6 +85,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+      SECRET_KEY: "django-insecure-cgzg=^e9d66t37cb)b=myj_r3^%wj+quj9&12he4yl_&-6tv^m"
     depends_on:
       - redis
       - postgres
