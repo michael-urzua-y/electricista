@@ -79,10 +79,20 @@ class QuoteItem(models.Model):
     quote = models.ForeignKey(Quote, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey('products.Product', on_delete=models.SET_NULL, null=True, blank=True)
     product_name = models.CharField(max_length=300, verbose_name='Nombre producto (snapshot)')
-    quantity = models.DecimalField(max_digits=12, decimal_places=3)
+    quantity = models.DecimalField(max_digits=12, decimal_places=2)
     unit = models.CharField(max_length=20, default='unidad')
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)
     line_total = models.DecimalField(max_digits=14, decimal_places=2)
+    provider_inventory_id = models.BigIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='ID Inventario Proveedor'
+    )
+    provider_id = models.BigIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='ID Proveedor'
+    )
 
     class Meta:
         ordering = ['id']

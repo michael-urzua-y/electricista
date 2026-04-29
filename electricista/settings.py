@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     'products',
     'invoices',
     'quotes',
+    'provider_inventory',
 ]
 
 MIDDLEWARE = [

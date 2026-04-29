@@ -6,7 +6,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import serializers as drf_serializers
-from django.db.models import OuterRef, Subquery
+from django.db.models import OuterRef, Subquery, Max
 import logging
 
 from .models import CompanyProfile, Quote
@@ -14,8 +14,8 @@ from .serializers import (
     CompanyProfileSerializer, QuoteListSerializer,
     QuoteDetailSerializer, QuoteCreateSerializer,
 )
-from .pdf_generator import generate_quote_pdf
 from products.models import Product, PriceHistory
+from invoices.models import InvoiceItem
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,87 @@ class ProductCatalogView(ListAPIView):
         return qs.order_by('name')
 
 
+class ProductByProviderSearchView(APIView):
+    """
+    Busca productos en InvoiceItem agrupados por proveedor.
+    Retorna todos los proveedores que tienen ese producto,
+    con su precio más reciente y stock de ProviderInventory.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        search = request.query_params.get('search', '').strip()
+        if len(search) < 2:
+            return Response([])
+
+        # Buscar en InvoiceItem por descripción, agrupado por (descripción, proveedor)
+        # Obtener el item más reciente por cada combinación (descripción, proveedor)
+        from django.db.models import Max
+        from products.models import Provider
+
+        # Subquery para obtener el id del item más reciente por (description, provider)
+        latest_ids = (
+            InvoiceItem.objects
+            .filter(
+                description__icontains=search,
+                invoice__status='completed',
+                unit_price__isnull=False,
+            )
+            .values('description', 'invoice__provider_id')
+            .annotate(latest_id=Max('id'))
+            .values_list('latest_id', flat=True)
+        )
+
+        items = (
+            InvoiceItem.objects
+            .filter(id__in=latest_ids)
+            .select_related('invoice__provider', 'product')
+            .order_by('description', 'invoice__provider__name')
+        )
+
+        results = []
+        for item in items:
+            provider = item.invoice.provider if item.invoice else None
+            if not provider:
+                continue
+
+            # Buscar stock en ProviderInventory si existe
+            stock = None
+            provider_inventory_id = None
+            try:
+                from provider_inventory.models import ProviderInventory
+                inv = ProviderInventory.objects.filter(
+                    product_name__iexact=item.description,
+                    provider=provider,
+                ).first()
+                if inv:
+                    stock = float(inv.stock_quantity)
+                    provider_inventory_id = inv.id
+            except Exception:
+                pass
+
+            # Calcular precio de venta con markup
+            unit_price = float(item.unit_price) if item.unit_price else 0
+            markup = float(item.markup_percentage) if item.markup_percentage else 0
+            sell_price = round(unit_price * (1 + markup / 100), 0)
+
+            results.append({
+                'id': item.product.id if item.product else None,
+                'invoice_item_id': item.id,
+                'provider_inventory_id': provider_inventory_id,
+                'name': item.description,
+                'provider_id': provider.id,
+                'provider_name': provider.name,
+                'unit': item.unit_measure or 'unidad',
+                'unit_price': unit_price,
+                'sell_price': sell_price,
+                'markup_percentage': markup,
+                'stock': stock,
+            })
+
+        return Response(results)
+
+
 class QuoteViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -116,7 +197,88 @@ class QuoteViewSet(viewsets.ModelViewSet):
         quote.status = new_status
         quote.status_updated_at = timezone.now()
         quote.save(update_fields=['status', 'status_updated_at'])
+
+        # Al aprobar: descontar stock de ProviderInventory
+        if new_status == 'approved':
+            self._descontar_stock(quote, request.user)
+
+        # Al rechazar o cancelar: restaurar stock
+        if new_status == 'rejected':
+            self._restaurar_stock(quote, request.user)
+
         return Response({'status': quote.status, 'quote_number': quote.quote_number})
+
+    def _descontar_stock(self, quote, user):
+        """Descuenta stock de ProviderInventory al aprobar una cotización."""
+        try:
+            from provider_inventory.models import ProviderInventory, ProviderInventoryAuditLog
+            from django.db import transaction
+
+            for item in quote.items.all():
+                # Buscar por nombre + proveedor si está disponible, si no solo por nombre
+                qs = ProviderInventory.objects.filter(product_name__iexact=item.product_name)
+                if item.provider_id:
+                    qs = qs.filter(provider_id=item.provider_id)
+                inv = qs.first()
+
+                if not inv:
+                    continue
+
+                with transaction.atomic():
+                    inv_locked = ProviderInventory.objects.select_for_update().get(id=inv.id)
+                    if inv_locked.stock_quantity >= item.quantity:
+                        qty_before = inv_locked.stock_quantity
+                        inv_locked.stock_quantity -= item.quantity
+                        inv_locked.save()
+
+                        ProviderInventoryAuditLog.objects.create(
+                            inventory=inv_locked,
+                            action='decrement',
+                            quantity_before=qty_before,
+                            quantity_after=inv_locked.stock_quantity,
+                            quantity_changed=-item.quantity,
+                            source='quote',
+                            quote_id=quote.id,
+                            quote_item_id=item.id,
+                            user=user,
+                        )
+        except Exception as e:
+            logger.error(f'Error descontando stock para cotización {quote.quote_number}: {e}')
+
+    def _restaurar_stock(self, quote, user):
+        """Restaura stock de ProviderInventory al rechazar una cotización."""
+        try:
+            from provider_inventory.models import ProviderInventory, ProviderInventoryAuditLog
+            from django.db import transaction
+
+            for item in quote.items.all():
+                qs = ProviderInventory.objects.filter(product_name__iexact=item.product_name)
+                if item.provider_id:
+                    qs = qs.filter(provider_id=item.provider_id)
+                inv = qs.first()
+
+                if not inv:
+                    continue
+
+                with transaction.atomic():
+                    inv_locked = ProviderInventory.objects.select_for_update().get(id=inv.id)
+                    qty_before = inv_locked.stock_quantity
+                    inv_locked.stock_quantity += item.quantity
+                    inv_locked.save()
+
+                    ProviderInventoryAuditLog.objects.create(
+                        inventory=inv_locked,
+                        action='restore',
+                        quantity_before=qty_before,
+                        quantity_after=inv_locked.stock_quantity,
+                        quantity_changed=item.quantity,
+                        source='quote',
+                        quote_id=quote.id,
+                        quote_item_id=item.id,
+                        user=user,
+                    )
+        except Exception as e:
+            logger.error(f'Error restaurando stock para cotización {quote.quote_number}: {e}')
 
     @action(detail=True, methods=['get'])
     def pdf(self, request, pk=None):
@@ -134,6 +296,7 @@ class QuoteViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
+            from .pdf_generator import generate_quote_pdf
             pdf_bytes = generate_quote_pdf(quote, company_profile)
             response = HttpResponse(pdf_bytes, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="{quote.quote_number}.pdf"'

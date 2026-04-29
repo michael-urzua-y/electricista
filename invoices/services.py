@@ -1,5 +1,6 @@
 import re
 import logging
+from typing import Optional
 from django.db import transaction
 from .models import Invoice, InvoiceItem
 from products.models import Product, PriceHistory
@@ -23,7 +24,7 @@ def _extract_dimensions(name: str) -> frozenset:
     return frozenset(_DIMENSIONS_RE.findall(name.upper()))
 
 
-def _find_matching_product(desc: str, provider_id) -> Product | None:
+def _find_matching_product(desc: str, provider_id) -> Optional[Product]:
     """
     Busca un producto existente para la descripción dada.
 

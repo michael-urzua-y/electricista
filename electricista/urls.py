@@ -22,6 +22,7 @@ router.register(r'facturas', FacturaViewSet, basename='factura')
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('quotes.urls')),
+    path('api/', include('provider_inventory.urls')),
     path('api/facturas/diarios/', DailyTotalsView.as_view(), name='daily-totals'),
     path('api/', include(router.urls)),
     path('api/users/me/', CurrentUserView.as_view(), name='current_user'),

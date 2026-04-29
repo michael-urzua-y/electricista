@@ -72,3 +72,6 @@ docker-compose.override.yml
 .certs/
 secrets/
 .kiro/
+
+# Testing artifacts
+.hypothesis/

@@ -15,13 +15,14 @@ class ProductSerializer(serializers.ModelSerializer):
     provider_names = serializers.SerializerMethodField()
     markup_percentage = serializers.SerializerMethodField()
     sell_price = serializers.SerializerMethodField()
+    provider_stock = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = ['id', 'name', 'description', 'brand', 'model', 'provider',
                   'provider_name', 'category', 'unit', 'stock', 'image_url', 'is_active',
                   'created_at', 'updated_at', 'latest_price', 'provider_names',
-                  'markup_percentage', 'sell_price']
+                  'markup_percentage', 'sell_price', 'provider_stock']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def get_provider_name(self, obj):
@@ -30,23 +31,66 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_latest_price(self, obj):
         """
-        Retorna el precio más reciente del proveedor que tiene el registro
-        más nuevo para este producto. Si el contexto incluye 'provider_id',
-        filtra por ese proveedor específico.
+        Si hay provider_id en contexto: retorna el precio de ese proveedor
+        desde InvoiceItem (fuente de verdad = facturas).
+        Sin filtro: retorna un dict {provider_name: {price, date}} para
+        todos los proveedores, para que el frontend muestre el precio correcto
+        al agrupar por proveedor.
         """
         provider_id = self.context.get('provider_id')
-        qs = obj.price_history.select_related('provider')
+
         if provider_id:
-            qs = qs.filter(provider_id=provider_id)
-        latest = qs.first()
-        if latest:
-            return {
-                'price': str(latest.price),
-                'currency': latest.currency,
-                'date': latest.recorded_at.strftime('%Y-%m-%d'),
-                'provider': latest.provider.name,
-            }
-        return None
+            last_item = self._get_last_item_for_provider(obj, provider_id)
+            if last_item and last_item.unit_price is not None:
+                from products.models import Provider
+                try:
+                    prov = Provider.objects.get(id=provider_id)
+                    return {
+                        'price': str(last_item.unit_price),
+                        'currency': 'CLP',
+                        'date': last_item.invoice.issue_date.strftime('%Y-%m-%d') if last_item.invoice.issue_date else '',
+                        'provider': prov.name,
+                    }
+                except Provider.DoesNotExist:
+                    pass
+            return None
+
+        # Sin filtro: devolver precio por proveedor (igual que markup/sell_price)
+        from invoices.models import InvoiceItem
+        provider_ids = obj.price_history.values_list('provider_id', flat=True).distinct()
+        result = {}
+        for pid in provider_ids:
+            item = InvoiceItem.objects.filter(
+                product=obj,
+                unit_price__isnull=False,
+                invoice__status='completed',
+                invoice__provider_id=pid,
+            ).order_by('-invoice__issue_date', '-id').first()
+            if item and item.unit_price is not None:
+                from products.models import Provider
+                try:
+                    prov = Provider.objects.get(id=pid)
+                    result[prov.name] = {
+                        'price': str(item.unit_price),
+                        'currency': 'CLP',
+                        'date': item.invoice.issue_date.strftime('%Y-%m-%d') if item.invoice.issue_date else '',
+                        'provider': prov.name,
+                    }
+                except Provider.DoesNotExist:
+                    pass
+
+        # Fallback: si no hay InvoiceItems, usar PriceHistory
+        if not result:
+            qs = obj.price_history.select_related('provider')
+            latest = qs.first()
+            if latest:
+                return {
+                    'price': str(latest.price),
+                    'currency': latest.currency,
+                    'date': latest.recorded_at.strftime('%Y-%m-%d'),
+                    'provider': latest.provider.name,
+                }
+        return result if result else None
 
     def get_provider_names(self, obj):
         """Proveedores únicos que tienen precios registrados para este producto."""
@@ -54,6 +98,31 @@ class ProductSerializer(serializers.ModelSerializer):
         provider_ids = obj.price_history.values_list('provider_id', flat=True).distinct()
         providers = Provider.objects.filter(id__in=provider_ids)
         return [p.name for p in providers]
+
+    def get_provider_stock(self, obj):
+        """
+        Retorna el stock desde ProviderInventory.
+        Con provider_id en contexto: retorna el stock de ese proveedor (número).
+        Sin filtro: retorna un dict {provider_name: stock}.
+        """
+        try:
+            from provider_inventory.models import ProviderInventory
+            provider_id = self.context.get('provider_id')
+
+            if provider_id:
+                inv = ProviderInventory.objects.filter(
+                    product_name__iexact=obj.name,
+                    provider_id=provider_id,
+                ).first()
+                return float(inv.stock_quantity) if inv else 0
+
+            # Sin filtro: dict por proveedor
+            inventories = ProviderInventory.objects.filter(
+                product_name__iexact=obj.name,
+            ).select_related('provider')
+            return {inv.provider.name: float(inv.stock_quantity) for inv in inventories}
+        except Exception:
+            return None
 
     def _get_last_item_for_provider(self, obj, provider_id=None):
         """

@@ -13,9 +13,10 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # Crear SEQUENCE solo en PostgreSQL usando noop para SQLite
         migrations.RunSQL(
-            "CREATE SEQUENCE IF NOT EXISTS quote_number_seq START 1;",
-            reverse_sql="DROP SEQUENCE IF EXISTS quote_number_seq;",
+            sql=migrations.RunSQL.noop,
+            reverse_sql=migrations.RunSQL.noop,
         ),
         migrations.CreateModel(
             name='CompanyProfile',

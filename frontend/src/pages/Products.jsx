@@ -165,6 +165,7 @@ export default function Products() {
                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Último Precio</th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Margen (%)</th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-green-600 uppercase tracking-wider">A Cobrar</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-blue-600 uppercase tracking-wider">Stock</th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Proveedores</th>
                       </tr>
                     </thead>
@@ -182,7 +183,18 @@ export default function Products() {
                           return Math.round(Number(markupRaw))
                         })()
 
-                        const price = product.latest_price ? Number(product.latest_price.price) : 0
+                        // latest_price puede ser un dict {providerName: {price, ...}} o un objeto directo
+                        const latestPriceForProvider = (() => {
+                          const lp = product.latest_price
+                          if (!lp) return null
+                          // Si es dict por proveedor (sin filtro)
+                          if (lp[providerName]) return lp[providerName]
+                          // Si es objeto directo (con filtro de proveedor)
+                          if (lp.price) return lp
+                          return null
+                        })()
+
+                        const price = latestPriceForProvider ? Number(latestPriceForProvider.price) : 0
 
                         const sellValue = (() => {
                           if (!sellRaw) return price > 0 && markupValue > 0 ? price * (1 + markupValue / 100) : 0
@@ -191,6 +203,14 @@ export default function Products() {
                             return v ? Number(v) : (price > 0 && markupValue > 0 ? price * (1 + markupValue / 100) : 0)
                           }
                           return Number(sellRaw)
+                        })()
+
+                        // Stock desde ProviderInventory
+                        const stockValue = (() => {
+                          const ps = product.provider_stock
+                          if (ps === null || ps === undefined) return null
+                          if (typeof ps === 'object') return ps[providerName] ?? null
+                          return ps
                         })()
 
                         return (
@@ -207,13 +227,13 @@ export default function Products() {
                               {product.category || 'General'}
                             </td>
                             <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                              {product.latest_price
+                              {latestPriceForProvider
                                 ? (
                                   <span>
-                                    {formatCurrency(product.latest_price.price)}
+                                    {formatCurrency(latestPriceForProvider.price)}
                                     {!selectedProvider && (
                                       <span className="ml-1 text-xs font-normal text-gray-400">
-                                        ({product.latest_price.provider})
+                                        ({latestPriceForProvider.provider})
                                       </span>
                                     )}
                                   </span>
@@ -227,6 +247,16 @@ export default function Products() {
                             </td>
                             <td className="px-6 py-4 text-sm font-bold text-green-600">
                               {sellValue > 0 ? formatCurrency(sellValue) : '—'}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              {stockValue !== null && stockValue !== undefined
+                                ? (
+                                  <span className={`font-semibold ${stockValue > 0 ? 'text-blue-600' : 'text-red-500'}`}>
+                                    {stockValue}
+                                  </span>
+                                )
+                                : <span className="text-gray-400">—</span>
+                              }
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-600">
                               {product.provider_names?.length > 0

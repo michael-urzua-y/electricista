@@ -12,6 +12,10 @@ export const patchCompanyProfile = (data) =>
 export const getProductCatalog = (search = '') =>
   api.get(`/cotizaciones/productos/${search ? `?search=${encodeURIComponent(search)}` : ''}`)
 
+// Nueva búsqueda: retorna el mismo producto de múltiples proveedores
+export const searchProductsByProvider = (search = '') =>
+  api.get(`/cotizaciones/buscar-por-proveedor/?search=${encodeURIComponent(search)}`)
+
 export const getQuotes = (status = '', page = 1) => {
   const params = new URLSearchParams()
   if (status) params.append('status', status)
