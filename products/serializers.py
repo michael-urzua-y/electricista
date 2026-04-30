@@ -102,6 +102,7 @@ class ProductSerializer(serializers.ModelSerializer):
     def get_provider_stock(self, obj):
         """
         Retorna el stock desde ProviderInventory.
+        Busca por provider_id + nombre del producto (iexact primero, luego icontains).
         Con provider_id en contexto: retorna el stock de ese proveedor (número).
         Sin filtro: retorna un dict {provider_name: stock}.
         """
@@ -109,18 +110,39 @@ class ProductSerializer(serializers.ModelSerializer):
             from provider_inventory.models import ProviderInventory
             provider_id = self.context.get('provider_id')
 
+            def _find_inventory(name, pid=None):
+                """Busca inventario: primero exacto, luego contenido."""
+                qs = ProviderInventory.objects.select_related('provider')
+                if pid:
+                    qs = qs.filter(provider_id=pid)
+                # Intento 1: nombre exacto
+                inv = qs.filter(product_name__iexact=name).first()
+                if inv:
+                    return [inv]
+                # Intento 2: el nombre del producto está contenido en el nombre del inventario
+                # ej: "PUERTA PREP HDF..." está en "UND PUERTA PREP HDF..."
+                return list(qs.filter(product_name__icontains=name))
+
             if provider_id:
-                inv = ProviderInventory.objects.filter(
-                    product_name__iexact=obj.name,
-                    provider_id=provider_id,
-                ).first()
-                return float(inv.stock_quantity) if inv else 0
+                results = _find_inventory(obj.name, provider_id)
+                if results:
+                    return float(results[0].stock_quantity)
+                return 0
 
             # Sin filtro: dict por proveedor
-            inventories = ProviderInventory.objects.filter(
-                product_name__iexact=obj.name,
-            ).select_related('provider')
-            return {inv.provider.name: float(inv.stock_quantity) for inv in inventories}
+            # Obtener todos los proveedores que tienen este producto en PriceHistory
+            provider_ids = obj.price_history.values_list('provider_id', flat=True).distinct()
+            result = {}
+            for pid in provider_ids:
+                results = _find_inventory(obj.name, pid)
+                if results:
+                    from products.models import Provider
+                    try:
+                        prov = Provider.objects.get(id=pid)
+                        result[prov.name] = float(results[0].stock_quantity)
+                    except Provider.DoesNotExist:
+                        pass
+            return result if result else None
         except Exception:
             return None
 
