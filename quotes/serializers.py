@@ -39,10 +39,13 @@ class QuoteItemCreateSerializer(serializers.ModelSerializer):
     # Campos opcionales para productos que vienen del buscador por proveedor
     product_name_override = serializers.CharField(required=False, allow_blank=True, write_only=True)
     unit_override = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    provider_id = serializers.IntegerField(required=False, allow_null=True, write_only=True)
+    provider_inventory_id = serializers.IntegerField(required=False, allow_null=True, write_only=True)
 
     class Meta:
         model = QuoteItem
-        fields = ['product', 'quantity', 'unit_price', 'product_name_override', 'unit_override']
+        fields = ['product', 'quantity', 'unit_price', 'product_name_override', 'unit_override',
+                  'provider_id', 'provider_inventory_id']
 
     def validate_quantity(self, value):
         validate_positive_decimal(value)
@@ -103,7 +106,6 @@ class QuoteCreateSerializer(serializers.ModelSerializer):
         quote = Quote.objects.create(**validated_data)
         for item_data in items_data:
             product = item_data.get('product')
-            # Usar override si viene del buscador por proveedor (sin product FK)
             product_name = (
                 item_data.pop('product_name_override', None)
                 or (product.name if product else 'Producto eliminado')
@@ -112,9 +114,8 @@ class QuoteCreateSerializer(serializers.ModelSerializer):
                 item_data.pop('unit_override', None)
                 or (product.unit if product else 'unidad')
             )
-            # Limpiar campos extra que no son del modelo
-            item_data.pop('product_name_override', None)
-            item_data.pop('unit_override', None)
+            provider_id = item_data.pop('provider_id', None)
+            provider_inventory_id = item_data.pop('provider_inventory_id', None)
             QuoteItem.objects.create(
                 quote=quote,
                 product=product,
@@ -123,6 +124,8 @@ class QuoteCreateSerializer(serializers.ModelSerializer):
                 quantity=item_data['quantity'],
                 unit_price=item_data['unit_price'],
                 line_total=item_data['quantity'] * item_data['unit_price'],
+                provider_id=provider_id,
+                provider_inventory_id=provider_inventory_id,
             )
         quote.recalculate_totals()
         return quote
@@ -144,8 +147,8 @@ class QuoteCreateSerializer(serializers.ModelSerializer):
                     item_data.pop('unit_override', None)
                     or (product.unit if product else 'unidad')
                 )
-                item_data.pop('product_name_override', None)
-                item_data.pop('unit_override', None)
+                provider_id = item_data.pop('provider_id', None)
+                provider_inventory_id = item_data.pop('provider_inventory_id', None)
                 QuoteItem.objects.create(
                     quote=instance,
                     product=product,
@@ -154,6 +157,8 @@ class QuoteCreateSerializer(serializers.ModelSerializer):
                     quantity=item_data['quantity'],
                     unit_price=item_data['unit_price'],
                     line_total=item_data['quantity'] * item_data['unit_price'],
+                    provider_id=provider_id,
+                    provider_inventory_id=provider_inventory_id,
                 )
             instance.recalculate_totals()
         return instance

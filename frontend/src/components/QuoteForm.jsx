@@ -99,6 +99,8 @@ export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) 
         product: item.product,
         quantity: item.quantity,
         unit_price: item.unit_price,
+        provider_id: item.provider_id || null,
+        provider_inventory_id: item.provider_inventory_id || null,
         // Si no hay product FK (viene del buscador por proveedor), enviar nombre y unidad
         ...(item.product ? {} : {
           product_name_override: item.product_name,
