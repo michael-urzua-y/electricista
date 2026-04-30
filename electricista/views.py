@@ -1,19 +1,20 @@
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.contrib.auth import get_user_model
 from rest_framework import serializers
+from django.contrib.auth import get_user_model
 from invoices.models import Invoice
 import logging
 
 logger = logging.getLogger(__name__)
-
 User = get_user_model()
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff']
+
 
 class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
@@ -40,7 +41,6 @@ class DailyTotalsView(APIView):
         except ValueError:
             return Response({'error': 'invalid year or month'}, status=400)
 
-        # Filtrar facturas del usuario en ese mes/año
         invoices = Invoice.objects.filter(
             user=user,
             issue_date__year=year,
@@ -48,28 +48,22 @@ class DailyTotalsView(APIView):
             status='completed'
         ).select_related('provider')
 
-        # Agrupar por fecha y proveedor
         daily_data = {}
         for inv in invoices:
             date_str = inv.issue_date.strftime('%Y-%m-%d')
             provider_name = inv.provider.name if inv.provider else 'Sin proveedor'
             amount = float(inv.total_amount or 0)
-            
+
             if date_str not in daily_data:
                 daily_data[date_str] = {'total': 0, 'providers': {}}
-            
+
             daily_data[date_str]['total'] += amount
-            daily_data[date_str]['providers'][provider_name] = daily_data[date_str]['providers'].get(provider_name, 0) + amount
+            daily_data[date_str]['providers'][provider_name] = (
+                daily_data[date_str]['providers'].get(provider_name, 0) + amount
+            )
 
-        # Ordenar por fecha
-        sorted_days = sorted(daily_data.items())
         result = [
-            {
-                'date': day,
-                'total': data['total'],
-                'providers': data['providers']
-            }
-            for day, data in sorted_days
+            {'date': day, 'total': data['total'], 'providers': data['providers']}
+            for day, data in sorted(daily_data.items())
         ]
-
         return Response(result)

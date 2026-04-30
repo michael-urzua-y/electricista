@@ -11,7 +11,7 @@ from rest_framework_simplejwt.views import (
 
 from products.views import ProviderViewSet, ProductViewSet, ComparacionViewSet
 from invoices.views import FacturaViewSet
-from api_views import CurrentUserView, DailyTotalsView
+from electricista.views import CurrentUserView, DailyTotalsView
 
 router = DefaultRouter()
 router.register(r'proveedores', ProviderViewSet, basename='proveedor')
@@ -28,5 +28,5 @@ urlpatterns = [
     path('api/users/me/', CurrentUserView.as_view(), name='current_user'),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+    path('api/token/verify/', TokenRefreshView.as_view(), name='token_verify'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

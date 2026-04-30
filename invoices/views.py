@@ -12,13 +12,7 @@ import logging
 from .models import Invoice, InvoiceItem
 from products.models import Provider
 from .serializers import InvoiceListSerializer, InvoiceDetailSerializer, InvoiceUploadSerializer, InvoiceItemSerializer
-from .comparison_serializers import (
-    ComparacionAutomaticaSerializer,
-    ComparacionMensualSerializer,
-)
-from .comparison import obtener_factura_anterior, calcular_comparacion, comparar_mes as comparar_mes_service, comparar_entre_proveedores
-from .ocr import OCRProcessor
-from .ai_parser import InvoiceAIParser
+from .comparison import obtener_factura_anterior
 from .services import process_invoice
 from .tasks import process_invoice_task
 from django.db import transaction
@@ -170,7 +164,6 @@ class FacturaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Determinar content type
         file_type = (invoice.file_type or '').lower()
         content_type_map = {
             'pdf':  'application/pdf',
@@ -181,119 +174,6 @@ class FacturaViewSet(viewsets.ModelViewSet):
         content_type = content_type_map.get(file_type, 'application/octet-stream')
         file_name = invoice.file_name or f'factura_{invoice.id}.{file_type}'
 
-        # Reconstruir el archivo desde binario y enviarlo al navegador
         response = HttpResponse(bytes(invoice.file_data), content_type=content_type)
         response['Content-Disposition'] = f'inline; filename="{file_name}"'
         return response
-
-    # ------------------------------------------------------------------
-    # Endpoints de comparación de precios
-    # ------------------------------------------------------------------
-
-    @action(detail=True, methods=['get'], url_path='comparar-anterior')
-    def comparar_anterior(self, request, pk=None):
-        """Comparación automática con la factura anterior del mismo proveedor."""
-        user = request.user
-        # Verificar que la factura existe y pertenece al usuario (o es staff)
-        if user.is_staff:
-            factura = get_object_or_404(Invoice, pk=pk)
-        else:
-            factura = get_object_or_404(Invoice, pk=pk, user=user)
-
-        factura_anterior = obtener_factura_anterior(factura)
-
-        if factura_anterior is None:
-            data = {
-                'factura_actual': {
-                    'id': factura.id,
-                    'numero': factura.invoice_number,
-                    'fecha_emision': factura.issue_date,
-                    'proveedor': factura.provider.name if factura.provider else None,
-                },
-                'factura_anterior': None,
-                'productos_comunes': [],
-                'mensaje': 'No existe factura anterior para este proveedor',
-            }
-            serializer = ComparacionAutomaticaSerializer(data)
-            return Response(serializer.data)
-
-        resultado = calcular_comparacion(factura, factura_anterior)
-        serializer = ComparacionAutomaticaSerializer(resultado)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=['get'], url_path='comparar-manual')
-    def comparar_manual(self, request):
-        """Comparación manual entre dos facturas específicas."""
-        user = request.user
-        factura_base_id = request.query_params.get('factura_base')
-        factura_comparar_id = request.query_params.get('factura_comparar')
-
-        if not factura_base_id or not factura_comparar_id:
-            return Response(
-                {'error': 'Se requieren los parámetros factura_base y factura_comparar'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Validar que ambas facturas pertenecen al usuario o es staff
-        if user.is_staff:
-            factura_base = get_object_or_404(Invoice, pk=factura_base_id)
-            factura_comparar = get_object_or_404(Invoice, pk=factura_comparar_id)
-        else:
-            factura_base = get_object_or_404(Invoice, pk=factura_base_id, user=user)
-            factura_comparar = get_object_or_404(Invoice, pk=factura_comparar_id, user=user)
-
-        # Validar estado completado
-        if factura_base.status != 'completed' or factura_comparar.status != 'completed':
-            return Response(
-                {'error': 'Ambas facturas deben estar completadas'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Validar mismo proveedor
-        if factura_base.provider_id != factura_comparar.provider_id:
-            return Response(
-                {'error': 'Las facturas deben pertenecer al mismo proveedor'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        resultado = calcular_comparacion(factura_comparar, factura_base)
-        serializer = ComparacionAutomaticaSerializer(resultado)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=['get'], url_path='comparar-mes')
-    def comparar_mes(self, request):
-        """Resumen mensual de precios por proveedor."""
-        user = request.user
-        proveedor_id = request.query_params.get('proveedor_id')
-
-        if not proveedor_id:
-            return Response(
-                {'error': 'Se requiere el parámetro proveedor_id'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Validar que el proveedor existe
-        get_object_or_404(Provider, pk=proveedor_id)
-
-        today = date.today()
-        try:
-            year = int(request.query_params.get('year', today.year))
-            month = int(request.query_params.get('month', today.month))
-        except (ValueError, TypeError):
-            year = today.year
-            month = today.month
-
-        resultado = comparar_mes_service(
-            proveedor_id=proveedor_id,
-            user=user,
-            year=year,
-            month=month,
-        )
-        serializer = ComparacionMensualSerializer(resultado)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=['get'], url_path='comparar-proveedores')
-    def comparar_proveedores(self, request):
-        """Comparación de precios del mismo producto entre distintos proveedores."""
-        resultado = comparar_entre_proveedores(request.user)
-        return Response(resultado)

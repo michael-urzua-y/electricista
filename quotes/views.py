@@ -53,7 +53,7 @@ class ProductCatalogSerializer(drf_serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'unit', 'stock', 'last_price']
+        fields = ['id', 'name', 'unit', 'last_price']
 
 
 class ProductCatalogView(ListAPIView):

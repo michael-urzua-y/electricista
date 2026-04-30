@@ -4,15 +4,21 @@ from decimal import Decimal
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from datetime import timedelta
 from .models import Invoice, InvoiceItem
-from .comparison import calcular_variacion
 from products.models import Provider
 
 logger = logging.getLogger(__name__)
-
-
 User = get_user_model()
+
+
+def _calcular_variacion(precio_anterior: Decimal, precio_actual: Decimal) -> dict:
+    """Calcula diferencia absoluta y porcentual entre dos precios."""
+    diferencia = precio_actual - precio_anterior
+    if precio_anterior == 0:
+        variacion_porcentual = None
+    else:
+        variacion_porcentual = (diferencia / precio_anterior) * Decimal('100')
+    return {'diferencia': diferencia, 'variacion_porcentual': variacion_porcentual}
 
 
 class InvoiceItemSerializer(serializers.ModelSerializer):
@@ -48,7 +54,7 @@ class InvoiceItemDetailSerializer(InvoiceItemSerializer):
 
         precio_anterior = item_anterior.unit_price or Decimal('0')
         precio_actual = obj.unit_price or Decimal('0')
-        variacion = calcular_variacion(precio_anterior, precio_actual)
+        variacion = _calcular_variacion(precio_anterior, precio_actual)
         return {
             'precio_anterior': precio_anterior,
             'diferencia': variacion['diferencia'],
