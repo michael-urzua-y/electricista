@@ -402,16 +402,17 @@ class FacturaViewSet(viewsets.ModelViewSet):
                 continue
             precios_list = list(proveedores.values())
             mejor = min(precios_list, key=lambda x: x['precio'])
+            mejor_precio = mejor['precio']  # Guardar como Decimal antes de convertir
             for p in precios_list:
-                diff = p['precio'] - mejor['precio']
-                var = (diff / mejor['precio'] * Decimal('100')) if mejor['precio'] else None
+                diff = p['precio'] - mejor_precio
+                var = (diff / mejor_precio * Decimal('100')) if mejor_precio else None
                 p['diferencia'] = float(diff)
                 p['variacion_porcentual'] = float(var) if var else None
                 p['precio'] = float(p['precio'])
                 p['fecha'] = str(p['fecha']) if p['fecha'] else None
             productos.append({
                 'producto_id': pid, 'producto_nombre': product_names.get(pid, ''),
-                'mejor_proveedor': mejor['proveedor_nombre'], 'mejor_precio': float(mejor['precio']),
+                'mejor_proveedor': mejor['proveedor_nombre'], 'mejor_precio': float(mejor_precio),
                 'proveedores': precios_list,
             })
 
