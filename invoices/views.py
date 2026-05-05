@@ -177,3 +177,245 @@ class FacturaViewSet(viewsets.ModelViewSet):
         response = HttpResponse(bytes(invoice.file_data), content_type=content_type)
         response['Content-Disposition'] = f'inline; filename="{file_name}"'
         return response
+
+    # ------------------------------------------------------------------
+    # Endpoints de comparación de precios
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=['get'], url_path='comparar-anterior')
+    def comparar_anterior(self, request, pk=None):
+        """Comparación automática con la factura anterior del mismo proveedor."""
+        from .comparison import obtener_factura_anterior
+        from decimal import Decimal
+
+        user = request.user
+        if user.is_staff:
+            factura = get_object_or_404(Invoice, pk=pk)
+        else:
+            factura = get_object_or_404(Invoice, pk=pk, user=user)
+
+        factura_anterior = obtener_factura_anterior(factura)
+
+        if factura_anterior is None:
+            return Response({
+                'factura_actual': {
+                    'id': factura.id,
+                    'numero': factura.invoice_number,
+                    'fecha_emision': factura.issue_date,
+                    'proveedor': factura.provider.name if factura.provider else None,
+                },
+                'factura_anterior': None,
+                'productos_comunes': [],
+                'mensaje': 'No existe factura anterior para este proveedor',
+            })
+
+        # Calcular comparación
+        items_base = {
+            item.product_id: item
+            for item in factura_anterior.items.select_related('product').all()
+            if item.product_id is not None
+        }
+        items_actual = {
+            item.product_id: item
+            for item in factura.items.select_related('product').all()
+            if item.product_id is not None
+        }
+        common_ids = set(items_base.keys()) & set(items_actual.keys())
+
+        productos_comunes = []
+        for pid in common_ids:
+            item_base = items_base[pid]
+            item_actual = items_actual[pid]
+            precio_anterior = item_base.unit_price or Decimal('0')
+            precio_actual = item_actual.unit_price or Decimal('0')
+            diferencia = precio_actual - precio_anterior
+            variacion = (diferencia / precio_anterior * Decimal('100')) if precio_anterior else None
+            productos_comunes.append({
+                'producto_id': pid,
+                'producto_nombre': item_actual.product.name if item_actual.product else item_actual.description,
+                'precio_anterior': float(precio_anterior),
+                'precio_actual': float(precio_actual),
+                'diferencia': float(diferencia),
+                'variacion_porcentual': float(variacion) if variacion else None,
+            })
+
+        return Response({
+            'factura_actual': {
+                'id': factura.id,
+                'numero': factura.invoice_number,
+                'fecha_emision': factura.issue_date,
+                'proveedor': factura.provider.name if factura.provider else None,
+            },
+            'factura_anterior': {
+                'id': factura_anterior.id,
+                'numero': factura_anterior.invoice_number,
+                'fecha_emision': factura_anterior.issue_date,
+                'proveedor': factura_anterior.provider.name if factura_anterior.provider else None,
+            },
+            'productos_comunes': productos_comunes,
+            'mensaje': None if productos_comunes else 'No hay productos en común entre las facturas',
+        })
+
+    @action(detail=False, methods=['get'], url_path='comparar-manual')
+    def comparar_manual(self, request):
+        """Comparación manual entre dos facturas específicas."""
+        from decimal import Decimal
+
+        user = request.user
+        factura_base_id = request.query_params.get('factura_base')
+        factura_comparar_id = request.query_params.get('factura_comparar')
+
+        if not factura_base_id or not factura_comparar_id:
+            return Response(
+                {'error': 'Se requieren los parámetros factura_base y factura_comparar'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if user.is_staff:
+            factura_base = get_object_or_404(Invoice, pk=factura_base_id)
+            factura_comparar = get_object_or_404(Invoice, pk=factura_comparar_id)
+        else:
+            factura_base = get_object_or_404(Invoice, pk=factura_base_id, user=user)
+            factura_comparar = get_object_or_404(Invoice, pk=factura_comparar_id, user=user)
+
+        if factura_base.status != 'completed' or factura_comparar.status != 'completed':
+            return Response({'error': 'Ambas facturas deben estar completadas'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if factura_base.provider_id != factura_comparar.provider_id:
+            return Response({'error': 'Las facturas deben pertenecer al mismo proveedor'}, status=status.HTTP_400_BAD_REQUEST)
+
+        items_base = {item.product_id: item for item in factura_base.items.select_related('product').all() if item.product_id}
+        items_actual = {item.product_id: item for item in factura_comparar.items.select_related('product').all() if item.product_id}
+        common_ids = set(items_base.keys()) & set(items_actual.keys())
+
+        productos_comunes = []
+        for pid in common_ids:
+            ib, ia = items_base[pid], items_actual[pid]
+            pa = ib.unit_price or Decimal('0')
+            pc = ia.unit_price or Decimal('0')
+            diff = pc - pa
+            var = (diff / pa * Decimal('100')) if pa else None
+            productos_comunes.append({
+                'producto_id': pid,
+                'producto_nombre': ia.product.name if ia.product else ia.description,
+                'precio_anterior': float(pa),
+                'precio_actual': float(pc),
+                'diferencia': float(diff),
+                'variacion_porcentual': float(var) if var else None,
+            })
+
+        return Response({
+            'factura_actual': {'id': factura_comparar.id, 'numero': factura_comparar.invoice_number, 'fecha_emision': factura_comparar.issue_date, 'proveedor': factura_comparar.provider.name if factura_comparar.provider else None},
+            'factura_anterior': {'id': factura_base.id, 'numero': factura_base.invoice_number, 'fecha_emision': factura_base.issue_date, 'proveedor': factura_base.provider.name if factura_base.provider else None},
+            'productos_comunes': productos_comunes,
+            'mensaje': None if productos_comunes else 'No hay productos en común entre las facturas',
+        })
+
+    @action(detail=False, methods=['get'], url_path='comparar-mes')
+    def comparar_mes(self, request):
+        """Resumen mensual de precios por proveedor."""
+        from decimal import Decimal
+        from collections import defaultdict
+
+        user = request.user
+        proveedor_id = request.query_params.get('proveedor_id')
+        if not proveedor_id:
+            return Response({'error': 'Se requiere el parámetro proveedor_id'}, status=status.HTTP_400_BAD_REQUEST)
+
+        get_object_or_404(Provider, pk=proveedor_id)
+        today = date.today()
+        try:
+            year = int(request.query_params.get('year', today.year))
+            month = int(request.query_params.get('month', today.month))
+        except (ValueError, TypeError):
+            year, month = today.year, today.month
+
+        facturas = Invoice.objects.filter(
+            provider_id=proveedor_id, user=user, status='completed',
+            issue_date__year=year, issue_date__month=month,
+        ).order_by('issue_date').select_related('provider')
+
+        facturas_list = list(facturas)
+        if not facturas_list:
+            prov = Provider.objects.get(id=proveedor_id)
+            return Response({
+                'proveedor': prov.name, 'periodo': {'year': year, 'month': month},
+                'facturas': [], 'productos': [],
+                'mensaje': 'No hay facturas de este proveedor en el período indicado',
+            })
+
+        product_data = defaultdict(list)
+        product_names = {}
+        for item in InvoiceItem.objects.filter(invoice__in=facturas_list).exclude(product_id__isnull=True).select_related('product', 'invoice'):
+            product_data[item.product_id].append(item.unit_price or Decimal('0'))
+            if item.product_id not in product_names and item.product:
+                product_names[item.product_id] = item.product.name
+
+        productos = []
+        for pid, prices in product_data.items():
+            var = None
+            if len(prices) >= 2:
+                first, last = prices[0], prices[-1]
+                var = float((last - first) / first * Decimal('100')) if first else None
+            productos.append({
+                'producto_id': pid, 'producto_nombre': product_names.get(pid, ''),
+                'precio_minimo': float(min(prices)), 'precio_maximo': float(max(prices)),
+                'precio_promedio': float(sum(prices) / len(prices)),
+                'variacion_porcentual': var,
+            })
+
+        return Response({
+            'proveedor': facturas_list[0].provider.name,
+            'periodo': {'year': year, 'month': month},
+            'facturas': [{'id': f.id, 'numero': f.invoice_number, 'fecha_emision': f.issue_date} for f in facturas_list],
+            'productos': productos,
+            'mensaje': None,
+        })
+
+    @action(detail=False, methods=['get'], url_path='comparar-proveedores')
+    def comparar_proveedores(self, request):
+        """Comparación de precios del mismo producto entre distintos proveedores."""
+        from decimal import Decimal
+        from collections import defaultdict
+
+        items = InvoiceItem.objects.filter(
+            invoice__user=request.user, invoice__status='completed',
+        ).exclude(product_id__isnull=True).select_related('product', 'invoice__provider').order_by('invoice__issue_date')
+
+        product_providers = defaultdict(dict)
+        product_names = {}
+        for item in items:
+            prov = item.invoice.provider
+            if not prov:
+                continue
+            product_providers[item.product_id][prov.id] = {
+                'proveedor_id': prov.id, 'proveedor_nombre': prov.name,
+                'precio': item.unit_price or Decimal('0'),
+                'fecha': item.invoice.issue_date, 'factura': item.invoice.invoice_number,
+            }
+            if item.product_id not in product_names and item.product:
+                product_names[item.product_id] = item.product.name
+
+        productos = []
+        for pid, proveedores in product_providers.items():
+            if len(proveedores) < 2:
+                continue
+            precios_list = list(proveedores.values())
+            mejor = min(precios_list, key=lambda x: x['precio'])
+            for p in precios_list:
+                diff = p['precio'] - mejor['precio']
+                var = (diff / mejor['precio'] * Decimal('100')) if mejor['precio'] else None
+                p['diferencia'] = float(diff)
+                p['variacion_porcentual'] = float(var) if var else None
+                p['precio'] = float(p['precio'])
+                p['fecha'] = str(p['fecha']) if p['fecha'] else None
+            productos.append({
+                'producto_id': pid, 'producto_nombre': product_names.get(pid, ''),
+                'mejor_proveedor': mejor['proveedor_nombre'], 'mejor_precio': float(mejor['precio']),
+                'proveedores': precios_list,
+            })
+
+        return Response({
+            'productos': productos, 'total_productos': len(productos),
+            'mensaje': None if productos else 'No hay productos compartidos entre proveedores',
+        })
