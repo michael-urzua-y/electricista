@@ -203,12 +203,13 @@ class ProductSerializer(serializers.ModelSerializer):
         Si hay provider_id en contexto: sell_price de ese proveedor.
         Si no: devuelve un dict {provider_name: sell_price}.
         """
+        from decimal import Decimal
         provider_id = self.context.get('provider_id')
         if provider_id:
             last_item = self._get_last_item_for_provider(obj, provider_id)
             if last_item and last_item.unit_price is not None:
-                markup = last_item.markup_percentage or 0
-                sell = last_item.unit_price * (1 + markup / 100)
+                markup = last_item.markup_percentage or Decimal('0')
+                sell = last_item.unit_price * (1 + markup / Decimal('100'))
                 return str(round(sell, 0))
             return None
 
@@ -228,8 +229,8 @@ class ProductSerializer(serializers.ModelSerializer):
                 from products.models import Provider
                 try:
                     prov = Provider.objects.get(id=pid)
-                    markup = item.markup_percentage or 0
-                    sell = item.unit_price * (1 + markup / 100)
+                    markup = item.markup_percentage or Decimal('0')
+                    sell = item.unit_price * (1 + markup / Decimal('100'))
                     result[prov.name] = str(round(sell, 0))
                 except Provider.DoesNotExist:
                     pass

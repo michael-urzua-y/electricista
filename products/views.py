@@ -109,6 +109,15 @@ class ComparacionViewSet(viewsets.ViewSet):
         # Obtener productos activos que tengan al menos un precio en el historial
         products = Product.objects.filter(is_active=True, price_history__isnull=False).distinct().select_related('provider')
         
+        # Optimización: Prefetch del historial de precios para evitar N+1 queries
+        products = products.prefetch_related(
+            Prefetch(
+                'price_history',
+                queryset=PriceHistory.objects.select_related('provider').order_by('provider', '-recorded_at'),
+                to_attr='prefetched_price_history'
+            )
+        )
+        
         # Obtener proveedores que tienen al menos un precio en el historial
         providers = Provider.objects.filter(pricehistory__isnull=False).distinct()
         provider_names = {p.name for p in providers}
@@ -116,7 +125,7 @@ class ComparacionViewSet(viewsets.ViewSet):
         result = []
         for product in products:
             # Obtener el último precio de este producto en cada proveedor
-            latest_prices = PriceHistory.objects.filter(product=product).order_by('provider', '-recorded_at')
+            latest_prices = product.prefetched_price_history
             prices_by_provider = {}
             seen = set()
             for ph in latest_prices:

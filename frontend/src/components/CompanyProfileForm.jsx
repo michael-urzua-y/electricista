@@ -18,10 +18,12 @@ export default function CompanyProfileForm({ initialData, onSubmit, loading, api
 
     if (!['image/png', 'image/jpeg'].includes(file.type)) {
       setLogoError('El logo debe ser PNG o JPEG')
+      e.target.value = ''
       return
     }
     if (file.size > 2 * 1024 * 1024) {
       setLogoError('El logo no debe superar 2 MB')
+      e.target.value = ''
       return
     }
 
