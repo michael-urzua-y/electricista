@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { UserIcon, EnvelopeIcon } from '@heroicons/react/24/outline'
 import CompanyProfileForm from '../components/CompanyProfileForm'
-import { getCompanyProfile, saveCompanyProfile } from '../services/quotesApi'
+import { getCompanyProfile, saveCompanyProfile, patchCompanyProfile } from '../services/quotesApi'
 
 export default function Profile() {
   const { user } = useAuth()
@@ -30,12 +30,16 @@ export default function Profile() {
     fetchProfile()
   }, [])
 
-  const handleSaveCompanyProfile = async (data) => {
+  const handleSaveCompanyProfile = async (data, options = {}) => {
     setSavingProfile(true)
     setProfileApiErrors({})
     setProfileSuccess('')
     try {
-      const res = await saveCompanyProfile(data)
+      // Si es FormData (con logo), usar PATCH multipart para no requerir todos los campos required
+      const isMultipart = data instanceof FormData
+      const res = isMultipart
+        ? await patchCompanyProfile(data)
+        : await saveCompanyProfile(data)
       setCompanyProfile(res.data)
       setProfileSuccess('Perfil de empresa guardado correctamente')
       setTimeout(() => setProfileSuccess(''), 5000)

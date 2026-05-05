@@ -5,6 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework import serializers as drf_serializers
 from django.db.models import OuterRef, Subquery, Max
 import logging
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 class CompanyProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
         try:
@@ -46,6 +48,44 @@ class CompanyProfileView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CompanyLogoView(APIView):
+    """Sirve el logo de la empresa desde binario en BD."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            profile = CompanyProfile.objects.get(user=request.user)
+        except CompanyProfile.DoesNotExist:
+            return Response({'error': 'Perfil no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not profile.logo_data:
+            # Fallback: si aún está en logo_base64, decodificar y servir
+            if profile.logo_base64:
+                import base64
+                try:
+                    data = base64.b64decode(profile.logo_base64)
+                    mime = 'image/png' if data[:4] == b'\x89PNG' else 'image/jpeg'
+                    return HttpResponse(data, content_type=mime)
+                except Exception:
+                    pass
+            return Response({'error': 'No hay logo'}, status=status.HTTP_404_NOT_FOUND)
+
+        mime = profile.logo_mime or 'image/png'
+        return HttpResponse(bytes(profile.logo_data), content_type=mime)
+
+    def delete(self, request):
+        try:
+            profile = CompanyProfile.objects.get(user=request.user)
+            profile.logo_data = None
+            profile.logo_mime = ''
+            profile.logo_size = None
+            profile.logo_base64 = ''
+            profile.save()
+            return Response({'message': 'Logo eliminado'})
+        except CompanyProfile.DoesNotExist:
+            return Response({'error': 'Perfil no encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
 
 class ProductCatalogSerializer(drf_serializers.ModelSerializer):

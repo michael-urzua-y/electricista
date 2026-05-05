@@ -6,18 +6,66 @@ from products.models import Product
 
 
 class CompanyProfileSerializer(serializers.ModelSerializer):
+    # logo_upload: campo de entrada para subir archivo binario
+    logo_upload = serializers.FileField(required=False, allow_null=True, write_only=True)
+    has_logo = serializers.BooleanField(read_only=True)
+    logo_url = serializers.SerializerMethodField()
+
     class Meta:
         model = CompanyProfile
-        fields = ['id', 'name', 'rut', 'address', 'phone', 'email', 'logo_base64', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'rut', 'address', 'phone', 'email',
+                  'logo_base64', 'logo_upload', 'has_logo', 'logo_url', 'logo_mime',
+                  'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'has_logo', 'logo_url', 'logo_mime']
+
+    def get_logo_url(self, obj):
+        """Retorna la URL del endpoint que sirve el logo si existe."""
+        if obj.has_logo:
+            return f'/api/empresa/perfil/logo/'
+        return None
 
     def validate_rut(self, value):
         validate_rut(value)
         return value
 
     def validate_logo_base64(self, value):
-        validate_logo_base64(value)
+        # Solo validar si es un string no vacío (compatibilidad)
+        if value:
+            validate_logo_base64(value)
         return value
+
+    def validate_logo_upload(self, value):
+        if value is None:
+            return value
+        # Validar tamaño (2 MB máx)
+        if value.size > 2 * 1024 * 1024:
+            raise serializers.ValidationError('El logo no puede superar 2 MB.')
+        # Validar tipo MIME
+        if value.content_type not in ('image/png', 'image/jpeg'):
+            raise serializers.ValidationError('El logo debe ser PNG o JPEG.')
+        return value
+
+    def update(self, instance, validated_data):
+        logo_file = validated_data.pop('logo_upload', None)
+        if logo_file is not None:
+            # Guardar logo como binario
+            instance.logo_data = logo_file.read()
+            instance.logo_mime = logo_file.content_type
+            instance.logo_size = logo_file.size
+            # Limpiar logo_base64 legacy
+            instance.logo_base64 = ''
+        return super().update(instance, validated_data)
+
+    def create(self, validated_data):
+        logo_file = validated_data.pop('logo_upload', None)
+        instance = super().create(validated_data)
+        if logo_file is not None:
+            instance.logo_data = logo_file.read()
+            instance.logo_mime = logo_file.content_type
+            instance.logo_size = logo_file.size
+            instance.logo_base64 = ''
+            instance.save()
+        return instance
 
 
 class QuoteItemSerializer(serializers.ModelSerializer):

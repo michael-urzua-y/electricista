@@ -3,11 +3,24 @@ import api from './api'
 export const getCompanyProfile = () =>
   api.get('/empresa/perfil/')
 
-export const saveCompanyProfile = (data) =>
-  api.put('/empresa/perfil/', data)
+export const saveCompanyProfile = (data) => {
+  // Si data es FormData (incluye logo binario), usar multipart
+  if (data instanceof FormData) {
+    return api.put('/empresa/perfil/', data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  }
+  return api.put('/empresa/perfil/', data)
+}
 
-export const patchCompanyProfile = (data) =>
-  api.patch('/empresa/perfil/', data)
+export const patchCompanyProfile = (data) => {
+  if (data instanceof FormData) {
+    return api.patch('/empresa/perfil/', data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  }
+  return api.patch('/empresa/perfil/', data)
+}
 
 export const getProductCatalog = (search = '') =>
   api.get(`/cotizaciones/productos/${search ? `?search=${encodeURIComponent(search)}` : ''}`)

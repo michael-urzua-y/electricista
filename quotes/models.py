@@ -10,7 +10,12 @@ class CompanyProfile(models.Model):
     address = models.CharField(max_length=300, blank=True, default='')
     phone = models.CharField(max_length=20, blank=True, default='')
     email = models.EmailField(verbose_name='Email empresa')
-    logo_base64 = models.TextField(blank=True, default='', verbose_name='Logo (base64 PNG/JPEG, máx 2 MB)')
+    # Logo como binario (más eficiente que base64)
+    logo_data = models.BinaryField(blank=True, null=True, verbose_name='Logo (binario)')
+    logo_mime = models.CharField(max_length=20, blank=True, default='', verbose_name='MIME del logo')
+    logo_size = models.PositiveIntegerField(blank=True, null=True, verbose_name='Tamaño del logo (bytes)')
+    # Campo legacy mantenido para compatibilidad durante migración
+    logo_base64 = models.TextField(blank=True, default='', verbose_name='Logo legacy (base64)')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -20,6 +25,10 @@ class CompanyProfile(models.Model):
     @property
     def is_complete(self):
         return bool(self.name and self.rut and self.email)
+
+    @property
+    def has_logo(self):
+        return bool(self.logo_data) or bool(self.logo_base64)
 
     def __str__(self):
         return f"{self.name} ({self.rut})"
