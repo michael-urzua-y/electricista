@@ -77,10 +77,8 @@ def _find_matching_product(desc: str, provider_id) -> Optional[Product]:
     return None
 
 
-def _process_items(invoice: Invoice, items_data: list) -> float:
-    """Crea InvoiceItems y PriceHistory para cada ítem parseado. Retorna el total."""
-    total_amount = 0.0
-
+def _process_items(invoice: Invoice, items_data: list, parsed_data: dict) -> None:
+    """Crea InvoiceItems y PriceHistory para cada ítem parseado."""
     for item_data in items_data:
         desc = item_data.get('description', '')
         quantity = item_data.get('quantity', 1) or 1
@@ -93,8 +91,6 @@ def _process_items(invoice: Invoice, items_data: list) -> float:
             unit_price = float(total_price) / float(quantity) if quantity else 0.0
         if total_price is None and unit_price is not None:
             total_price = float(unit_price) * float(quantity)
-
-        total_amount += total_price or 0
 
         # Resolver producto
         product = None
@@ -128,19 +124,6 @@ def _process_items(invoice: Invoice, items_data: list) -> float:
                 currency=invoice.currency,
             )
 
-        # Actualizar stock del producto sumando la cantidad comprada (atómico)
-        if product and quantity:
-            from decimal import Decimal, InvalidOperation
-            from django.db.models import F
-            try:
-                qty_decimal = Decimal(str(quantity))
-                Product.objects.filter(pk=product.pk).update(stock=F('stock') + qty_decimal)
-                logger.info(f"Stock actualizado para producto {product.name}: +{qty_decimal}")
-            except (InvalidOperation, Exception) as e:
-                logger.warning(f"No se pudo actualizar stock del producto {product.id}: {e}")
-
-    return total_amount
-
 
 def process_invoice(invoice_id: int) -> None:
     """
@@ -172,10 +155,31 @@ def process_invoice(invoice_id: int) -> None:
         # 2. Parseo IA
         parsed_data = InvoiceAIParser().parse(invoice.ocr_text)
 
-        # 3. Persistir ítems
+        # 3. Persistir ítems y totales
         with transaction.atomic():
-            total_amount = _process_items(invoice, parsed_data.get('items', []))
-            invoice.total_amount = total_amount
+            _process_items(invoice, parsed_data.get('items', []), parsed_data)
+
+            # Usar totales de la IA si están disponibles (incluyen IVA)
+            # Prioridad: total_amount > suma de ítems
+            ai_total = parsed_data.get('total_amount')
+            ai_tax = parsed_data.get('tax_amount')
+            ai_subtotal = parsed_data.get('subtotal_amount')
+
+            if ai_total:
+                invoice.total_amount = float(ai_total)
+            else:
+                # Fallback: calcular desde ítems (neto) + IVA 19%
+                subtotal = sum(
+                    float(item.total_price or 0)
+                    for item in invoice.items.all()
+                )
+                invoice.total_amount = round(subtotal * 1.19, 0)
+
+            if ai_tax:
+                invoice.tax_amount = float(ai_tax)
+            if ai_subtotal:
+                invoice.subtotal_amount = float(ai_subtotal)
+
             invoice.status = 'completed'
             invoice.save()
 
