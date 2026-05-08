@@ -5,6 +5,7 @@ import logging
 from decimal import Decimal
 from typing import Optional, Dict, Any
 from django.db import transaction
+from django.db.models import OuterRef, Subquery, Min, ExpressionWrapper, F, DecimalField
 
 from .models import ProviderInventory, ProviderInventoryAuditLog
 from invoices.models import Invoice, InvoiceItem
@@ -227,3 +228,42 @@ class AuditService:
             'next': offset + limit if offset + limit < total_count else None,
             'previous': offset - limit if offset > 0 else None,
         }
+
+
+def get_low_stock_items():
+    """
+    Retorna un QuerySet de ProviderInventory donde stock_quantity < minimum_stock
+    y minimum_stock no es NULL.
+
+    Cada ítem es anotado con `cheapest_price`: el precio unitario mínimo entre
+    TODOS los ítems de ProviderInventory con el mismo product_name (case-insensitive)
+    que tengan unit_price no nulo.
+
+    Ordenado por (stock_quantity - minimum_stock) ascendente (más crítico primero).
+    """
+    cheapest_price_subquery = (
+        ProviderInventory.objects
+        .filter(
+            product_name__iexact=OuterRef('product_name'),
+            unit_price__isnull=False,
+        )
+        .values('product_name')
+        .annotate(min_price=Min('unit_price'))
+        .values('min_price')
+    )
+
+    return (
+        ProviderInventory.objects
+        .filter(
+            minimum_stock__isnull=False,
+            stock_quantity__lt=F('minimum_stock'),
+        )
+        .annotate(
+            cheapest_price=Subquery(cheapest_price_subquery),
+            stock_deficit=ExpressionWrapper(
+                F('stock_quantity') - F('minimum_stock'),
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            ),
+        )
+        .order_by('stock_deficit')
+    )

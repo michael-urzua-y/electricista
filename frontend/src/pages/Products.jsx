@@ -1,15 +1,28 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import api from '../services/api'
 import Pagination from '../components/Pagination'
+import { ArrowPathIcon } from '@heroicons/react/24/outline'
+
+const REFRESH_INTERVAL = 30_000 // 30 segundos
 
 export default function Products() {
   const [products, setProducts] = useState([])
   const [providers, setProviders] = useState([])
-  // selectedProvider stores the provider object { id, name } or null
+  const [lowStockItems, setLowStockItems] = useState([])
   const [selectedProvider, setSelectedProvider] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState(null)
   const [currentPages, setCurrentPages] = useState({})
+  const [editingMinStock, setEditingMinStock] = useState({})
+  const [savingMinStock, setSavingMinStock] = useState({})
   const itemsPerPage = 10
+  const selectedProviderRef = useRef(selectedProvider)
+
+  // Keep ref in sync so the interval always uses the latest provider
+  useEffect(() => {
+    selectedProviderRef.current = selectedProvider
+  }, [selectedProvider])
 
   // Reset pagination when provider filter changes
   useEffect(() => {
@@ -20,23 +33,67 @@ export default function Products() {
     fetchProviders()
   }, [])
 
-  // Re-fetch products whenever the selected provider changes
+  // Initial load + auto-refresh every 30s
   useEffect(() => {
-    fetchProducts(selectedProvider?.id ?? null)
+    const refresh = async () => {
+      await Promise.all([
+        fetchProducts(selectedProviderRef.current?.id ?? null, false),
+        fetchLowStockItems(),
+      ])
+    }
+
+    refresh()
+
+    const interval = setInterval(() => {
+      if (!document.hidden) refresh()
+    }, REFRESH_INTERVAL)
+
+    const onVisible = () => { if (!document.hidden) refresh() }
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [])
+
+  // Re-fetch when provider filter changes
+  useEffect(() => {
+    fetchProducts(selectedProvider?.id ?? null, true)
   }, [selectedProvider])
 
-  const fetchProducts = async (providerId) => {
-    setLoading(true)
+  const fetchLowStockItems = async () => {
+    try {
+      const res = await api.get('/inventory/low-stock/')
+      const data = Array.isArray(res.data) ? res.data : res.data?.results ?? []
+      setLowStockItems(data)
+    } catch {
+      // silently ignore
+    }
+  }
+
+  const fetchProducts = async (providerId, showSpinner = true) => {
+    if (showSpinner) setLoading(true)
+    else setRefreshing(true)
     try {
       const params = providerId ? { provider: providerId } : {}
       const res = await api.get('/productos/', { params })
       const data = Array.isArray(res.data) ? res.data : res.data.results || []
       setProducts(data)
+      setLastUpdated(new Date())
     } catch (error) {
       console.error('Error fetching products:', error)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
+  }
+
+  const handleManualRefresh = async () => {
+    await Promise.all([
+      fetchProducts(selectedProvider?.id ?? null, false),
+      fetchLowStockItems(),
+    ])
   }
 
   const fetchProviders = async () => {
@@ -82,6 +139,73 @@ export default function Products() {
     setCurrentPages(prev => ({ ...prev, [providerName]: page }))
   }
 
+  // Build a set of low-stock inventory IDs for quick lookup
+  const lowStockSet = new Set(lowStockItems.map(item => item.id))
+
+  // Save minimum_stock — actualiza estado local al instante + dispara evento global
+  const handleSaveMinStock = async (inventoryId) => {
+    const value = editingMinStock[inventoryId]
+    if (value === undefined || value === '') return
+
+    const newValue = parseFloat(value)
+    setSavingMinStock(prev => ({ ...prev, [inventoryId]: true }))
+
+    // 1. Actualizar estado local INMEDIATAMENTE (optimistic update)
+    setProducts(prev => prev.map(p => {
+      const ms = p.minimum_stock
+      if (!ms) return p
+      if (typeof ms === 'object') {
+        // Buscar qué clave del dict corresponde a este inventoryId
+        const invId = p.provider_inventory_id
+        if (typeof invId === 'object') {
+          const entry = Object.entries(invId).find(([, id]) => id === inventoryId)
+          if (entry) {
+            return { ...p, minimum_stock: { ...ms, [entry[0]]: newValue } }
+          }
+        }
+        return p
+      }
+      // Valor directo
+      if (p.provider_inventory_id === inventoryId) {
+        return { ...p, minimum_stock: newValue }
+      }
+      return p
+    }))
+
+    // Cerrar el editor inmediatamente
+    setEditingMinStock(prev => {
+      const next = { ...prev }
+      delete next[inventoryId]
+      return next
+    })
+
+    try {
+      // 2. Guardar en servidor
+      await api.patch(`/provider-inventory/${inventoryId}/`, { minimum_stock: newValue })
+
+      // 3. Disparar evento global → LowStockBadge se actualiza al instante
+      window.dispatchEvent(new CustomEvent('stock:changed'))
+
+      // 4. Refrescar datos reales del servidor en background (sin spinner)
+      await Promise.all([
+        fetchProducts(selectedProvider?.id ?? null, false),
+        fetchLowStockItems(),
+      ])
+    } catch {
+      // Si falla, recargar para revertir el optimistic update
+      await Promise.all([
+        fetchProducts(selectedProvider?.id ?? null, false),
+        fetchLowStockItems(),
+      ])
+    } finally {
+      setSavingMinStock(prev => {
+        const next = { ...prev }
+        delete next[inventoryId]
+        return next
+      })
+    }
+  }
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('es-CL', {
       style: 'currency',
@@ -104,13 +228,29 @@ export default function Products() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Productos</h1>
-          <p className="text-gray-500 mt-1">
+          <p className="text-gray-500 mt-1 flex items-center gap-2">
             {selectedProvider
               ? `Productos de ${selectedProvider.name}`
               : 'Todos los productos por proveedor'}
+            {lastUpdated && (
+              <span className="text-xs text-gray-400">
+                · Actualizado {lastUpdated.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+            )}
+            {refreshing && (
+              <ArrowPathIcon className="w-3 h-3 text-gray-400 animate-spin" />
+            )}
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleManualRefresh}
+            disabled={refreshing || loading}
+            className="p-2 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors disabled:opacity-40"
+            title="Actualizar ahora"
+          >
+            <ArrowPathIcon className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
           <label htmlFor="provider-filter" className="text-sm font-medium text-gray-700">
             Filtrar por proveedor:
           </label>
@@ -166,6 +306,7 @@ export default function Products() {
                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Margen (%)</th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-green-600 uppercase tracking-wider">A Cobrar</th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-blue-600 uppercase tracking-wider">Stock</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-orange-600 uppercase tracking-wider">Stock Mín.</th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Proveedores</th>
                       </tr>
                     </thead>
@@ -213,11 +354,34 @@ export default function Products() {
                           return ps
                         })()
 
+                        // Inventory ID for minimum_stock editing
+                        const inventoryId = product.inventory_id ?? (
+                          typeof product.provider_inventory_id === 'object'
+                            ? product.provider_inventory_id?.[providerName]
+                            : product.provider_inventory_id
+                        )
+
+                        const minimumStock = (() => {
+                          const ms = product.minimum_stock
+                          if (ms === null || ms === undefined) return null
+                          if (typeof ms === 'object') return ms[providerName] ?? null
+                          return ms
+                        })()
+
+                        const isLowStock = inventoryId && lowStockSet.has(inventoryId)
+
                         return (
-                          <tr key={product.id} className="hover:bg-gray-50 transition-colors">
+                          <tr key={product.id} className={`transition-colors ${isLowStock ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
                             <td className="px-6 py-4">
                               <div>
-                                <p className="font-medium text-gray-900">{product.name}</p>
+                                <p className="font-medium text-gray-900 flex items-center gap-2">
+                                  {product.name}
+                                  {isLowStock && (
+                                    <span className="text-xs font-semibold text-red-600 bg-red-100 px-1.5 py-0.5 rounded">
+                                      ⚠️ Stock bajo
+                                    </span>
+                                  )}
+                                </p>
                                 {product.brand && (
                                   <p className="text-xs text-gray-500">Marca: {product.brand}</p>
                                 )}
@@ -251,12 +415,62 @@ export default function Products() {
                             <td className="px-6 py-4 text-sm">
                               {stockValue !== null && stockValue !== undefined
                                 ? (
-                                  <span className={`font-semibold ${stockValue > 0 ? 'text-blue-600' : 'text-red-500'}`}>
+                                  <span className={`font-semibold ${isLowStock ? 'text-red-600' : stockValue > 0 ? 'text-blue-600' : 'text-red-500'}`}>
                                     {stockValue}
                                   </span>
                                 )
                                 : <span className="text-gray-400">—</span>
                               }
+                            </td>
+                            {/* Minimum stock inline edit */}
+                            <td className="px-6 py-4 text-sm">
+                              {inventoryId ? (
+                                editingMinStock[inventoryId] !== undefined ? (
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="1"
+                                      value={editingMinStock[inventoryId]}
+                                      onChange={e => setEditingMinStock(prev => ({ ...prev, [inventoryId]: e.target.value }))}
+                                      className="w-16 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                                    />
+                                    <button
+                                      onClick={() => handleSaveMinStock(inventoryId)}
+                                      disabled={savingMinStock[inventoryId]}
+                                      className="px-2 py-1 text-xs font-medium text-white bg-green-500 hover:bg-green-600 rounded disabled:opacity-50"
+                                    >
+                                      ✓
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingMinStock(prev => {
+                                        const next = { ...prev }
+                                        delete next[inventoryId]
+                                        return next
+                                      })}
+                                      className="px-2 py-1 text-xs font-medium text-gray-500 hover:text-gray-700"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => setEditingMinStock(prev => ({
+                                      ...prev,
+                                      [inventoryId]: minimumStock ?? ''
+                                    }))}
+                                    className="text-gray-600 hover:text-orange-600 transition-colors"
+                                    title="Editar stock mínimo"
+                                  >
+                                    {minimumStock !== null && minimumStock !== undefined
+                                      ? <span className="font-medium">{minimumStock}</span>
+                                      : <span className="text-gray-400 text-xs">Configurar</span>
+                                    }
+                                  </button>
+                                )
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-600">
                               {product.provider_names?.length > 0

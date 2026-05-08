@@ -50,6 +50,13 @@ class ProviderInventory(models.Model):
         default='unidad',
         verbose_name='Unidad de medida'
     )
+    minimum_stock = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name='Stock mínimo',
+    )
     last_updated = models.DateTimeField(auto_now=True, verbose_name='Última actualización')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha creación')
     last_invoice_id = models.BigIntegerField(null=True, blank=True, verbose_name='ID de última factura procesada')

@@ -9,7 +9,7 @@ class ProviderInventorySerializer(serializers.ModelSerializer):
         model = ProviderInventory
         fields = [
             'id', 'product_name', 'provider', 'provider_name',
-            'stock_quantity', 'unit_price', 'unit_measure',
+            'stock_quantity', 'minimum_stock', 'unit_price', 'unit_measure',
             'last_updated', 'created_at',
         ]
         read_only_fields = ['id', 'last_updated', 'created_at']
@@ -23,7 +23,7 @@ class ProviderInventoryDetailSerializer(serializers.ModelSerializer):
         model = ProviderInventory
         fields = [
             'id', 'product_name', 'provider', 'provider_name',
-            'stock_quantity', 'unit_price', 'unit_measure',
+            'stock_quantity', 'minimum_stock', 'unit_price', 'unit_measure',
             'last_updated', 'created_at', 'recent_audit_logs',
         ]
         read_only_fields = ['id', 'last_updated', 'created_at']
@@ -55,3 +55,22 @@ class ProviderInventoryAuditLogSerializer(serializers.ModelSerializer):
             'source', 'user_name', 'timestamp', 'notes',
         ]
         read_only_fields = ['id', 'timestamp']
+
+
+class LowStockItemSerializer(serializers.ModelSerializer):
+    """Serializer for low stock items with cheapest price annotation."""
+    provider_name = serializers.CharField(source='provider.name', read_only=True)
+    cheapest_price = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        read_only=True,
+        allow_null=True,
+    )
+
+    class Meta:
+        model = ProviderInventory
+        fields = [
+            'id', 'product_name', 'provider_name',
+            'stock_quantity', 'minimum_stock', 'cheapest_price', 'unit_measure',
+        ]
+        read_only_fields = ['id']

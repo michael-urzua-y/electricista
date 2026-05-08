@@ -1,10 +1,11 @@
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import serializers
+from rest_framework import serializers, status
 from django.contrib.auth import get_user_model
 from invoices.models import Invoice
 import logging
+from datetime import date
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -22,6 +23,32 @@ class CurrentUserView(APIView):
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
+
+
+class DashboardKpisView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        today = date.today()
+        year_param = request.GET.get('year')
+        month_param = request.GET.get('month')
+
+        try:
+            year = int(year_param) if year_param else today.year
+            month = int(month_param) if month_param else today.month
+        except ValueError:
+            return Response({'error': 'year y month deben ser enteros válidos'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not (1 <= month <= 12):
+            return Response({'error': 'month debe estar entre 1 y 12'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from electricista.kpi_service import get_dashboard_kpis
+        try:
+            data = get_dashboard_kpis(user=request.user, year=year, month=month)
+            return Response(data)
+        except Exception as e:
+            logger.exception('Error calculando KPIs del dashboard')
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class DailyTotalsView(APIView):

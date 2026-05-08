@@ -4,9 +4,9 @@ import { useAuth } from '../contexts/AuthContext'
 import {
   UserIcon,
   Bars3Icon,
-  XMarkIcon,
   ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline'
+import LowStockBadge from '../components/LowStockBadge'
 
 export default function Layout() {
   const { user, logout } = useAuth()
@@ -20,12 +20,14 @@ export default function Layout() {
   }
 
   const navItems = [
-    { to: '/',            emoji: '🏠', label: 'Dashboard',   color: 'text-blue-600',    bg: 'bg-blue-50'    },
-    { to: '/facturas',    emoji: '📄', label: 'Facturas',    color: 'text-violet-600',  bg: 'bg-violet-50'  },
-    { to: '/productos',   emoji: '📦', label: 'Productos',   color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { to: '/comparacion', emoji: '📊', label: 'Comparación', color: 'text-orange-600',  bg: 'bg-orange-50'  },
-    { to: '/proveedores', emoji: '🏪', label: 'Proveedores', color: 'text-pink-600',    bg: 'bg-pink-50'    },
+    { to: '/',            emoji: '🏠', label: 'Dashboard',    color: 'text-blue-600',    bg: 'bg-blue-50'    },
+    { to: '/facturas',    emoji: '📄', label: 'Facturas',     color: 'text-violet-600',  bg: 'bg-violet-50'  },
+    { to: '/productos',   emoji: '📦', label: 'Productos',    color: 'text-emerald-600', bg: 'bg-emerald-50', badge: <LowStockBadge /> },
+    { to: '/comparacion', emoji: '📊', label: 'Comparación',  color: 'text-orange-600',  bg: 'bg-orange-50'  },
+    { to: '/proveedores', emoji: '🏪', label: 'Proveedores',  color: 'text-pink-600',    bg: 'bg-pink-50'    },
     { to: '/cotizaciones', emoji: '📋', label: 'Cotizaciones', color: 'text-yellow-600', bg: 'bg-yellow-50' },
+    { to: '/clients',     emoji: '👥', label: 'Clientes',     color: 'text-teal-600',    bg: 'bg-teal-50'    },
+    { to: '/accounting',  emoji: '📒', label: 'Contabilidad', color: 'text-indigo-600',  bg: 'bg-indigo-50'  },
   ]
 
   const SidebarContent = () => (
@@ -50,6 +52,7 @@ export default function Layout() {
               <>
                 <span className="text-xl flex-shrink-0">{item.emoji}</span>
                 {!sidebarCollapsed && item.label}
+                {!sidebarCollapsed && item.badge}
               </>
             )}
           </NavLink>

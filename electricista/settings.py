@@ -75,6 +75,8 @@ INSTALLED_APPS = [
     'invoices',
     'quotes',
     'provider_inventory',
+    'clients',
+    'accounting',
 ]
 
 MIDDLEWARE = [
@@ -153,9 +155,20 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
-# Email backend (desarrollo)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'noreply@electricista.cl'
+# Email configuration
+# Si EMAIL_HOST está definido en el entorno, usar SMTP real; si no, usar console (desarrollo)
+_email_host = os.getenv('EMAIL_HOST', '')
+if _email_host:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = _email_host
+    EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+    EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+    EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@electricista.cl')
 
 # Configuraciones de archivos
 MEDIA_URL = '/media/'

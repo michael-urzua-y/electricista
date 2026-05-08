@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { searchProductsByProvider } from '../services/quotesApi'
+import { getClients } from '../services/clientsApi'
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(value || 0)
@@ -27,6 +28,56 @@ export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) 
   const [searchResults, setSearchResults] = useState([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [errors, setErrors] = useState({})
+
+  // Client search state
+  const [clientSearch, setClientSearch] = useState('')
+  const [clientResults, setClientResults] = useState([])
+  const [clientSearchLoading, setClientSearchLoading] = useState(false)
+  const [showClientDropdown, setShowClientDropdown] = useState(false)
+  const clientDropdownRef = useRef(null)
+
+  // Close client dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (clientDropdownRef.current && !clientDropdownRef.current.contains(e.target)) {
+        setShowClientDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  // Debounce client search
+  useEffect(() => {
+    if (!clientSearch.trim() || clientSearch.trim().length < 2) {
+      setClientResults([])
+      setShowClientDropdown(false)
+      return
+    }
+    const timer = setTimeout(async () => {
+      setClientSearchLoading(true)
+      try {
+        const res = await getClients({ q: clientSearch.trim() })
+        const data = Array.isArray(res.data) ? res.data : res.data?.results ?? []
+        setClientResults(data)
+        setShowClientDropdown(data.length > 0)
+      } catch {
+        setClientResults([])
+      } finally {
+        setClientSearchLoading(false)
+      }
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [clientSearch])
+
+  const handleSelectClient = (client) => {
+    setClientName(client.name)
+    setClientRut(client.rut)
+    setClientEmail(client.email || '')
+    setClientSearch('')
+    setClientResults([])
+    setShowClientDropdown(false)
+  }
 
   // Debounce search — usa el nuevo endpoint por proveedor
   useEffect(() => {
@@ -122,6 +173,42 @@ export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) 
       {/* Datos del cliente */}
       <div className="bg-gray-50 rounded-xl p-5 space-y-4">
         <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Datos del Cliente</h3>
+
+        {/* Buscador de clientes guardados */}
+        <div ref={clientDropdownRef} className="relative">
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">
+            Buscar cliente guardado
+          </label>
+          <div className="relative">
+            <input
+              value={clientSearch}
+              onChange={e => setClientSearch(e.target.value)}
+              onFocus={() => clientResults.length > 0 && setShowClientDropdown(true)}
+              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-400 outline-none pr-8"
+              placeholder="Buscar por nombre, RUT o email..."
+              autoComplete="off"
+            />
+            {clientSearchLoading && (
+              <span className="absolute right-3 top-2.5 text-xs text-gray-400">...</span>
+            )}
+          </div>
+          {showClientDropdown && clientResults.length > 0 && (
+            <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-52 overflow-y-auto">
+              {clientResults.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => handleSelectClient(c)}
+                  className="w-full text-left px-4 py-2.5 hover:bg-yellow-50 transition-colors border-b border-gray-50 last:border-0"
+                >
+                  <p className="text-sm font-semibold text-gray-900">{c.name}</p>
+                  <p className="text-xs text-gray-500">{c.rut}{c.email ? ` · ${c.email}` : ''}</p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Nombre</label>

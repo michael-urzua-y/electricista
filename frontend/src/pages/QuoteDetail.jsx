@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeftIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, XMarkIcon, EnvelopeIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { getQuote, updateQuote, changeQuoteStatus, downloadQuotePdf } from '../services/quotesApi'
+import api from '../services/api'
 import QuoteStatusBadge from '../components/QuoteStatusBadge'
 import QuoteForm from '../components/QuoteForm'
 
@@ -36,7 +37,13 @@ export default function QuoteDetail() {
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
 
-  const fetchQuote = async () => {
+  // Email state
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [emailLogs, setEmailLogs] = useState([])
+  const [emailLogsLoading, setEmailLogsLoading] = useState(false)
+
+  const fetchQuote = useCallback(async () => {
     setLoading(true)
     try {
       const res = await getQuote(id)
@@ -46,11 +53,25 @@ export default function QuoteDetail() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [id])
+
+  const fetchEmailLogs = useCallback(async () => {
+    setEmailLogsLoading(true)
+    try {
+      const res = await api.get(`/cotizaciones/${id}/email-logs/`)
+      const data = res.data?.results ?? res.data ?? []
+      setEmailLogs(Array.isArray(data) ? data : [])
+    } catch {
+      // silently ignore
+    } finally {
+      setEmailLogsLoading(false)
+    }
+  }, [id])
 
   useEffect(() => {
     fetchQuote()
-  }, [id])
+    fetchEmailLogs()
+  }, [fetchQuote, fetchEmailLogs])
 
   const handleStatusChange = async (newStatus) => {
     setError('')
@@ -61,6 +82,25 @@ export default function QuoteDetail() {
       setTimeout(() => setSuccessMsg(''), 4000)
     } catch (err) {
       setError(err.response?.data?.detail || err.response?.data?.error || 'Error al cambiar el estado')
+    }
+  }
+
+  const handleSendEmail = async () => {
+    setSendingEmail(true)
+    setError('')
+    try {
+      await api.post(`/cotizaciones/${id}/send-email/`)
+      setShowEmailModal(false)
+      setSuccessMsg('Email enviado correctamente')
+      setTimeout(() => setSuccessMsg(''), 5000)
+      await fetchQuote()
+      await fetchEmailLogs()
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.response?.data?.error || 'Error al enviar el email'
+      setError(msg)
+      setShowEmailModal(false)
+    } finally {
+      setSendingEmail(false)
     }
   }
 
@@ -177,6 +217,15 @@ export default function QuoteDetail() {
           >
             {downloading ? 'Generando...' : 'Descargar PDF'}
           </button>
+          {(quote.status === 'draft' || quote.status === 'sent') && (
+            <button
+              onClick={() => setShowEmailModal(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            >
+              <EnvelopeIcon className="w-4 h-4" />
+              Enviar por Email
+            </button>
+          )}
         </div>
       </div>
 
@@ -282,6 +331,58 @@ export default function QuoteDetail() {
         </div>
       </div>
 
+      {/* Historial de Envíos */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide flex items-center gap-2">
+            <EnvelopeIcon className="w-4 h-4 text-gray-400" />
+            Historial de Envíos
+          </h2>
+        </div>
+        {emailLogsLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-500" />
+          </div>
+        ) : emailLogs.length === 0 ? (
+          <p className="px-6 py-6 text-center text-gray-400 text-sm">Sin envíos registrados</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha / Hora</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Destinatario</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Resultado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {emailLogs.map(log => (
+                  <tr key={log.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-3 text-gray-700">
+                      {log.sent_at
+                        ? format(new Date(log.sent_at), 'dd/MM/yyyy HH:mm', { locale: es })
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-gray-700">{log.recipient || '—'}</td>
+                    <td className="px-4 py-3 text-center">
+                      {log.status === 'success' ? (
+                        <span className="inline-flex items-center gap-1 text-green-700 font-medium">
+                          <CheckCircleIcon className="w-4 h-4" /> Exitoso
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-red-600 font-medium">
+                          <XCircleIcon className="w-4 h-4" /> Fallido
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* Modal de edición */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
@@ -302,6 +403,66 @@ export default function QuoteDetail() {
                 onCancel={() => setShowEditModal(false)}
                 loading={saving}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de envío por email */}
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md animate-fade-in">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900">Enviar Cotización por Email</h2>
+              <button
+                onClick={() => setShowEmailModal(false)}
+                disabled={sendingEmail}
+                className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-700">
+                Se enviará la cotización <span className="font-semibold">{quote.quote_number}</span> en formato PDF al siguiente destinatario:
+              </p>
+              <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <EnvelopeIcon className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                <span className="text-sm font-medium text-blue-800">
+                  {quote.client_email || <span className="italic text-red-500">Sin email registrado</span>}
+                </span>
+              </div>
+              {!quote.client_email && (
+                <p className="text-xs text-red-500">
+                  Esta cotización no tiene email de cliente. Edítala para agregar uno antes de enviar.
+                </p>
+              )}
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  onClick={() => setShowEmailModal(false)}
+                  disabled={sendingEmail}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSendEmail}
+                  disabled={sendingEmail || !quote.client_email}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {sendingEmail ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      <EnvelopeIcon className="w-4 h-4" />
+                      Confirmar envío
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

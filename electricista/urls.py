@@ -11,7 +11,7 @@ from rest_framework_simplejwt.views import (
 
 from products.views import ProviderViewSet, ProductViewSet, ComparacionViewSet
 from invoices.views import FacturaViewSet
-from electricista.views import CurrentUserView, DailyTotalsView
+from electricista.views import CurrentUserView, DailyTotalsView, DashboardKpisView
 
 router = DefaultRouter()
 router.register(r'proveedores', ProviderViewSet, basename='proveedor')
@@ -23,7 +23,10 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('quotes.urls')),
     path('api/', include('provider_inventory.urls')),
+    path('api/', include('clients.urls')),
+    path('api/', include('accounting.urls')),
     path('api/facturas/diarios/', DailyTotalsView.as_view(), name='daily-totals'),
+    path('api/dashboard/kpis/', DashboardKpisView.as_view(), name='dashboard-kpis'),
     path('api/', include(router.urls)),
     path('api/users/me/', CurrentUserView.as_view(), name='current_user'),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),

@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { CurrencyDollarIcon, DocumentTextIcon, ArrowTrendingUpIcon, CalendarIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import api from '../services/api'
+import { getDashboardKpis } from '../services/dashboardApi'
+import KpiCard from '../components/KpiCard'
+import MonthlyChart from '../components/MonthlyChart'
 
 // Colores profesionales para proveedores
 const PROVIDER_COLORS = {
@@ -35,6 +38,10 @@ export default function Dashboard() {
     const parsed = stored ? parseInt(stored) : null;
     return (!isNaN(parsed) && parsed > 0) ? parsed : 0; // Default: Manual (0)
   })
+
+  // KPI state
+  const [kpis, setKpis] = useState(null)
+  const [kpisLoading, setKpisLoading] = useState(false)
 
   // Modal de detalle diario
   const [showDailyModal, setShowDailyModal] = useState(false)
@@ -159,6 +166,16 @@ export default function Dashboard() {
     setStats({ totalInvoices, totalSpent, avgAmount })
     setRecentInvoices(filtered.slice(0, 5))
   }, [selectedMonth, selectedYear, allInvoices])
+
+  // Fetch KPIs when period changes
+  useEffect(() => {
+    if (!selectedMonth || !selectedYear) return
+    setKpisLoading(true)
+    getDashboardKpis(selectedYear, selectedMonth)
+      .then(res => setKpis(res.data))
+      .catch(() => setKpis(null))
+      .finally(() => setKpisLoading(false))
+  }, [selectedMonth, selectedYear])
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(value)
@@ -440,9 +457,128 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* ── KPIs del Negocio ── */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900">KPIs del Negocio</h2>
+
+          {kpisLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500" />
+            </div>
+          ) : !kpis ? (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8 text-center text-gray-400 text-sm">
+              Sin datos de KPIs para este período
+            </div>
+          ) : (
+            <>
+              {/* KPI Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <KpiCard
+                  title="Tasa de Conversión"
+                  value={kpis.conversion_rate}
+                  prevValue={kpis.prev_conversion_rate}
+                  format="percent"
+                  tooltip="% de cotizaciones que terminaron aprobadas sobre el total enviadas, aprobadas o rechazadas en el mes."
+                />
+                <KpiCard
+                  title="Margen Promedio"
+                  value={kpis.avg_margin}
+                  prevValue={kpis.prev_avg_margin}
+                  format="percent"
+                  tooltip="Margen de ganancia promedio de las cotizaciones aprobadas: (precio venta − costo inventario) / precio venta."
+                />
+                <KpiCard
+                  title="Total Ventas del Mes"
+                  value={kpis.sales_comparison?.current_month_total}
+                  prevValue={kpis.sales_comparison?.prev_month_total}
+                  format="currency"
+                  tooltip="Suma total de cotizaciones aprobadas en el mes seleccionado, expresada en pesos chilenos (CLP)."
+                />
+              </div>
+
+              {/* Alertas */}
+              {(kpis.inactive_clients_count > 0 || kpis.low_stock_count > 0) && (
+                <div className="flex flex-wrap gap-3">
+                  {kpis.inactive_clients_count > 0 && (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-700 font-medium">
+                      👥 {kpis.inactive_clients_count} cliente{kpis.inactive_clients_count !== 1 ? 's' : ''} inactivo{kpis.inactive_clients_count !== 1 ? 's' : ''}
+                    </div>
+                  )}
+                  {kpis.low_stock_count > 0 && (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 font-medium">
+                      📦 {kpis.low_stock_count} ítem{kpis.low_stock_count !== 1 ? 's' : ''} con stock bajo
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Top productos y clientes */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Top 5 Productos</h3>
+                  {kpis.top_products && kpis.top_products.length > 0 ? (
+                    <ol className="space-y-2">
+                      {kpis.top_products.map((p, i) => (
+                        <li key={p.name ?? i} className="flex items-center gap-2 text-sm text-gray-700">
+                          <span className="w-5 h-5 flex items-center justify-center rounded-full bg-yellow-100 text-yellow-700 text-xs font-bold flex-shrink-0">
+                            {i + 1}
+                          </span>
+                          <span className="truncate flex-1">{p.name}</span>
+                          <span className="text-xs font-semibold text-gray-500 flex-shrink-0">
+                            ×{Number.isInteger(p.count) ? p.count : p.count.toFixed(2)}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p className="text-sm text-gray-400">Sin datos para este período</p>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Top 5 Clientes</h3>
+                  {kpis.top_clients && kpis.top_clients.length > 0 ? (
+                    <ol className="space-y-2">
+                      {kpis.top_clients.map((c, i) => (
+                        <li key={c.name ?? i} className="flex items-center gap-2 text-sm text-gray-700">
+                          <span className="w-5 h-5 flex items-center justify-center rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex-shrink-0">
+                            {i + 1}
+                          </span>
+                          <span className="truncate flex-1">{c.name || 'Sin nombre'}</span>
+                          <span className="text-xs font-semibold text-green-600 flex-shrink-0">
+                            {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(c.total)}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p className="text-sm text-gray-400">Sin datos para este período</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Gráfico mensual de ventas (cotizaciones aprobadas) */}
+              {kpis.monthly_chart && kpis.monthly_chart.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">Ventas Mensuales (Cotizaciones Aprobadas)</h3>
+                  <div className="h-56">
+                    <MonthlyChart data={kpis.monthly_chart} />
+                  </div>
+                </div>
+              )}
+
+              {/* Sin datos */}
+              {kpis.no_data && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-700 text-center">
+                  No hay cotizaciones en el período seleccionado. Los KPIs muestran valores en cero.
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
         {/* Recent invoices and price summary */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent invoices */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">          {/* Recent invoices */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Últimas Facturas</h3>
             {recentInvoices.length > 0 ? (

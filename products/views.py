@@ -71,19 +71,34 @@ class ProductViewSet(viewsets.ModelViewSet):
         provider = self.request.query_params.get('provider')
         category = self.request.query_params.get('category')
         if provider:
-            # Filtrar por productos que tienen historial de precios con este proveedor
-            # (no por el campo FK provider del producto, que puede ser None)
             qs = qs.filter(price_history__provider_id=provider).distinct()
         if category:
             qs = qs.filter(category=category)
         return qs
 
     def get_serializer_context(self):
-        """Pasa provider_id al serializer para filtrar latest_price correctamente."""
+        """
+        Pasa provider_id al serializer y pre-carga todo el inventario en contexto
+        para evitar N+1 queries al resolver provider_stock, minimum_stock e inventory_id.
+        """
         context = super().get_serializer_context()
         provider_id = self.request.query_params.get('provider')
         if provider_id:
             context['provider_id'] = provider_id
+
+        # Pre-cargar inventario completo una sola vez
+        from provider_inventory.models import ProviderInventory
+        inventory_qs = ProviderInventory.objects.select_related('provider').all()
+        if provider_id:
+            inventory_qs = inventory_qs.filter(provider_id=provider_id)
+
+        # Construir mapa: (product_name_lower, provider_id) -> ProviderInventory
+        inventory_map = {}
+        for inv in inventory_qs:
+            key = (inv.product_name.lower(), inv.provider_id)
+            inventory_map[key] = inv
+
+        context['inventory_map'] = inventory_map
         return context
 
     @action(detail=True, methods=['get'])

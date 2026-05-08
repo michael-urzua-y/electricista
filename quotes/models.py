@@ -50,6 +50,14 @@ class Quote(models.Model):
     }
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='quotes')
+    client = models.ForeignKey(
+        'clients.Client',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='quotes',
+        verbose_name='Cliente',
+    )
     quote_number = models.CharField(max_length=10, unique=True, verbose_name='Número cotización')
     client_name = models.CharField(max_length=200, blank=True, default='')
     client_rut = models.CharField(max_length=12, blank=True, default='')
@@ -82,6 +90,26 @@ class Quote(models.Model):
 
     def __str__(self):
         return f"{self.quote_number} - {self.client_name or 'Sin cliente'}"
+
+
+class QuoteEmailLog(models.Model):
+    STATUS_CHOICES = [
+        ('success', 'Exitoso'),
+        ('failed', 'Fallido'),
+    ]
+
+    quote = models.ForeignKey(Quote, on_delete=models.CASCADE, related_name='email_logs')
+    sent_at = models.DateTimeField(auto_now_add=True)
+    recipient = models.EmailField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES)
+    error_message = models.TextField(blank=True, default='')
+
+    class Meta:
+        ordering = ['-sent_at']
+        verbose_name = 'Registro de Envío de Email'
+
+    def __str__(self):
+        return f"{self.quote.quote_number} → {self.recipient} [{self.status}]"
 
 
 class QuoteItem(models.Model):

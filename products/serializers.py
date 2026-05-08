@@ -5,7 +5,7 @@ from .models import Provider, Product, PriceHistory
 class ProviderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Provider
-        fields = ['id', 'name', 'website', 'category', 'logo_url', 'is_active', 'created_at']
+        fields = ['id', 'name', 'rut', 'website', 'category', 'logo_url', 'is_active', 'created_at']
         read_only_fields = ['id', 'created_at']
 
 
@@ -16,13 +16,16 @@ class ProductSerializer(serializers.ModelSerializer):
     markup_percentage = serializers.SerializerMethodField()
     sell_price = serializers.SerializerMethodField()
     provider_stock = serializers.SerializerMethodField()
+    provider_inventory_id = serializers.SerializerMethodField()
+    minimum_stock = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = ['id', 'name', 'description', 'brand', 'model', 'provider',
                   'provider_name', 'category', 'unit', 'image_url', 'is_active',
                   'created_at', 'updated_at', 'latest_price', 'provider_names',
-                  'markup_percentage', 'sell_price', 'provider_stock']
+                  'markup_percentage', 'sell_price', 'provider_stock',
+                  'provider_inventory_id', 'minimum_stock']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def get_provider_name(self, obj):
@@ -102,41 +105,22 @@ class ProductSerializer(serializers.ModelSerializer):
     def get_provider_stock(self, obj):
         """
         Retorna el stock desde ProviderInventory.
-        Busca por provider_id + nombre del producto (iexact primero, luego icontains).
         Con provider_id en contexto: retorna el stock de ese proveedor (número).
         Sin filtro: retorna un dict {provider_name: stock}.
         """
         try:
-            from provider_inventory.models import ProviderInventory
             provider_id = self.context.get('provider_id')
 
-            def _find_inventory(name, pid=None):
-                """Busca inventario: primero exacto, luego contenido."""
-                qs = ProviderInventory.objects.select_related('provider')
-                if pid:
-                    qs = qs.filter(provider_id=pid)
-                # Intento 1: nombre exacto
-                inv = qs.filter(product_name__iexact=name).first()
-                if inv:
-                    return [inv]
-                # Intento 2: el nombre del producto está contenido en el nombre del inventario
-                # ej: "PUERTA PREP HDF..." está en "UND PUERTA PREP HDF..."
-                return list(qs.filter(product_name__icontains=name))
-
             if provider_id:
-                results = _find_inventory(obj.name, provider_id)
-                if results:
-                    return float(results[0].stock_quantity)
-                return 0
+                results = self._find_inventory_items(obj, provider_id)
+                return float(results[0].stock_quantity) if results else 0
 
-            # Sin filtro: dict por proveedor
-            # Obtener todos los proveedores que tienen este producto en PriceHistory
+            from products.models import Provider
             provider_ids = obj.price_history.values_list('provider_id', flat=True).distinct()
             result = {}
             for pid in provider_ids:
-                results = _find_inventory(obj.name, pid)
+                results = self._find_inventory_items(obj, pid)
                 if results:
-                    from products.models import Provider
                     try:
                         prov = Provider.objects.get(id=pid)
                         result[prov.name] = float(results[0].stock_quantity)
@@ -145,6 +129,90 @@ class ProductSerializer(serializers.ModelSerializer):
             return result if result else None
         except Exception:
             return None
+
+    def _find_inventory_items(self, obj, provider_id=None):
+        """
+        Busca ProviderInventory para este producto usando el mapa pre-cargado en contexto.
+        Fallback a query directa si no hay mapa (ej: en tests).
+        """
+        inventory_map = self.context.get('inventory_map')
+
+        if inventory_map is not None:
+            name_lower = obj.name.lower()
+            results = []
+            for (inv_name, inv_pid), inv in inventory_map.items():
+                if provider_id and inv_pid != int(provider_id):
+                    continue
+                # Coincidencia exacta primero
+                if inv_name == name_lower:
+                    return [inv]
+                # Coincidencia parcial
+                if name_lower in inv_name or inv_name in name_lower:
+                    results.append(inv)
+            return results
+
+        # Fallback: query directa
+        try:
+            from provider_inventory.models import ProviderInventory
+            qs = ProviderInventory.objects.select_related('provider')
+            if provider_id:
+                qs = qs.filter(provider_id=provider_id)
+            inv = qs.filter(product_name__iexact=obj.name).first()
+            if inv:
+                return [inv]
+            return list(qs.filter(product_name__icontains=obj.name))
+        except Exception:
+            return []
+
+    def get_provider_inventory_id(self, obj):
+        """
+        Con provider_id en contexto: retorna el ID del ProviderInventory (número).
+        Sin filtro: retorna dict {provider_name: inventory_id}.
+        """
+        provider_id = self.context.get('provider_id')
+        if provider_id:
+            results = self._find_inventory_items(obj, provider_id)
+            return results[0].id if results else None
+
+        from products.models import Provider
+        provider_ids = obj.price_history.values_list('provider_id', flat=True).distinct()
+        result = {}
+        for pid in provider_ids:
+            results = self._find_inventory_items(obj, pid)
+            if results:
+                try:
+                    prov = Provider.objects.get(id=pid)
+                    result[prov.name] = results[0].id
+                except Provider.DoesNotExist:
+                    pass
+        return result if result else None
+
+    def get_minimum_stock(self, obj):
+        """
+        Con provider_id en contexto: retorna minimum_stock del ProviderInventory (número).
+        Sin filtro: retorna dict {provider_name: minimum_stock}.
+        """
+        provider_id = self.context.get('provider_id')
+        if provider_id:
+            results = self._find_inventory_items(obj, provider_id)
+            if results:
+                ms = results[0].minimum_stock
+                return float(ms) if ms is not None else None
+            return None
+
+        from products.models import Provider
+        provider_ids = obj.price_history.values_list('provider_id', flat=True).distinct()
+        result = {}
+        for pid in provider_ids:
+            results = self._find_inventory_items(obj, pid)
+            if results:
+                try:
+                    prov = Provider.objects.get(id=pid)
+                    ms = results[0].minimum_stock
+                    result[prov.name] = float(ms) if ms is not None else None
+                except Provider.DoesNotExist:
+                    pass
+        return result if result else None
 
     def _get_last_item_for_provider(self, obj, provider_id=None):
         """

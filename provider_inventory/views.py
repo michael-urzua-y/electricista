@@ -6,25 +6,54 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.pagination import PageNumberPagination
 
 from .models import ProviderInventory
-from .serializers import ProviderInventorySerializer, ProviderInventoryDetailSerializer
-from .services import InventoryService, InvoiceProcessingService, AuditService
+from .serializers import (
+    ProviderInventorySerializer,
+    ProviderInventoryDetailSerializer,
+    LowStockItemSerializer,
+)
+from .services import InventoryService, InvoiceProcessingService, AuditService, get_low_stock_items
 from invoices.models import Invoice
 
 logger = logging.getLogger(__name__)
 
 
-class ProviderInventoryViewSet(viewsets.ReadOnlyModelViewSet):
+class LowStockPagination(PageNumberPagination):
+    """Pagination for low stock items."""
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+class ProviderInventoryViewSet(viewsets.ModelViewSet):
     """ViewSet para ProviderInventory."""
     queryset = ProviderInventory.objects.all()
     serializer_class = ProviderInventorySerializer
     permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get', 'patch', 'head', 'options']  # no POST/PUT/DELETE
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
             return ProviderInventoryDetailSerializer
         return ProviderInventorySerializer
+
+    def partial_update(self, request, *args, **kwargs):
+        """PATCH — solo permite actualizar minimum_stock."""
+        allowed_fields = {'minimum_stock'}
+        data = {k: v for k, v in request.data.items() if k in allowed_fields}
+        if not data:
+            return Response(
+                {'detail': 'Solo se puede actualizar el campo minimum_stock.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        kwargs['partial'] = True
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
     @action(detail=False, methods=['post'])
     def search(self, request):
@@ -76,4 +105,40 @@ class AuditLogView(APIView):
             )
             return Response(result)
         except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class LowStockListView(APIView):
+    """View para listar ítems con stock bajo."""
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = LowStockPagination
+
+    def get(self, request):
+        try:
+            queryset = get_low_stock_items()
+            
+            # Apply pagination
+            paginator = self.pagination_class()
+            paginated_queryset = paginator.paginate_queryset(queryset, request)
+            
+            # Serialize the data
+            serializer = LowStockItemSerializer(paginated_queryset, many=True)
+            
+            # Return paginated response
+            return paginator.get_paginated_response(serializer.data)
+        except Exception as e:
+            logger.error(f"Error fetching low stock items: {e}")
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class LowStockCountView(APIView):
+    """View para obtener el conteo de ítems con stock bajo."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            count = get_low_stock_items().count()
+            return Response({'count': count})
+        except Exception as e:
+            logger.error(f"Error counting low stock items: {e}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

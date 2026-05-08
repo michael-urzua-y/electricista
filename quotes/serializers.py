@@ -3,6 +3,7 @@ from .models import CompanyProfile, Quote, QuoteItem
 from .validators import validate_rut, validate_logo_base64, validate_positive_decimal, validate_text_safe
 from .quote_number_service import next_quote_number
 from products.models import Product
+from clients.models import Client
 
 
 class CompanyProfileSerializer(serializers.ModelSerializer):
@@ -107,8 +108,8 @@ class QuoteItemCreateSerializer(serializers.ModelSerializer):
 class QuoteListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Quote
-        fields = ['id', 'quote_number', 'client_name', 'status', 'total_amount', 'created_at', 'valid_until']
-        read_only_fields = ['id', 'quote_number', 'client_name', 'status', 'total_amount', 'created_at', 'valid_until']
+        fields = ['id', 'quote_number', 'client_id', 'client_name', 'status', 'total_amount', 'created_at', 'valid_until']
+        read_only_fields = ['id', 'quote_number', 'client_id', 'client_name', 'status', 'total_amount', 'created_at', 'valid_until']
 
 
 class QuoteDetailSerializer(serializers.ModelSerializer):
@@ -117,13 +118,13 @@ class QuoteDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Quote
         fields = [
-            'id', 'quote_number', 'client_name', 'client_rut', 'client_email',
+            'id', 'quote_number', 'client_id', 'client_name', 'client_rut', 'client_email',
             'status', 'subtotal', 'tax_amount', 'total_amount',
             'notes', 'valid_until', 'created_at', 'updated_at', 'status_updated_at',
             'items',
         ]
         read_only_fields = [
-            'id', 'quote_number', 'client_name', 'client_rut', 'client_email',
+            'id', 'quote_number', 'client_id', 'client_name', 'client_rut', 'client_email',
             'status', 'subtotal', 'tax_amount', 'total_amount',
             'notes', 'valid_until', 'created_at', 'updated_at', 'status_updated_at',
             'items',
@@ -132,11 +133,12 @@ class QuoteDetailSerializer(serializers.ModelSerializer):
 
 class QuoteCreateSerializer(serializers.ModelSerializer):
     items = QuoteItemCreateSerializer(many=True, write_only=True)
+    client_id = serializers.IntegerField(required=False, allow_null=True, write_only=True)
 
     class Meta:
         model = Quote
         fields = [
-            'id', 'quote_number', 'client_name', 'client_rut', 'client_email',
+            'id', 'quote_number', 'client_id', 'client_name', 'client_rut', 'client_email',
             'notes', 'valid_until', 'items',
             'subtotal', 'tax_amount', 'total_amount', 'status', 'created_at',
         ]
@@ -147,6 +149,27 @@ class QuoteCreateSerializer(serializers.ModelSerializer):
 
     def validate_notes(self, value):
         return validate_text_safe(value) or value
+
+    def validate(self, attrs):
+        client_id = attrs.pop('client_id', None)
+        if client_id is not None:
+            request = self.context.get('request')
+            user = request.user if request else None
+            try:
+                client = Client.objects.get(pk=client_id, user=user)
+            except Client.DoesNotExist:
+                raise serializers.ValidationError(
+                    {'client_id': 'Cliente no encontrado o no pertenece al usuario actual.'}
+                )
+            # Auto-populate snapshot fields from client data
+            attrs['client'] = client
+            if not attrs.get('client_name'):
+                attrs['client_name'] = client.name
+            if not attrs.get('client_rut'):
+                attrs['client_rut'] = client.rut
+            if not attrs.get('client_email'):
+                attrs['client_email'] = client.email
+        return attrs
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')

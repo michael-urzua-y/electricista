@@ -10,6 +10,9 @@ import Profile from './pages/Profile'
 import Providers from './pages/Providers'
 import Quotes from './pages/Quotes'
 import QuoteDetail from './pages/QuoteDetail'
+import Clients from './pages/Clients'
+import ClientDetail from './pages/ClientDetail'
+import Accounting from './pages/Accounting'
 
 function PrivateRoute({ children }) {
   const { token, loading } = useAuth()
@@ -36,6 +39,9 @@ function App() {
             <Route path="perfil" element={<Profile />} />
             <Route path="cotizaciones" element={<Quotes />} />
             <Route path="cotizaciones/:id" element={<QuoteDetail />} />
+            <Route path="clients" element={<Clients />} />
+            <Route path="clients/:id" element={<ClientDetail />} />
+            <Route path="accounting" element={<Accounting />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

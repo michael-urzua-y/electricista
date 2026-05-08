@@ -10,7 +10,7 @@ from rest_framework import serializers as drf_serializers
 from django.db.models import OuterRef, Subquery, Max
 import logging
 
-from .models import CompanyProfile, Quote
+from .models import CompanyProfile, Quote, QuoteEmailLog
 from .serializers import (
     CompanyProfileSerializer, QuoteListSerializer,
     QuoteDetailSerializer, QuoteCreateSerializer,
@@ -347,3 +347,49 @@ class QuoteViewSet(viewsets.ModelViewSet):
                 {'error': 'Error al generar el PDF. Intente nuevamente.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    @action(detail=True, methods=['post'], url_path='send-email')
+    def send_email(self, request, pk=None):
+        quote = self.get_object()
+
+        try:
+            company_profile = CompanyProfile.objects.get(user=request.user)
+        except CompanyProfile.DoesNotExist:
+            return Response(
+                {'error': 'Complete el perfil de empresa antes de enviar el email'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from .email_service import send_quote_email
+        log = send_quote_email(quote, company_profile, request.user)
+
+        if log.status == 'failed':
+            return Response(
+                {'error': log.error_message},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {
+                'sent_at': log.sent_at,
+                'recipient': log.recipient,
+                'status': log.status,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=['get'], url_path='email-logs')
+    def email_logs(self, request, pk=None):
+        quote = self.get_object()
+        logs = QuoteEmailLog.objects.filter(quote=quote).order_by('-sent_at')
+        data = [
+            {
+                'id': log.id,
+                'sent_at': log.sent_at,
+                'recipient': log.recipient,
+                'status': log.status,
+                'error_message': log.error_message,
+            }
+            for log in logs
+        ]
+        return Response(data, status=status.HTTP_200_OK)

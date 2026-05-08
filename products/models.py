@@ -22,6 +22,7 @@ class Provider(models.Model):
     ]
 
     name = models.CharField(max_length=200, verbose_name='Nombre')
+    rut = models.CharField(max_length=12, blank=True, default='', verbose_name='RUT')
     website = models.URLField(blank=True, null=True, verbose_name='Sitio web')
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='general', verbose_name='Categoría')
     logo_url = models.URLField(blank=True, null=True, verbose_name='Logo URL')
