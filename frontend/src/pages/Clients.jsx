@@ -146,10 +146,10 @@ export default function Clients() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-900 text-yellow-400">
-                  <th className="text-left px-6 py-3 font-semibold">Nombre</th>
-                  <th className="text-left px-4 py-3 font-semibold">RUT</th>
-                  <th className="text-left px-4 py-3 font-semibold">Email</th>
-                  <th className="text-left px-4 py-3 font-semibold">Teléfono</th>
+                  <th className="text-left px-4 sm:px-6 py-3 font-semibold">Nombre</th>
+                  <th className="text-left px-4 py-3 font-semibold hidden sm:table-cell">RUT</th>
+                  <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Email</th>
+                  <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">Teléfono</th>
                   <th className="text-center px-4 py-3 font-semibold">Estado</th>
                   <th className="text-center px-4 py-3 font-semibold">Acciones</th>
                 </tr>
@@ -161,10 +161,15 @@ export default function Clients() {
                     onClick={() => navigate(`/clients/${client.id}`)}
                     className="hover:bg-gray-50 cursor-pointer transition-colors"
                   >
-                    <td className="px-6 py-4 font-medium text-gray-900">{client.name}</td>
-                    <td className="px-4 py-4 text-gray-600 font-mono text-xs">{client.rut}</td>
-                    <td className="px-4 py-4 text-gray-600">{client.email || '—'}</td>
-                    <td className="px-4 py-4 text-gray-600">{client.phone || '—'}</td>
+                    <td className="px-4 sm:px-6 py-4">
+                      <div>
+                        <p className="font-medium text-gray-900">{client.name}</p>
+                        <p className="text-xs text-gray-500 sm:hidden">{client.rut}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-gray-600 font-mono text-xs hidden sm:table-cell">{client.rut}</td>
+                    <td className="px-4 py-4 text-gray-600 hidden md:table-cell">{client.email || '—'}</td>
+                    <td className="px-4 py-4 text-gray-600 hidden lg:table-cell">{client.phone || '—'}</td>
                     <td className="px-4 py-4 text-center">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
                         client.is_active

@@ -13,6 +13,7 @@ import QuoteDetail from './pages/QuoteDetail'
 import Clients from './pages/Clients'
 import ClientDetail from './pages/ClientDetail'
 import Accounting from './pages/Accounting'
+import PWAInstallPrompt from './components/PWAInstallPrompt'
 
 function PrivateRoute({ children }) {
   const { token, loading } = useAuth()
@@ -45,6 +46,7 @@ function App() {
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <PWAInstallPrompt />
       </AuthProvider>
     </BrowserRouter>
   )
