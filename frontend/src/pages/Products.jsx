@@ -16,6 +16,8 @@ export default function Products() {
   const [currentPages, setCurrentPages] = useState({})
   const [editingMinStock, setEditingMinStock] = useState({})
   const [savingMinStock, setSavingMinStock] = useState({})
+  const [editingMarkup, setEditingMarkup] = useState({})
+  const [savingMarkup, setSavingMarkup] = useState({})
   const itemsPerPage = 10
   const selectedProviderRef = useRef(selectedProvider)
 
@@ -199,6 +201,36 @@ export default function Products() {
       ])
     } finally {
       setSavingMinStock(prev => {
+        const next = { ...prev }
+        delete next[inventoryId]
+        return next
+      })
+    }
+  }
+
+  // Save markup_percentage — actualiza estado local al instante
+  const handleSaveMarkup = async (inventoryId, unitPrice) => {
+    const value = editingMarkup[inventoryId]
+    if (value === undefined || value === '') return
+
+    const newValue = parseFloat(value)
+    setSavingMarkup(prev => ({ ...prev, [inventoryId]: true }))
+
+    // Cerrar editor inmediatamente
+    setEditingMarkup(prev => {
+      const next = { ...prev }
+      delete next[inventoryId]
+      return next
+    })
+
+    try {
+      await api.patch(`/provider-inventory/${inventoryId}/`, { markup_percentage: newValue })
+      // Refrescar datos
+      await fetchProducts(selectedProvider?.id ?? null, false)
+    } catch {
+      await fetchProducts(selectedProvider?.id ?? null, false)
+    } finally {
+      setSavingMarkup(prev => {
         const next = { ...prev }
         delete next[inventoryId]
         return next
@@ -405,9 +437,52 @@ export default function Products() {
                                 : 'Sin precio'}
                             </td>
                             <td className="px-6 py-4 text-sm">
-                              {markupValue > 0
-                                ? <span className="font-medium text-gray-900">{markupValue}%</span>
-                                : <span className="text-gray-400">0%</span>}
+                              {inventoryId ? (
+                                editingMarkup[inventoryId] !== undefined ? (
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="1"
+                                      value={editingMarkup[inventoryId]}
+                                      onChange={e => setEditingMarkup(prev => ({ ...prev, [inventoryId]: e.target.value }))}
+                                      className="w-16 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                                    />
+                                    <button
+                                      onClick={() => handleSaveMarkup(inventoryId, price)}
+                                      disabled={savingMarkup[inventoryId]}
+                                      className="px-2 py-1 text-xs font-medium text-white bg-green-500 hover:bg-green-600 rounded disabled:opacity-50"
+                                    >
+                                      ✓
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingMarkup(prev => {
+                                        const next = { ...prev }
+                                        delete next[inventoryId]
+                                        return next
+                                      })}
+                                      className="px-2 py-1 text-xs font-medium text-gray-500 hover:text-gray-700"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => setEditingMarkup(prev => ({
+                                      ...prev,
+                                      [inventoryId]: markupValue ?? 0
+                                    }))}
+                                    className="text-gray-600 hover:text-yellow-600 transition-colors"
+                                    title="Editar margen"
+                                  >
+                                    {markupValue > 0
+                                      ? <span className="font-medium">{markupValue}%</span>
+                                      : <span className="text-gray-400">0%</span>}
+                                  </button>
+                                )
+                              ) : (
+                                <span className="text-gray-400">0%</span>
+                              )}
                             </td>
                             <td className="px-6 py-4 text-sm font-bold text-green-600">
                               {sellValue > 0 ? formatCurrency(sellValue) : '—'}

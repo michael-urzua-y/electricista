@@ -9,7 +9,8 @@ class ProviderInventorySerializer(serializers.ModelSerializer):
         model = ProviderInventory
         fields = [
             'id', 'product_name', 'provider', 'provider_name',
-            'stock_quantity', 'minimum_stock', 'unit_price', 'unit_measure',
+            'stock_quantity', 'minimum_stock', 'markup_percentage',
+            'unit_price', 'unit_measure',
             'last_updated', 'created_at',
         ]
         read_only_fields = ['id', 'last_updated', 'created_at']

@@ -556,8 +556,6 @@ export default function Invoices() {
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-600">Cant.</th>
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-600">P. Unit.</th>
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-600">Total</th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-600">Margen (%)</th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-600">A Cobrar</th>
                           <th className="px-4 py-3 text-center text-xs font-medium text-gray-600">
                             <span className="inline-flex items-center gap-1">
                               Variación
@@ -590,26 +588,6 @@ export default function Invoices() {
                             <td className="px-4 py-3 text-sm text-right">{Math.round(Number(item.quantity))}</td>
                             <td className="px-4 py-3 text-sm text-right">{formatCurrency(item.unit_price)}</td>
                             <td className="px-4 py-3 text-sm text-right">{formatCurrency(item.total_price)}</td>
-                            <td className="px-4 py-3 text-sm text-right">
-                              <div className="flex items-center justify-end">
-                                <input
-                                key={`markup-${item.id}-${Math.round(Number(item.markup_percentage || 0))}`}
-                                  type="number"
-                                className="w-16 px-2 py-1 text-right border border-gray-300 rounded focus:ring-primary-500 focus:border-primary-500 bg-white"
-                                defaultValue={Math.round(Number(item.markup_percentage || 0))}
-                                  onBlur={(e) => {
-                                  const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
-                                  if(val !== Math.round(Number(item.markup_percentage || 0))) {
-                                     updateItemMarkup(item.id, val);
-                                    }
-                                  }}
-                                />
-                                <span className="ml-1 text-gray-500">%</span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-right font-bold text-green-600">
-                              {item.sell_price ? formatCurrency(item.sell_price) : 'N/A'}
-                            </td>
                             <td className="px-4 py-3 text-sm text-center">
                               {renderVariacion(item.variacion)}
                             </td>

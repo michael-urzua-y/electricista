@@ -57,6 +57,13 @@ class ProviderInventory(models.Model):
         blank=True,
         verbose_name='Stock mínimo',
     )
+    markup_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        verbose_name='Margen de ganancia (%)',
+        help_text='Porcentaje de margen sobre el precio de compra'
+    )
     last_updated = models.DateTimeField(auto_now=True, verbose_name='Última actualización')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha creación')
     last_invoice_id = models.BigIntegerField(null=True, blank=True, verbose_name='ID de última factura procesada')

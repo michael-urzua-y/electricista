@@ -203,8 +203,7 @@ class ClientViewSet(viewsets.ModelViewSet):
                 ),
             )
             .filter(
-                Q(last_quote_date__lt=cutoff_date) |
-                Q(last_quote_date__isnull=True)
+                last_quote_date__lt=cutoff_date
             )
         )
 

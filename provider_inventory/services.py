@@ -127,6 +127,12 @@ class InvoiceProcessingService:
         if item.unit_price and (not inventory.unit_price or item.unit_price > inventory.unit_price):
             inventory.unit_price = item.unit_price
 
+        # Si la factura trae margen y el inventario no tiene uno configurado, usarlo
+        if hasattr(item, 'markup_percentage') and item.markup_percentage:
+            from decimal import Decimal
+            if not inventory.markup_percentage or inventory.markup_percentage == Decimal('0'):
+                inventory.markup_percentage = item.markup_percentage
+
         inventory.last_invoice_id = invoice.id
         inventory.save()
 

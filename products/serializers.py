@@ -233,72 +233,56 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_markup_percentage(self, obj):
         """
+        Margen de ganancia desde ProviderInventory.
         Si hay provider_id en contexto: markup de ese proveedor.
-        Si no: devuelve un dict {provider_name: markup} para todos los proveedores
-        que tienen historial de precios para este producto.
+        Si no: devuelve un dict {provider_name: markup}.
         """
         provider_id = self.context.get('provider_id')
         if provider_id:
-            last_item = self._get_last_item_for_provider(obj, provider_id)
-            if last_item and last_item.markup_percentage is not None:
-                return str(last_item.markup_percentage)
+            results = self._find_inventory_items(obj, provider_id)
+            if results:
+                return str(results[0].markup_percentage or 0)
             return '0'
 
-        # Sin filtro: devolver markup por proveedor
-        from invoices.models import InvoiceItem
+        from products.models import Provider
         provider_ids = obj.price_history.values_list('provider_id', flat=True).distinct()
         result = {}
         for pid in provider_ids:
-            item = InvoiceItem.objects.filter(
-                product=obj,
-                markup_percentage__isnull=False,
-                unit_price__isnull=False,
-                invoice__status='completed',
-                invoice__provider_id=pid,
-            ).order_by('-invoice__issue_date', '-id').first()
-            if item:
-                from products.models import Provider
+            results = self._find_inventory_items(obj, pid)
+            if results:
                 try:
                     prov = Provider.objects.get(id=pid)
-                    result[prov.name] = str(item.markup_percentage)
+                    result[prov.name] = str(results[0].markup_percentage or 0)
                 except Provider.DoesNotExist:
                     pass
-        # Fallback: si no hay datos por proveedor, retornar '0'
         return result if result else '0'
 
     def get_sell_price(self, obj):
         """
+        Precio de venta = unit_price * (1 + markup/100) desde ProviderInventory.
         Si hay provider_id en contexto: sell_price de ese proveedor.
         Si no: devuelve un dict {provider_name: sell_price}.
         """
         from decimal import Decimal
         provider_id = self.context.get('provider_id')
         if provider_id:
-            last_item = self._get_last_item_for_provider(obj, provider_id)
-            if last_item and last_item.unit_price is not None:
-                markup = last_item.markup_percentage or Decimal('0')
-                sell = last_item.unit_price * (1 + markup / Decimal('100'))
+            results = self._find_inventory_items(obj, provider_id)
+            if results and results[0].unit_price:
+                markup = results[0].markup_percentage or Decimal('0')
+                sell = results[0].unit_price * (1 + markup / Decimal('100'))
                 return str(round(sell, 0))
             return None
 
-        # Sin filtro: devolver sell_price por proveedor
-        from invoices.models import InvoiceItem
+        from products.models import Provider
         provider_ids = obj.price_history.values_list('provider_id', flat=True).distinct()
         result = {}
         for pid in provider_ids:
-            item = InvoiceItem.objects.filter(
-                product=obj,
-                markup_percentage__isnull=False,
-                unit_price__isnull=False,
-                invoice__status='completed',
-                invoice__provider_id=pid,
-            ).order_by('-invoice__issue_date', '-id').first()
-            if item and item.unit_price is not None:
-                from products.models import Provider
+            results = self._find_inventory_items(obj, pid)
+            if results and results[0].unit_price:
                 try:
                     prov = Provider.objects.get(id=pid)
-                    markup = item.markup_percentage or Decimal('0')
-                    sell = item.unit_price * (1 + markup / Decimal('100'))
+                    markup = results[0].markup_percentage or Decimal('0')
+                    sell = results[0].unit_price * (1 + markup / Decimal('100'))
                     result[prov.name] = str(round(sell, 0))
                 except Provider.DoesNotExist:
                     pass

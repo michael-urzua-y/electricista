@@ -40,12 +40,12 @@ class ProviderInventoryViewSet(viewsets.ModelViewSet):
         return ProviderInventorySerializer
 
     def partial_update(self, request, *args, **kwargs):
-        """PATCH — solo permite actualizar minimum_stock."""
-        allowed_fields = {'minimum_stock'}
+        """PATCH — permite actualizar minimum_stock y markup_percentage."""
+        allowed_fields = {'minimum_stock', 'markup_percentage'}
         data = {k: v for k, v in request.data.items() if k in allowed_fields}
         if not data:
             return Response(
-                {'detail': 'Solo se puede actualizar el campo minimum_stock.'},
+                {'detail': 'Solo se puede actualizar minimum_stock o markup_percentage.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         kwargs['partial'] = True
