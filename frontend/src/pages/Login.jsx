@@ -87,7 +87,7 @@ export default function Login() {
         </div>
 
         {/* Right side - Login panel (1/4, semi-transparent, full height) */}
-        <div className="w-full lg:w-[360px] lg:min-w-[320px] max-w-[420px] flex flex-col bg-gray-900/80 backdrop-blur-md">
+        <div className="w-full lg:w-1/4 lg:min-w-[320px] flex flex-col bg-gray-900/80 backdrop-blur-md">
 
           {/* Login content - centered vertically */}
           <div className="flex-1 flex flex-col justify-center px-8 xl:px-10 py-12">
