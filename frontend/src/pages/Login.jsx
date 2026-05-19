@@ -64,22 +64,30 @@ export default function Login() {
           </div>
 
           {/* Text content */}
-          <div>
-            <h1 className="text-5xl xl:text-6xl font-bold text-white leading-tight drop-shadow-lg">
-              Gestión<br />
-              <span className="text-yellow-400 drop-shadow-lg">Inteligente.</span>
-            </h1>
-            <p className="mt-6 text-gray-200 text-lg leading-relaxed max-w-lg drop-shadow">
-              Plataforma integral para contratistas eléctricos. Cotiza, controla gastos, 
-              gestiona tu equipo y mantén tus impuestos al día. Todo en un solo lugar.
-            </p>
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-4xl xl:text-5xl font-bold text-white leading-tight drop-shadow-lg">
+                Gestión
+                <span className="text-yellow-400"> Inteligente.</span>
+              </h1>
+            </div>
+
+            <div className="max-w-2xl space-y-4 text-gray-200 text-base leading-relaxed drop-shadow">
+              <p>
+                Cotiza más rápido, controla gastos, administra materiales y organiza toda tu documentación desde un solo lugar.
+              </p>
+              <p>
+                Una plataforma diseñada para optimizar tu gestión operativa, ahorrar tiempo y aumentar tu productividad.
+                Mantén control total de tu operación en tiempo real.
+              </p>
+            </div>
           </div>
 
           <div />
         </div>
 
         {/* Right side - Login panel (1/4, semi-transparent, full height) */}
-        <div className="w-full lg:w-1/4 lg:min-w-[320px] flex flex-col bg-gray-900/80 backdrop-blur-md">
+        <div className="w-full lg:w-[360px] lg:min-w-[320px] max-w-[420px] flex flex-col bg-gray-900/80 backdrop-blur-md">
 
           {/* Login content - centered vertically */}
           <div className="flex-1 flex flex-col justify-center px-8 xl:px-10 py-12">
@@ -164,9 +172,24 @@ export default function Login() {
             </form>
           </div>
 
-          {/* Footer */}
-          <div className="px-8 py-4">
-            <p className="text-gray-500 text-xs text-center">© 2026</p>
+{/* Footer */}
+          <div className="px-6 py-4 border-t border-white/10">
+            <p className="text-gray-400 text-xs text-center">
+              © 2026 <span className="text-yellow-400 font-semibold">Monay Solutions</span>. Todos los derechos reservados.
+            </p>
+          </div>
+        </div>
+
+        {/* Mobile/Tablet landing text - visible below lg breakpoint */}
+        <div className="lg:hidden relative z-10 px-6 py-8 mt-auto">
+          <div className="max-w-md mx-auto text-center space-y-4">
+            <h1 className="text-3xl font-bold text-white leading-tight">
+              Gestión
+              <span className="text-yellow-400"> Inteligente.</span>
+            </h1>
+            <p className="text-gray-300 text-sm leading-relaxed">
+              Cotiza más rápido, controla gastos, administra materiales y organiza toda tu documentación desde un solo lugar.
+            </p>
           </div>
         </div>
 

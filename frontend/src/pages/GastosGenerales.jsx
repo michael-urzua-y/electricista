@@ -9,6 +9,20 @@ function formatCLP(value) {
   return '$' + num.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
+function formatNumberWithThousands(value) {
+  if (!value && value !== 0) return ''
+  const num = parseFloat(String(value).replace(',', '.'))
+  if (Number.isNaN(num)) return ''
+  return num.toLocaleString('es-CL')
+}
+
+function parseNumberFromThousands(value) {
+  if (!value) return ''
+  const normalized = String(value).replace(/\./g, '').replace(',', '.')
+  const num = parseFloat(normalized)
+  return Number.isNaN(num) ? '' : num.toString()
+}
+
 function formatMonth(yearMonth) {
   const [year, month] = yearMonth.split('-')
   const months = [
@@ -77,7 +91,7 @@ function ExpenseFormModal({ expense, onClose, onSuccess }) {
       setForm({
         date: expense.date || '',
         detail: expense.detail || '',
-        total_amount: expense.total_amount?.toString() || '',
+        total_amount: parseInt(expense.total_amount, 10) || '',
         document_number: expense.document_number || '',
         document_type: expense.document_type || '',
         provider: expense.provider || '',
@@ -285,12 +299,23 @@ function ExpenseFormModal({ expense, onClose, onSuccess }) {
             <input
               id="expense-amount"
               name="total_amount"
-              type="number"
-              step="1"
-              min="1"
-              value={form.total_amount}
-              onChange={handleChange}
-              placeholder="Ej: 45000"
+              type="text"
+              inputMode="numeric"
+              value={form.total_amount ? formatNumberWithThousands(form.total_amount) : ''}
+              onFocus={(e) => {
+                const num = parseNumberFromThousands(form.total_amount)
+                e.target.value = num
+              }}
+              onBlur={(e) => {
+                const num = parseNumberFromThousands(e.target.value)
+                setForm((prev) => ({ ...prev, total_amount: num || '' }))
+              }}
+              onChange={(e) => {
+                const rawValue = e.target.value
+                const num = parseNumberFromThousands(rawValue)
+                setForm((prev) => ({ ...prev, total_amount: num || '' }))
+              }}
+              placeholder="Ej: 45.000"
               required
               className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 ${
                 errors.total_amount ? 'border-red-400' : 'border-gray-300'

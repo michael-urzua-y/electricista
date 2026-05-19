@@ -1,12 +1,26 @@
 import { useState, useEffect } from 'react'
 
+function formatNumberWithThousands(value) {
+  if (!value && value !== 0) return ''
+  const num = parseFloat(String(value).replace(',', '.'))
+  if (Number.isNaN(num)) return ''
+  return num.toLocaleString('es-CL')
+}
+
+function parseNumberFromThousands(value) {
+  if (!value) return ''
+  const normalized = String(value).replace(/\./g, '').replace(',', '.')
+  const num = parseFloat(normalized)
+  return Number.isNaN(num) ? '' : num.toString()
+}
+
 /**
- * PriceSubItemForm — Modal para crear/editar un Sub-Ítem de precios.
- * Props:
- *   subItem  - objeto existente (null para crear)
- *   onSave   - callback({ description, net_value })
- *   onCancel - callback para cerrar
- */
+  * PriceSubItemForm — Modal para crear/editar un Sub-Ítem de precios.
+  * Props:
+  *   subItem  - objeto existente (null para crear)
+  *   onSave   - callback({ description, net_value })
+  *   onCancel - callback para cerrar
+  */
 export default function PriceSubItemForm({ subItem, onSave, onCancel }) {
   const [description, setDescription] = useState('')
   const [netValue, setNetValue] = useState('')
@@ -91,12 +105,21 @@ export default function PriceSubItemForm({ subItem, onSave, onCancel }) {
           Valor Neto (CLP)
         </label>
         <input
-          type="number"
-          step="1"
-          min="0"
-          value={netValue}
-          onChange={(e) => setNetValue(e.target.value)}
-          placeholder="Ej: 45000"
+          type="text"
+          inputMode="numeric"
+          value={netValue ? formatNumberWithThousands(netValue) : ''}
+          onFocus={(e) => {
+            e.target.value = parseNumberFromThousands(netValue)
+          }}
+          onBlur={(e) => {
+            const num = parseNumberFromThousands(e.target.value)
+            setNetValue(num || '')
+          }}
+          onChange={(e) => {
+            const num = parseNumberFromThousands(e.target.value)
+            setNetValue(num || '')
+          }}
+          placeholder="Ej: 45.000"
           className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
         />
         {errors.net_value && (

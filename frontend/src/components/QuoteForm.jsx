@@ -9,6 +9,20 @@ const formatCLP = (value) => {
   return '$' + num.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
+const formatNumberWithThousands = (value) => {
+  if (!value && value !== 0) return ''
+  const num = parseFloat(String(value).replace(',', '.'))
+  if (Number.isNaN(num)) return ''
+  return num.toLocaleString('es-CL')
+}
+
+const parseNumberFromThousands = (value) => {
+  if (!value) return ''
+  const normalized = String(value).replace(/\./g, '').replace(',', '.')
+  const num = parseFloat(normalized)
+  return Number.isNaN(num) ? '' : num.toString()
+}
+
 export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) {
   // Client fields
   const [clientName, setClientName] = useState(initialData?.client_name || '')
@@ -139,25 +153,35 @@ export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) 
     setShowClientDropdown(false)
   }
 
-  // --- Add item from PriceSubItem ---
-  const addItemFromSubItem = useCallback((subItem) => {
-    setItems(prev => [...prev, {
-      price_sub_item: subItem.id,
-      description: subItem.description,
-      quantity: '1',
-      unit_price: String(parseFloat(subItem.net_value) || 0),
-    }])
-  }, [])
+// --- Add item from PriceSubItem ---
+   const addItemFromSubItem = useCallback((subItem) => {
+     setItems(prev => [...prev, {
+       price_sub_item: subItem.id,
+       description: subItem.description,
+       quantity: '1',
+       unit_price: String(parseFloat(subItem.net_value) || 0),
+     }])
+   }, [])
 
-  // --- Update item field ---
-  const updateItem = (index, field, value) => {
-    setItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item))
-  }
+   // --- Add extra expense (manual line) ---
+   const addExtraExpense = () => {
+     setItems(prev => [...prev, {
+       price_sub_item: null,
+       description: '',
+       quantity: '1',
+       unit_price: '0',
+     }])
+   }
 
-  // --- Remove item ---
-  const removeItem = (index) => {
-    setItems(prev => prev.filter((_, i) => i !== index))
-  }
+   // --- Update item field ---
+   const updateItem = (index, field, value) => {
+     setItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item))
+   }
+
+   // --- Remove item ---
+   const removeItem = (index) => {
+     setItems(prev => prev.filter((_, i) => i !== index))
+   }
 
   // --- Financial calculations ---
   const subtotal = items.reduce((acc, item) => {
@@ -201,20 +225,21 @@ export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) 
       return
     }
 
-    setErrors({})
-    onSubmit({
-      client_name: clientName,
-      client_rut: clientRut,
-      client_email: clientEmail,
-      notes,
-      valid_until: validUntil || null,
-      discount_percentage: discountPct,
-      items: items.map(item => ({
-        price_sub_item: item.price_sub_item,
-        quantity: parseFloat(item.quantity),
-        unit_price: parseFloat(item.unit_price),
-      })),
-    })
+setErrors({})
+     onSubmit({
+       client_name: clientName,
+       client_rut: clientRut,
+       client_email: clientEmail,
+       notes,
+       valid_until: validUntil || null,
+       discount_percentage: discountPct,
+       items: items.map(item => ({
+         price_sub_item: item.price_sub_item,
+         quantity: parseFloat(item.quantity),
+         unit_price: parseFloat(item.unit_price),
+         description: item.description,
+       })),
+     })
   }
 
   return (
@@ -307,13 +332,23 @@ export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) 
         </div>
       </div>
 
-      {/* Agregar ítems — Selector de categoría + Buscador */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Agregar Ítems</h3>
+{/* Agregar ítems — Selector de categoría + Buscador */}
+       <div className="space-y-4">
+         <div className="flex items-center justify-between">
+           <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Agregar Ítems</h3>
+           <button
+             type="button"
+             onClick={addExtraExpense}
+             className="px-3 py-1.5 text-xs font-medium text-yellow-700 bg-yellow-50 border border-yellow-300 rounded-lg hover:bg-yellow-100 transition-colors flex items-center gap-1"
+           >
+             <span>+</span>
+             Gasto Extra
+           </button>
+         </div>
 
-        <div className="grid grid-cols-1 gap-4">
-          {/* Selector de categoría */}
-          <div ref={categoryRef}>
+         <div className="grid grid-cols-1 gap-4">
+           {/* Selector de categoría */}
+           <div ref={categoryRef}>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">
               Seleccionar por categoría
             </label>
@@ -373,23 +408,55 @@ export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) 
                 <th className="w-10"></th>
               </tr>
             </thead>
-            <tbody>
-              {items.map((item, i) => {
-                const qty = parseFloat(item.quantity) || 0
-                const price = parseFloat(item.unit_price) || 0
-                const lineTotal = qty * price
-                const qtyInvalid = item.quantity !== '' && qty <= 0
+<tbody>
+               {items.map((item, i) => {
+                 const qty = parseFloat(item.quantity) || 0
+                 const price = parseFloat(item.unit_price) || 0
+                 const lineTotal = qty * price
+                 const qtyInvalid = item.quantity !== '' && qty <= 0
+                 const isExtra = !item.price_sub_item
 
-                return (
-                  <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900 font-medium">{item.description}</td>
+                 return (
+                   <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                     <td className="px-4 py-3">
+                       {isExtra ? (
+                         <input
+                           type="text"
+                           value={item.description}
+                           onChange={e => updateItem(i, 'description', e.target.value)}
+                           placeholder="Descripción del gasto"
+                           className="w-full px-2 py-1 border border-gray-300 rounded-lg text-sm focus:border-yellow-500 outline-none"
+                         />
+                       ) : (
+                         <span className="text-gray-900 font-medium">{item.description}</span>
+                       )}
+                     </td>
                     <td className="px-3 py-3">
                       <input
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        value={item.quantity}
-                        onChange={e => updateItem(i, 'quantity', e.target.value)}
+                        type="text"
+                        inputMode="numeric"
+                        value={item.quantity ? formatNumberWithThousands(item.quantity) : ''}
+                        onFocus={e => {
+                          const num = parseNumberFromThousands(item.quantity)
+                          e.target.value = num
+                        }}
+                        onBlur={e => {
+                          const num = parseNumberFromThousands(e.target.value)
+                          e.target.value = num ? formatNumberWithThousands(num) : ''
+                        }}
+                        onChange={e => {
+                          const rawValue = e.target.value
+                          const prevValue = String(item.quantity)
+                          const cursorPos = e.target.selectionStart
+                          const num = parseNumberFromThousands(rawValue)
+                          updateItem(i, 'quantity', num || '')
+                          // Mantener cursor en posición lógica
+                          setTimeout(() => {
+                            const newFormatted = num ? formatNumberWithThousands(num) : ''
+                            const diff = newFormatted.length - rawValue.length
+                            e.target.setSelectionRange(Math.max(0, cursorPos + diff), Math.max(0, cursorPos + diff))
+                          }, 0)
+                        }}
                         className={`w-full text-center px-2 py-1 border rounded-lg text-sm focus:border-yellow-500 outline-none ${
                           qtyInvalid || errors[`qty_${i}`] ? 'border-red-400 bg-red-50' : 'border-gray-300'
                         }`}
@@ -400,11 +467,22 @@ export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) 
                     </td>
                     <td className="px-3 py-3">
                       <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={item.unit_price}
-                        onChange={e => updateItem(i, 'unit_price', e.target.value)}
+                        type="text"
+                        inputMode="numeric"
+                        value={item.unit_price ? formatNumberWithThousands(item.unit_price) : ''}
+                        onFocus={e => {
+                          const num = parseNumberFromThousands(item.unit_price)
+                          e.target.value = num
+                        }}
+                        onBlur={e => {
+                          const num = parseNumberFromThousands(e.target.value)
+                          e.target.value = num ? formatNumberWithThousands(num) : ''
+                        }}
+                        onChange={e => {
+                          const rawValue = e.target.value
+                          const num = parseNumberFromThousands(rawValue)
+                          updateItem(i, 'unit_price', num || '')
+                        }}
                         className={`w-full text-right px-2 py-1 border rounded-lg text-sm focus:border-yellow-500 outline-none ${
                           errors[`price_${i}`] ? 'border-red-400 bg-red-50' : 'border-gray-300'
                         }`}

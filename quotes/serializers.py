@@ -88,7 +88,8 @@ class QuoteItemSerializer(serializers.ModelSerializer):
 
 class QuoteItemCreateSerializer(serializers.Serializer):
     """Serializer para crear/actualizar ítems de cotización."""
-    price_sub_item = serializers.IntegerField()
+    price_sub_item = serializers.IntegerField(required=False, allow_null=True)
+    description = serializers.CharField(required=False, allow_blank=True)
     quantity = serializers.DecimalField(max_digits=12, decimal_places=2)
     unit_price = serializers.DecimalField(
         max_digits=12, decimal_places=2, required=False, allow_null=True
@@ -196,22 +197,29 @@ class QuoteCreateSerializer(serializers.ModelSerializer):
         quote = Quote.objects.create(**validated_data)
 
         for item_data in items_data:
-            sub_item_id = item_data['price_sub_item']
-            try:
-                sub_item = PriceSubItem.objects.get(
-                    id=sub_item_id, item__user=user
-                )
-            except PriceSubItem.DoesNotExist:
-                quote.delete()
-                raise serializers.ValidationError(
-                    {'items': f'PriceSubItem {sub_item_id} no encontrado.'}
-                )
+            sub_item_id = item_data.get('price_sub_item')
+            sub_item = None
 
-            unit_price = item_data.get('unit_price') or sub_item.net_value
+            if sub_item_id:
+                try:
+                    sub_item = PriceSubItem.objects.get(
+                        id=sub_item_id, item__user=user
+                    )
+                except PriceSubItem.DoesNotExist:
+                    quote.delete()
+                    raise serializers.ValidationError(
+                        {'items': f'PriceSubItem {sub_item_id} no encontrado.'}
+                    )
+
+            description = item_data.get('description') or (sub_item.description if sub_item else '')
+            unit_price = item_data.get('unit_price')
+            if unit_price is None:
+                unit_price = sub_item.net_value if sub_item else 0
+
             QuoteItem.objects.create(
                 quote=quote,
                 price_sub_item=sub_item,
-                description=sub_item.description,
+                description=description,
                 quantity=item_data['quantity'],
                 unit_price=unit_price,
             )
@@ -230,21 +238,28 @@ class QuoteCreateSerializer(serializers.ModelSerializer):
             instance.items.all().delete()
 
             for item_data in items_data:
-                sub_item_id = item_data['price_sub_item']
-                try:
-                    sub_item = PriceSubItem.objects.get(
-                        id=sub_item_id, item__user=user
-                    )
-                except PriceSubItem.DoesNotExist:
-                    raise serializers.ValidationError(
-                        {'items': f'PriceSubItem {sub_item_id} no encontrado.'}
-                    )
+                sub_item_id = item_data.get('price_sub_item')
+                sub_item = None
 
-                unit_price = item_data.get('unit_price') or sub_item.net_value
+                if sub_item_id:
+                    try:
+                        sub_item = PriceSubItem.objects.get(
+                            id=sub_item_id, item__user=user
+                        )
+                    except PriceSubItem.DoesNotExist:
+                        raise serializers.ValidationError(
+                            {'items': f'PriceSubItem {sub_item_id} no encontrado.'}
+                        )
+
+                description = item_data.get('description') or (sub_item.description if sub_item else '')
+                unit_price = item_data.get('unit_price')
+                if unit_price is None:
+                    unit_price = sub_item.net_value if sub_item else 0
+
                 QuoteItem.objects.create(
                     quote=instance,
                     price_sub_item=sub_item,
-                    description=sub_item.description,
+                    description=description,
                     quantity=item_data['quantity'],
                     unit_price=unit_price,
                 )

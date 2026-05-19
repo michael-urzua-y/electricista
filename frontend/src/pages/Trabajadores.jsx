@@ -110,14 +110,15 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
 
   // Format number with dot thousands separator for display
   const formatMoneyDisplay = (raw) => {
-    const digits = String(raw).replace(/[^0-9]/g, '')
-    if (!digits) return ''
-    return Number(digits).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+    const num = parseFloat(String(raw).replace(',', '.'))
+    if (Number.isNaN(num)) return ''
+    return num.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
   }
 
   // Strip formatting to get raw number for backend
   const stripMoneyFormat = (formatted) => {
-    return formatted.replace(/\./g, '').replace(/[^0-9]/g, '')
+    return parseFloat(String(formatted).replace(/\./g, '').replace(',', '.'))
+      .toString()
   }
 
   // For integer money fields - format with thousands separator

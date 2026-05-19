@@ -25,7 +25,7 @@ export default function Layout() {
     // { to: '/comparacion', emoji: '📊', label: 'Comparación',  color: 'text-orange-600',  bg: 'bg-orange-50'  },
     // { to: '/accounting',  emoji: '📒', label: 'Contabilidad', color: 'text-indigo-600',  bg: 'bg-indigo-50'  },
     { to: '/', emoji: '📋', label: 'Cotizaciones', color: 'text-yellow-600', bg: 'bg-yellow-50' },
-    { to: '/facturas',    emoji: '📄', label: 'Facturas',     color: 'text-violet-600',  bg: 'bg-violet-50'  },
+    { to: '/facturas',    emoji: '📄', label: 'Compras',     color: 'text-violet-600',  bg: 'bg-violet-50'  },
     { to: '/gastos-generales', emoji: '🧾', label: 'Gastos Generales', color: 'text-red-600', bg: 'bg-red-50' },
     { to: '/precios',     emoji: '💰', label: 'Precios',      color: 'text-amber-600',   bg: 'bg-amber-50'   },
     // { to: '/productos',   emoji: '📦', label: 'Productos',    color: 'text-emerald-600', bg: 'bg-emerald-50', badge: <LowStockBadge /> },
