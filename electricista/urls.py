@@ -12,6 +12,7 @@ from rest_framework_simplejwt.views import (
 from products.views import ProviderViewSet, ProductViewSet, ComparacionViewSet
 from invoices.views import FacturaViewSet
 from electricista.views import CurrentUserView, DailyTotalsView, DashboardKpisView
+from electricista.tax_estimator import TaxEstimatorView, AvailableMonthsView
 
 router = DefaultRouter()
 router.register(r'proveedores', ProviderViewSet, basename='proveedor')
@@ -25,11 +26,16 @@ urlpatterns = [
     path('api/', include('provider_inventory.urls')),
     path('api/', include('clients.urls')),
     path('api/', include('accounting.urls')),
+    path('api/', include('prices.urls')),
+    path('api/', include('expenses.urls')),
+    path('api/', include('workers.urls')),
+    path('api/estimador-tributario/', TaxEstimatorView.as_view(), name='estimador-tributario'),
+    path('api/estimador-tributario/meses/', AvailableMonthsView.as_view(), name='estimador-meses'),
     path('api/facturas/diarios/', DailyTotalsView.as_view(), name='daily-totals'),
     path('api/dashboard/kpis/', DashboardKpisView.as_view(), name='dashboard-kpis'),
     path('api/', include(router.urls)),
     path('api/users/me/', CurrentUserView.as_view(), name='current_user'),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('api/token/verify/', TokenRefreshView.as_view(), name='token_verify'),
+    path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

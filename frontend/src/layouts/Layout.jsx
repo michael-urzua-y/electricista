@@ -20,14 +20,18 @@ export default function Layout() {
   }
 
   const navItems = [
-    { to: '/',            emoji: '🏠', label: 'Dashboard',    color: 'text-blue-600',    bg: 'bg-blue-50'    },
+    // { to: '/',            emoji: '🏠', label: 'Dashboard',    color: 'text-blue-600',    bg: 'bg-blue-50'    },
+    // { to: '/clients',     emoji: '👥', label: 'Clientes',     color: 'text-teal-600',    bg: 'bg-teal-50'    },
+    // { to: '/comparacion', emoji: '📊', label: 'Comparación',  color: 'text-orange-600',  bg: 'bg-orange-50'  },
+    // { to: '/accounting',  emoji: '📒', label: 'Contabilidad', color: 'text-indigo-600',  bg: 'bg-indigo-50'  },
+    { to: '/', emoji: '📋', label: 'Cotizaciones', color: 'text-yellow-600', bg: 'bg-yellow-50' },
     { to: '/facturas',    emoji: '📄', label: 'Facturas',     color: 'text-violet-600',  bg: 'bg-violet-50'  },
-    { to: '/productos',   emoji: '📦', label: 'Productos',    color: 'text-emerald-600', bg: 'bg-emerald-50', badge: <LowStockBadge /> },
-    { to: '/comparacion', emoji: '📊', label: 'Comparación',  color: 'text-orange-600',  bg: 'bg-orange-50'  },
-    { to: '/proveedores', emoji: '🏪', label: 'Proveedores',  color: 'text-pink-600',    bg: 'bg-pink-50'    },
-    { to: '/cotizaciones', emoji: '📋', label: 'Cotizaciones', color: 'text-yellow-600', bg: 'bg-yellow-50' },
-    { to: '/clients',     emoji: '👥', label: 'Clientes',     color: 'text-teal-600',    bg: 'bg-teal-50'    },
-    { to: '/accounting',  emoji: '📒', label: 'Contabilidad', color: 'text-indigo-600',  bg: 'bg-indigo-50'  },
+    { to: '/gastos-generales', emoji: '🧾', label: 'Gastos Generales', color: 'text-red-600', bg: 'bg-red-50' },
+    { to: '/precios',     emoji: '💰', label: 'Precios',      color: 'text-amber-600',   bg: 'bg-amber-50'   },
+    // { to: '/productos',   emoji: '📦', label: 'Productos',    color: 'text-emerald-600', bg: 'bg-emerald-50', badge: <LowStockBadge /> },
+    // { to: '/proveedores', emoji: '🏪', label: 'Proveedores',  color: 'text-pink-600',    bg: 'bg-pink-50'    },
+    { to: '/trabajadores', emoji: '👷', label: 'Trabajadores', color: 'text-cyan-600', bg: 'bg-cyan-50' },
+    { to: '/estimador-tributario', emoji: '🧮', label: 'Estimador Tributario', color: 'text-purple-600', bg: 'bg-purple-50' },
   ]
 
   const SidebarContent = () => (
@@ -71,12 +75,11 @@ export default function Layout() {
         <div className="p-4 border-b border-gray-700 flex items-center justify-between">
           {!sidebarCollapsed && (
             <div className="flex items-center gap-2">
-              <img src="/monayelectric-logo.png" alt="Monayelectric" className="w-8 h-8" />
-              <span className="text-base font-bold text-white">Monayelectric</span>
+              <img src="/monayelectric-logo-horizontal.png" alt="Logo" className="h-10 w-auto" />
             </div>
           )}
           {sidebarCollapsed && (
-            <img src="/monayelectric-logo.png" alt="Monayelectric" className="w-8 h-8 mx-auto" />
+            <img src="/monayelectric-logo.png" alt="Logo" className="w-8 h-8 mx-auto" />
           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -104,11 +107,7 @@ export default function Layout() {
         }`}
       >
         <div className="p-6 border-b border-gray-700 flex items-center gap-3">
-          <img src="/monayelectric-logo.png" alt="Monayelectric" className="w-10 h-10" />
-          <div>
-            <h1 className="text-base font-bold text-white">Monayelectric</h1>
-            <p className="text-xs text-gray-400">Gestión de materiales</p>
-          </div>
+          <img src="/monayelectric-logo-horizontal.png" alt="Logo" className="h-10 w-auto" />
         </div>
         <SidebarContent />
       </aside>
@@ -130,8 +129,7 @@ export default function Layout() {
               <Bars3Icon className="w-6 h-6" />
             </button>
             <span className="text-base font-bold text-white flex items-center gap-2">
-              <img src="/monayelectric-logo.png" alt="Monayelectric" className="w-7 h-7" />
-              Monayelectric
+              <img src="/monayelectric-logo-horizontal.png" alt="Logo" className="h-7 w-auto" />
             </span>
           </div>
 

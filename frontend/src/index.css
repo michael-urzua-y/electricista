@@ -73,3 +73,37 @@ html, body {
     font-size: 16px; /* Evita zoom en iOS al enfocar inputs */
   }
 }
+
+/* Login background animations */
+@keyframes slowZoom {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.animate-slow-zoom {
+  animation: slowZoom 20s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  25% { transform: translate(30px, -40px) scale(1.2); opacity: 0.7; }
+  50% { transform: translate(-20px, -80px) scale(0.8); opacity: 0.5; }
+  75% { transform: translate(40px, -30px) scale(1.1); opacity: 0.6; }
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(234, 179, 8, 0.4);
+  box-shadow: 0 0 6px rgba(234, 179, 8, 0.3);
+}
+
+.particle-1 { width: 4px; height: 4px; top: 20%; left: 10%; animation: float 8s ease-in-out infinite; }
+.particle-2 { width: 6px; height: 6px; top: 60%; left: 25%; animation: float 12s ease-in-out infinite 1s; }
+.particle-3 { width: 3px; height: 3px; top: 40%; left: 50%; animation: float 10s ease-in-out infinite 2s; }
+.particle-4 { width: 5px; height: 5px; top: 80%; left: 70%; animation: float 9s ease-in-out infinite 3s; }
+.particle-5 { width: 4px; height: 4px; top: 30%; left: 80%; animation: float 11s ease-in-out infinite 4s; }
+.particle-6 { width: 3px; height: 3px; top: 70%; left: 40%; animation: float 13s ease-in-out infinite 2.5s; }
+.particle-7 { width: 5px; height: 5px; top: 15%; left: 60%; animation: float 7s ease-in-out infinite 1.5s; }
+.particle-8 { width: 4px; height: 4px; top: 85%; left: 15%; animation: float 14s ease-in-out infinite 3.5s; }

@@ -157,13 +157,24 @@ export default function Providers() {
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Proveedores</h1>
-          <p className="text-gray-500 mt-1">Administra los proveedores de materiales</p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => window.location.href = '/facturas'}
+            className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Volver a Facturas"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+            </svg>
+          </button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Proveedores</h1>
+            <p className="text-gray-500 mt-1">Administra los proveedores de materiales</p>
+          </div>
         </div>
         <button
           onClick={() => openModal()}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500 text-gray-900 rounded-lg hover:bg-yellow-600 transition-colors font-bold text-sm"
         >
           <PlusIcon className="w-5 h-5" />
           Nuevo Proveedor

@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal, ROUND_HALF_UP
 
 
@@ -64,6 +65,15 @@ class Quote(models.Model):
     client_email = models.EmailField(blank=True, default='')
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft', db_index=True)
     subtotal = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    discount_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name='Porcentaje de descuento',
+    )
+    discount_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     tax_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     notes = models.TextField(blank=True, default='')
@@ -81,12 +91,30 @@ class Quote(models.Model):
         ]
 
     def recalculate_totals(self):
+        """Recalcula todos los montos de la cotización."""
+        TWO_PLACES = Decimal('0.01')
         subtotal = sum(item.line_total for item in self.items.all())
-        tax = (subtotal * Decimal('0.19')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-        self.subtotal = subtotal
-        self.tax_amount = tax
-        self.total_amount = subtotal + tax
-        self.save(update_fields=['subtotal', 'tax_amount', 'total_amount'])
+        self.subtotal = subtotal.quantize(TWO_PLACES, rounding=ROUND_HALF_UP)
+
+        self.discount_amount = (
+            self.subtotal * (self.discount_percentage / Decimal('100'))
+        ).quantize(TWO_PLACES, rounding=ROUND_HALF_UP)
+
+        self.total = (self.subtotal - self.discount_amount).quantize(
+            TWO_PLACES, rounding=ROUND_HALF_UP
+        )
+
+        self.tax_amount = (self.total * Decimal('0.19')).quantize(
+            TWO_PLACES, rounding=ROUND_HALF_UP
+        )
+
+        self.total_amount = (self.total + self.tax_amount).quantize(
+            TWO_PLACES, rounding=ROUND_HALF_UP
+        )
+
+        self.save(update_fields=[
+            'subtotal', 'discount_amount', 'total', 'tax_amount', 'total_amount'
+        ])
 
     def __str__(self):
         return f"{self.quote_number} - {self.client_name or 'Sin cliente'}"
@@ -114,29 +142,26 @@ class QuoteEmailLog(models.Model):
 
 class QuoteItem(models.Model):
     quote = models.ForeignKey(Quote, on_delete=models.CASCADE, related_name='items')
-    product = models.ForeignKey('products.Product', on_delete=models.SET_NULL, null=True, blank=True)
-    product_name = models.CharField(max_length=300, verbose_name='Nombre producto (snapshot)')
+    price_sub_item = models.ForeignKey(
+        'prices.PriceSubItem',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Sub-Ítem de Precio',
+    )
+    description = models.CharField(max_length=500, verbose_name='Descripción (snapshot)')
     quantity = models.DecimalField(max_digits=12, decimal_places=2)
-    unit = models.CharField(max_length=20, default='unidad')
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)
     line_total = models.DecimalField(max_digits=14, decimal_places=2)
-    provider_inventory_id = models.BigIntegerField(
-        null=True,
-        blank=True,
-        verbose_name='ID Inventario Proveedor'
-    )
-    provider_id = models.BigIntegerField(
-        null=True,
-        blank=True,
-        verbose_name='ID Proveedor'
-    )
 
     class Meta:
         ordering = ['id']
 
     def save(self, *args, **kwargs):
-        self.line_total = self.quantity * self.unit_price
+        self.line_total = (self.quantity * self.unit_price).quantize(
+            Decimal('0.01'), rounding=ROUND_HALF_UP
+        )
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.product_name} x{self.quantity}"
+        return f"{self.description} x{self.quantity}"

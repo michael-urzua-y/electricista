@@ -29,44 +29,77 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4">
-      {/* Background image with overlay */}
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Single background image covering entire screen */}
       <img
         src="/fondo.jpeg"
         alt=""
-        className="absolute inset-0 w-full h-full object-cover object-left"
+        className="absolute inset-0 w-full h-full object-cover animate-slow-zoom"
         loading="eager"
         decoding="async"
       />
-      <div className="absolute inset-0 bg-black/60" />
+      {/* Animated particles overlay */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="particle particle-1" />
+        <div className="particle particle-2" />
+        <div className="particle particle-3" />
+        <div className="particle particle-4" />
+        <div className="particle particle-5" />
+        <div className="particle particle-6" />
+        <div className="particle particle-7" />
+        <div className="particle particle-8" />
+      </div>
+      {/* Color shift overlay: warm amber/yellow tint to match our palette */}
+      <div className="absolute inset-0 bg-amber-900/40" />
+      <div className="absolute inset-0 bg-gradient-to-r from-gray-900/60 via-transparent to-gray-900/70" />
 
-      {/* Content */}
-      <div className="relative z-10 w-full max-w-md">
-        {/* Login card - Diseño profesional con mejor contraste */}
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-          {/* Header con fondo oscuro */}
-          <div className="bg-gray-900 px-8 py-14 flex flex-col items-center justify-center border-b-4 border-yellow-500">
-            <img 
-              src="/monayelectric-logo.png" 
-              alt="Monayelectric" 
-              className="w-20 h-20 drop-shadow-lg mb-4"
-            />
-            <h1 className="text-2xl font-bold text-white">Monayelectric</h1>
-            <p className="text-gray-400 text-sm mt-1 tracking-wide uppercase">Gestión de materiales</p>
+      {/* Content layer */}
+      <div className="relative z-10 min-h-screen flex">
+
+        {/* Left side - Landing text (3/4) */}
+        <div className="hidden lg:flex lg:w-3/4 flex-col justify-between px-16 xl:px-24 py-12">
+          {/* Logo top-left */}
+          <div>
+            <img src="/monayelectric-logo.png" alt="Logo" className="h-40 w-auto drop-shadow-2xl" />
           </div>
 
-          {/* Form */}
-          <div className="px-8 py-10">
+          {/* Text content */}
+          <div>
+            <h1 className="text-5xl xl:text-6xl font-bold text-white leading-tight drop-shadow-lg">
+              Gestión<br />
+              <span className="text-yellow-400 drop-shadow-lg">Inteligente.</span>
+            </h1>
+            <p className="mt-6 text-gray-200 text-lg leading-relaxed max-w-lg drop-shadow">
+              Plataforma integral para contratistas eléctricos. Cotiza, controla gastos, 
+              gestiona tu equipo y mantén tus impuestos al día. Todo en un solo lugar.
+            </p>
+          </div>
 
+          <div />
+        </div>
+
+        {/* Right side - Login panel (1/4, semi-transparent, full height) */}
+        <div className="w-full lg:w-1/4 lg:min-w-[320px] flex flex-col bg-gray-900/80 backdrop-blur-md">
+
+          {/* Login content - centered vertically */}
+          <div className="flex-1 flex flex-col justify-center px-8 xl:px-10 py-12">
+            {/* Welcome */}
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-white">Bienvenido</h2>
+              <p className="text-gray-400 text-sm mt-1">Ingresa tus credenciales para continuar</p>
+            </div>
+
+            {/* Error */}
             {error && (
-              <div className="mb-5 p-3 rounded-lg bg-red-50 border border-red-300 text-red-700 text-sm font-medium">
+              <div className="mb-5 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-medium">
                 {error}
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label htmlFor="username" className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
+                <label htmlFor="username" className="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5">
                   Usuario
                 </label>
                 <input
@@ -76,13 +109,13 @@ export default function Login() {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   autoComplete="username"
-                  className="w-full px-4 py-3 bg-gray-100 border-0 border-b-2 border-transparent rounded-lg focus:bg-white focus:border-yellow-500 focus:ring-0 outline-none transition-all text-gray-900 font-medium placeholder-gray-400"
-                  placeholder="Ingresa tu usuario"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-sm backdrop-blur-sm"
+                  placeholder="Tu usuario"
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
+                <label htmlFor="password" className="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5">
                   Contraseña
                 </label>
                 <div className="relative">
@@ -93,13 +126,13 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="current-password"
-                    className="w-full px-4 py-3 bg-gray-100 border-0 border-b-2 border-transparent rounded-lg focus:bg-white focus:border-yellow-500 focus:ring-0 outline-none transition-all pr-12 text-gray-900 font-medium placeholder-gray-400"
-                    placeholder="Ingresa tu contraseña"
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all pr-12 text-sm backdrop-blur-sm"
+                    placeholder="Tu contraseña"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
                     aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   >
                     {showPassword ? (
@@ -111,11 +144,11 @@ export default function Login() {
                 </div>
               </div>
 
-              <div className="pt-4">
+              <div className="pt-2">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 text-gray-900 font-bold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                  className="w-full bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-600 text-gray-900 font-bold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-yellow-500/20"
                 >
                   {loading ? (
                     <span className="inline-flex items-center gap-2">
@@ -123,16 +156,20 @@ export default function Login() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
-                      Iniciando sesión...
+                      Ingresando...
                     </span>
-                  ) : 'Iniciar sesión'}
+                  ) : 'LOGIN'}
                 </button>
               </div>
             </form>
           </div>
+
+          {/* Footer */}
+          <div className="px-8 py-4">
+            <p className="text-gray-500 text-xs text-center">© 2026</p>
+          </div>
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-6">© 2026 Monayelectric</p>
       </div>
     </div>
   )

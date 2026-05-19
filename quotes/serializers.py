@@ -1,8 +1,8 @@
 from rest_framework import serializers
 from .models import CompanyProfile, Quote, QuoteItem
-from .validators import validate_rut, validate_logo_base64, validate_positive_decimal, validate_text_safe
+from .validators import validate_rut, validate_logo_base64, validate_text_safe
 from .quote_number_service import next_quote_number
-from products.models import Product
+from prices.models import PriceSubItem
 from clients.models import Client
 
 
@@ -69,41 +69,43 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
         return instance
 
 
+# --- Quote Item Serializers ---
+
 class QuoteItemSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = QuoteItem
-        fields = ['id', 'product', 'product_name', 'quantity', 'unit', 'unit_price', 'line_total']
-        read_only_fields = ['id', 'product_name', 'unit', 'line_total']
-
-    def validate_quantity(self, value):
-        validate_positive_decimal(value)
-        return value
-
-    def validate_unit_price(self, value):
-        validate_positive_decimal(value)
-        return value
-
-
-class QuoteItemCreateSerializer(serializers.ModelSerializer):
-    # Campos opcionales para productos que vienen del buscador por proveedor
-    product_name_override = serializers.CharField(required=False, allow_blank=True, write_only=True)
-    unit_override = serializers.CharField(required=False, allow_blank=True, write_only=True)
-    provider_id = serializers.IntegerField(required=False, allow_null=True, write_only=True)
-    provider_inventory_id = serializers.IntegerField(required=False, allow_null=True, write_only=True)
+    """Serializer para detalle de QuoteItem (lectura)."""
+    item_name = serializers.SerializerMethodField()
 
     class Meta:
         model = QuoteItem
-        fields = ['product', 'quantity', 'unit_price', 'product_name_override', 'unit_override',
-                  'provider_id', 'provider_inventory_id']
+        fields = ['id', 'price_sub_item', 'description', 'quantity', 'unit_price', 'line_total', 'item_name']
+        read_only_fields = ['id', 'line_total', 'item_name']
+
+    def get_item_name(self, obj):
+        if obj.price_sub_item and obj.price_sub_item.item:
+            return obj.price_sub_item.item.name
+        return None
+
+
+class QuoteItemCreateSerializer(serializers.Serializer):
+    """Serializer para crear/actualizar ítems de cotización."""
+    price_sub_item = serializers.IntegerField()
+    quantity = serializers.DecimalField(max_digits=12, decimal_places=2)
+    unit_price = serializers.DecimalField(
+        max_digits=12, decimal_places=2, required=False, allow_null=True
+    )
 
     def validate_quantity(self, value):
-        validate_positive_decimal(value)
+        if value <= 0:
+            raise serializers.ValidationError('La cantidad debe ser mayor a 0.')
         return value
 
     def validate_unit_price(self, value):
-        validate_positive_decimal(value)
+        if value is not None and value < 0:
+            raise serializers.ValidationError('El precio unitario no puede ser negativo.')
         return value
 
+
+# --- Quote Serializers ---
 
 class QuoteListSerializer(serializers.ModelSerializer):
     class Meta:
@@ -118,31 +120,47 @@ class QuoteDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Quote
         fields = [
-            'id', 'quote_number', 'client_id', 'client_name', 'client_rut', 'client_email',
-            'status', 'subtotal', 'tax_amount', 'total_amount',
-            'notes', 'valid_until', 'created_at', 'updated_at', 'status_updated_at',
-            'items',
+            'id', 'quote_number', 'client_id', 'client_name', 'client_rut',
+            'client_email', 'status', 'subtotal', 'discount_percentage',
+            'discount_amount', 'total', 'tax_amount', 'total_amount',
+            'notes', 'valid_until', 'created_at', 'updated_at',
+            'status_updated_at', 'items',
         ]
         read_only_fields = [
-            'id', 'quote_number', 'client_id', 'client_name', 'client_rut', 'client_email',
-            'status', 'subtotal', 'tax_amount', 'total_amount',
-            'notes', 'valid_until', 'created_at', 'updated_at', 'status_updated_at',
-            'items',
+            'id', 'quote_number', 'client_id', 'client_name', 'client_rut',
+            'client_email', 'status', 'subtotal', 'discount_percentage',
+            'discount_amount', 'total', 'tax_amount', 'total_amount',
+            'notes', 'valid_until', 'created_at', 'updated_at',
+            'status_updated_at', 'items',
         ]
 
 
 class QuoteCreateSerializer(serializers.ModelSerializer):
     items = QuoteItemCreateSerializer(many=True, write_only=True)
     client_id = serializers.IntegerField(required=False, allow_null=True, write_only=True)
+    discount_percentage = serializers.DecimalField(
+        max_digits=5, decimal_places=2, required=False, default=0
+    )
 
     class Meta:
         model = Quote
         fields = [
-            'id', 'quote_number', 'client_id', 'client_name', 'client_rut', 'client_email',
-            'notes', 'valid_until', 'items',
-            'subtotal', 'tax_amount', 'total_amount', 'status', 'created_at',
+            'id', 'quote_number', 'client_id', 'client_name', 'client_rut',
+            'client_email', 'notes', 'valid_until', 'items', 'discount_percentage',
+            'subtotal', 'discount_amount', 'total', 'tax_amount', 'total_amount',
+            'status', 'created_at',
         ]
-        read_only_fields = ['id', 'quote_number', 'subtotal', 'tax_amount', 'total_amount', 'status', 'created_at']
+        read_only_fields = [
+            'id', 'quote_number', 'subtotal', 'discount_amount', 'total',
+            'tax_amount', 'total_amount', 'status', 'created_at',
+        ]
+
+    def validate_discount_percentage(self, value):
+        if value < 0 or value > 100:
+            raise serializers.ValidationError(
+                'El porcentaje de descuento debe estar entre 0 y 100.'
+            )
+        return value
 
     def validate_client_name(self, value):
         return validate_text_safe(value) or value
@@ -173,31 +191,31 @@ class QuoteCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')
+        user = self.context['request'].user
         validated_data['quote_number'] = next_quote_number()
         quote = Quote.objects.create(**validated_data)
+
         for item_data in items_data:
-            product = item_data.get('product')
-            product_name = (
-                item_data.pop('product_name_override', None)
-                or (product.name if product else 'Producto eliminado')
-            )
-            unit = (
-                item_data.pop('unit_override', None)
-                or (product.unit if product else 'unidad')
-            )
-            provider_id = item_data.pop('provider_id', None)
-            provider_inventory_id = item_data.pop('provider_inventory_id', None)
+            sub_item_id = item_data['price_sub_item']
+            try:
+                sub_item = PriceSubItem.objects.get(
+                    id=sub_item_id, item__user=user
+                )
+            except PriceSubItem.DoesNotExist:
+                quote.delete()
+                raise serializers.ValidationError(
+                    {'items': f'PriceSubItem {sub_item_id} no encontrado.'}
+                )
+
+            unit_price = item_data.get('unit_price') or sub_item.net_value
             QuoteItem.objects.create(
                 quote=quote,
-                product=product,
-                product_name=product_name,
-                unit=unit,
+                price_sub_item=sub_item,
+                description=sub_item.description,
                 quantity=item_data['quantity'],
-                unit_price=item_data['unit_price'],
-                line_total=item_data['quantity'] * item_data['unit_price'],
-                provider_id=provider_id,
-                provider_inventory_id=provider_inventory_id,
+                unit_price=unit_price,
             )
+
         quote.recalculate_totals()
         return quote
 
@@ -206,30 +224,30 @@ class QuoteCreateSerializer(serializers.ModelSerializer):
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
+
         if items_data is not None:
+            user = self.context['request'].user
             instance.items.all().delete()
+
             for item_data in items_data:
-                product = item_data.get('product')
-                product_name = (
-                    item_data.pop('product_name_override', None)
-                    or (product.name if product else 'Producto eliminado')
-                )
-                unit = (
-                    item_data.pop('unit_override', None)
-                    or (product.unit if product else 'unidad')
-                )
-                provider_id = item_data.pop('provider_id', None)
-                provider_inventory_id = item_data.pop('provider_inventory_id', None)
+                sub_item_id = item_data['price_sub_item']
+                try:
+                    sub_item = PriceSubItem.objects.get(
+                        id=sub_item_id, item__user=user
+                    )
+                except PriceSubItem.DoesNotExist:
+                    raise serializers.ValidationError(
+                        {'items': f'PriceSubItem {sub_item_id} no encontrado.'}
+                    )
+
+                unit_price = item_data.get('unit_price') or sub_item.net_value
                 QuoteItem.objects.create(
                     quote=instance,
-                    product=product,
-                    product_name=product_name,
-                    unit=unit,
+                    price_sub_item=sub_item,
+                    description=sub_item.description,
                     quantity=item_data['quantity'],
-                    unit_price=item_data['unit_price'],
-                    line_total=item_data['quantity'] * item_data['unit_price'],
-                    provider_id=provider_id,
-                    provider_inventory_id=provider_inventory_id,
+                    unit_price=unit_price,
                 )
+
             instance.recalculate_totals()
         return instance

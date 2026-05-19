@@ -1,33 +1,43 @@
-import { useState, useEffect, useRef } from 'react'
-import { searchProductsByProvider } from '../services/quotesApi'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { getPriceItems, getSubItems } from '../services/pricesApi'
 import { getClients } from '../services/clientsApi'
+import { formatRut, validateRut } from '../utils/rutUtils'
 
-const formatCurrency = (value) =>
-  new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(value || 0)
+const formatCLP = (value) => {
+  const num = Number(value)
+  if (Number.isNaN(num)) return '$0'
+  return '$' + num.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
 
 export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) {
+  // Client fields
   const [clientName, setClientName] = useState(initialData?.client_name || '')
   const [clientRut, setClientRut] = useState(initialData?.client_rut || '')
   const [clientEmail, setClientEmail] = useState(initialData?.client_email || '')
   const [notes, setNotes] = useState(initialData?.notes || '')
   const [validUntil, setValidUntil] = useState(initialData?.valid_until || '')
+
+  // Quote items (lines)
   const [items, setItems] = useState(
     initialData?.items?.map(i => ({
-      product: i.product,
-      product_name: i.product_name,
-      unit: i.unit,
-      stock: null,
+      price_sub_item: i.price_sub_item,
+      description: i.description,
       quantity: String(i.quantity),
       unit_price: String(i.unit_price),
-      provider_name: null,
-      provider_id: null,
-      provider_inventory_id: null,
     })) || []
   )
-  const [search, setSearch] = useState('')
-  const [searchResults, setSearchResults] = useState([])
-  const [searchLoading, setSearchLoading] = useState(false)
-  const [errors, setErrors] = useState({})
+
+  // Discount
+  const [discountPercentage, setDiscountPercentage] = useState(
+    initialData?.discount_percentage != null ? String(initialData.discount_percentage) : '0'
+  )
+
+  // Category selector state
+  const [categories, setCategories] = useState([])
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [categorySubItems, setCategorySubItems] = useState([])
+  const [categoryLoading, setCategoryLoading] = useState(false)
+  const categoryRef = useRef(null)
 
   // Client search state
   const [clientSearch, setClientSearch] = useState('')
@@ -36,18 +46,57 @@ export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) 
   const [showClientDropdown, setShowClientDropdown] = useState(false)
   const clientDropdownRef = useRef(null)
 
-  // Close client dropdown on outside click
+  // Errors
+  const [errors, setErrors] = useState({})
+  const [rutError, setRutError] = useState('')
+
+  // --- Load categories on mount ---
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await getPriceItems()
+        const data = res.data?.results ?? res.data ?? []
+        setCategories(data)
+      } catch {
+        setCategories([])
+      }
+    }
+    fetchCategories()
+  }, [])
+
+  // --- Load sub-items when category changes ---
+  useEffect(() => {
+    if (!selectedCategory) {
+      setCategorySubItems([])
+      return
+    }
+    const fetchSubItems = async () => {
+      setCategoryLoading(true)
+      try {
+        const res = await getSubItems(selectedCategory)
+        const data = res.data?.results ?? res.data ?? []
+        setCategorySubItems(data)
+      } catch {
+        setCategorySubItems([])
+      } finally {
+        setCategoryLoading(false)
+      }
+    }
+    fetchSubItems()
+  }, [selectedCategory])
+
+  // --- Close category dropdown on click outside ---
   useEffect(() => {
     const handler = (e) => {
-      if (clientDropdownRef.current && !clientDropdownRef.current.contains(e.target)) {
-        setShowClientDropdown(false)
+      if (selectedCategory && categoryRef.current && !categoryRef.current.contains(e.target)) {
+        setSelectedCategory('')
       }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [])
+  }, [selectedCategory])
 
-  // Debounce client search
+  // --- Client search with debounce ---
   useEffect(() => {
     if (!clientSearch.trim() || clientSearch.trim().length < 2) {
       setClientResults([])
@@ -70,6 +119,17 @@ export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) 
     return () => clearTimeout(timer)
   }, [clientSearch])
 
+  // Close client dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (clientDropdownRef.current && !clientDropdownRef.current.contains(e.target)) {
+        setShowClientDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
   const handleSelectClient = (client) => {
     setClientName(client.name)
     setClientRut(client.rut)
@@ -79,66 +139,68 @@ export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) 
     setShowClientDropdown(false)
   }
 
-  // Debounce search — usa el nuevo endpoint por proveedor
-  useEffect(() => {
-    if (!search.trim() || search.trim().length < 2) { setSearchResults([]); return }
-    const timer = setTimeout(async () => {
-      setSearchLoading(true)
-      try {
-        const res = await searchProductsByProvider(search)
-        setSearchResults(res.data || [])
-      } catch { setSearchResults([]) }
-      finally { setSearchLoading(false) }
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [search])
-
-  const addItem = (product) => {
+  // --- Add item from PriceSubItem ---
+  const addItemFromSubItem = useCallback((subItem) => {
     setItems(prev => [...prev, {
-      product: product.id,
-      product_name: product.name,
-      unit: product.unit || 'unidad',
-      stock: product.stock,
+      price_sub_item: subItem.id,
+      description: subItem.description,
       quantity: '1',
-      unit_price: product.sell_price ? String(product.sell_price) : String(product.unit_price || ''),
-      provider_name: product.provider_name,
-      provider_id: product.provider_id,
-      provider_inventory_id: product.provider_inventory_id,
+      unit_price: String(parseFloat(subItem.net_value) || 0),
     }])
-    setSearch('')
-    setSearchResults([])
-  }
+  }, [])
 
+  // --- Update item field ---
   const updateItem = (index, field, value) => {
     setItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item))
   }
 
+  // --- Remove item ---
   const removeItem = (index) => {
     setItems(prev => prev.filter((_, i) => i !== index))
   }
 
-  // Cálculo en tiempo real
+  // --- Financial calculations ---
   const subtotal = items.reduce((acc, item) => {
     const qty = parseFloat(item.quantity) || 0
     const price = parseFloat(item.unit_price) || 0
     return acc + qty * price
   }, 0)
-  const tax = subtotal * 0.19
-  const total = subtotal + tax
+
+  const discountPct = parseFloat(discountPercentage) || 0
+  const discountAmount = subtotal * (discountPct / 100)
+  const total = subtotal - discountAmount
+  const taxAmount = total * 0.19
+  const totalAmount = total + taxAmount
+
+  // --- Validation ---
+  const isDiscountValid = discountPct >= 0 && discountPct <= 100
+  const discountRaw = discountPercentage.trim()
+  const isDiscountFieldValid = discountRaw === '' || (isDiscountValid && !Number.isNaN(parseFloat(discountRaw)))
 
   const handleSubmit = (e) => {
     e.preventDefault()
     const newErrors = {}
-    if (items.length === 0) newErrors.items = 'Agrega al menos un producto'
+
+    if (items.length === 0) newErrors.items = 'Agrega al menos un ítem'
+
     items.forEach((item, i) => {
-      if (!parseFloat(item.quantity) || parseFloat(item.quantity) <= 0)
-        newErrors[`qty_${i}`] = 'Cantidad inválida'
-      if (!parseFloat(item.unit_price) || parseFloat(item.unit_price) <= 0)
+      const qty = parseFloat(item.quantity)
+      if (!qty || qty <= 0) newErrors[`qty_${i}`] = 'Cantidad inválida'
+      const price = parseFloat(item.unit_price)
+      if (price === undefined || price === null || Number.isNaN(price) || price < 0) {
         newErrors[`price_${i}`] = 'Precio inválido'
-      if (item.stock !== null && item.stock !== undefined && parseFloat(item.quantity) > item.stock)
-        newErrors[`qty_${i}`] = `Máximo disponible: ${item.stock}`
+      }
     })
-    if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return }
+
+    if (!isDiscountFieldValid || !isDiscountValid) {
+      newErrors.discount = 'El descuento debe estar entre 0 y 100'
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+
     setErrors({})
     onSubmit({
       client_name: clientName,
@@ -146,27 +208,14 @@ export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) 
       client_email: clientEmail,
       notes,
       valid_until: validUntil || null,
+      discount_percentage: discountPct,
       items: items.map(item => ({
-        product: item.product,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        provider_id: item.provider_id || null,
-        provider_inventory_id: item.provider_inventory_id || null,
-        // Si no hay product FK (viene del buscador por proveedor), enviar nombre y unidad
-        ...(item.product ? {} : {
-          product_name_override: item.product_name,
-          unit_override: item.unit,
-        }),
+        price_sub_item: item.price_sub_item,
+        quantity: parseFloat(item.quantity),
+        unit_price: parseFloat(item.unit_price),
       })),
     })
   }
-
-  // Agrupar resultados por nombre de producto para mostrar proveedores juntos
-  const groupedResults = searchResults.reduce((acc, p) => {
-    if (!acc[p.name]) acc[p.name] = []
-    acc[p.name].push(p)
-    return acc
-  }, {})
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -218,9 +267,22 @@ export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) 
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">RUT</label>
-            <input value={clientRut} onChange={e => setClientRut(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-400 outline-none"
-              placeholder="12345678-9" />
+            <input value={clientRut} onChange={e => {
+              const formatted = formatRut(e.target.value)
+              setClientRut(formatted)
+              if (formatted.length > 3 && !validateRut(formatted)) {
+                setRutError('RUT inválido')
+              } else {
+                setRutError('')
+              }
+            }}
+              onBlur={() => {
+                if (clientRut && !validateRut(clientRut)) setRutError('RUT inválido')
+              }}
+              maxLength={12}
+              className={`w-full px-3 py-2 bg-white border rounded-lg text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-400 outline-none ${rutError ? 'border-red-400' : 'border-gray-300'}`}
+              placeholder="12.345.678-9" />
+            {rutError && <p className="mt-1 text-xs text-red-500">{rutError}</p>}
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Email</label>
@@ -245,162 +307,125 @@ export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) 
         </div>
       </div>
 
-      {/* Búsqueda de productos */}
-      <div>
-        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Productos</h3>
-        <div className="relative">
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full px-4 py-2.5 bg-gray-100 border-0 border-b-2 border-transparent rounded-lg focus:bg-white focus:border-yellow-500 focus:ring-0 outline-none transition-all text-sm placeholder-gray-400"
-            placeholder="Buscar producto por nombre..."
-          />
-          {searchLoading && (
-            <span className="absolute right-3 top-2.5 text-xs text-gray-400">Buscando...</span>
-          )}
+      {/* Agregar ítems — Selector de categoría + Buscador */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Agregar Ítems</h3>
 
-          {/* Dropdown de resultados agrupados por producto → proveedores */}
-          {Object.keys(groupedResults).length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto">
-              {Object.entries(groupedResults).map(([productName, providers]) => (
-                <div key={productName} className="border-b border-gray-100 last:border-0">
-                  {/* Nombre del producto */}
-                  <div className="px-4 py-2 bg-gray-50">
-                    <span className="font-semibold text-gray-800 text-sm">{productName}</span>
-                  </div>
-                  {/* Un botón por cada proveedor */}
-                  {providers.map((p) => {
-                    const sinStock = p.stock !== null && p.stock !== undefined && p.stock <= 0
-                    return (
-                    <button
-                      key={`${p.name}-${p.provider_id}`}
-                      type="button"
-                      onClick={() => !sinStock && addItem(p)}
-                      disabled={sinStock}
-                      className={`w-full text-left px-4 py-2.5 flex items-center justify-between gap-2 transition-colors ${
-                        sinStock
-                          ? 'opacity-50 cursor-not-allowed bg-gray-50'
-                          : 'hover:bg-yellow-50 cursor-pointer'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        {/* Badge proveedor */}
-                        <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">
-                          {p.provider_name}
-                        </span>
-                        {/* Unidad */}
-                        <span className="text-xs text-gray-400">{p.unit}</span>
-                        {sinStock && (
-                          <span className="text-xs text-red-500 font-semibold">Sin stock</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        {/* Stock */}
-                        {p.stock !== null && p.stock !== undefined ? (
-                          <span className={`text-xs font-medium ${p.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                            Stock: {p.stock}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-400">Sin stock</span>
-                        )}
-                        {/* Precio costo */}
-                        <span className="text-xs text-gray-400">
-                          Costo: {formatCurrency(p.unit_price)}
-                        </span>
-                        {/* Precio venta */}
-                        <span className="text-xs font-bold text-yellow-600">
-                          Venta: {formatCurrency(p.sell_price)}
-                        </span>
-                      </div>
-                    </button>
-                    )
-                  })}
-                </div>
+        <div className="grid grid-cols-1 gap-4">
+          {/* Selector de categoría */}
+          <div ref={categoryRef}>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">
+              Seleccionar por categoría
+            </label>
+            <select
+              value={selectedCategory}
+              onChange={e => setSelectedCategory(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-400 outline-none"
+            >
+              <option value="">— Seleccionar categoría —</option>
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.order_number}. {cat.name}
+                </option>
               ))}
-            </div>
-          )}
+            </select>
 
-          {/* Sin resultados */}
-          {!searchLoading && search.trim().length >= 2 && searchResults.length === 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg px-4 py-3 text-sm text-gray-400">
-              No se encontraron productos con ese nombre
-            </div>
-          )}
+            {/* Sub-items de la categoría seleccionada */}
+            {selectedCategory && (
+              <div className="mt-2 border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
+                {categoryLoading ? (
+                  <div className="px-4 py-3 text-sm text-gray-400">Cargando...</div>
+                ) : categorySubItems.length === 0 ? (
+                  <div className="px-4 py-3 text-sm text-gray-400">Sin sub-ítems en esta categoría</div>
+                ) : (
+                  categorySubItems.map(sub => (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      onClick={() => addItemFromSubItem(sub)}
+                      className="w-full text-left px-4 py-2.5 hover:bg-yellow-50 transition-colors border-b border-gray-100 last:border-0 flex items-center justify-between"
+                    >
+                      <span className="text-sm text-gray-900">{sub.description}</span>
+                      <span className="text-sm font-medium text-gray-700 ml-2 shrink-0">
+                        {formatCLP(sub.net_value)}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         </div>
+
         {errors.items && <p className="text-red-500 text-xs mt-1">{errors.items}</p>}
       </div>
 
-      {/* Tabla de ítems */}
+      {/* Tabla de líneas */}
       {items.length > 0 && (
         <div className="overflow-x-auto rounded-xl border border-gray-200">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-900 text-yellow-400">
-                <th className="text-left px-4 py-3 font-semibold">Producto</th>
-                <th className="text-left px-3 py-3 font-semibold">Proveedor</th>
-                <th className="text-center px-3 py-3 font-semibold w-24">Stock</th>
+                <th className="text-left px-4 py-3 font-semibold">Descripción</th>
                 <th className="text-center px-3 py-3 font-semibold w-28">Cantidad</th>
-                <th className="text-center px-3 py-3 font-semibold w-16">Unidad</th>
                 <th className="text-right px-3 py-3 font-semibold w-36">Precio Unit.</th>
-                <th className="text-right px-3 py-3 font-semibold w-32">Total</th>
+                <th className="text-right px-3 py-3 font-semibold w-32">Total Línea</th>
                 <th className="w-10"></th>
               </tr>
             </thead>
             <tbody>
-              {items.map((item, i) => (
-                <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-900 font-medium">{item.product_name}</td>
-                  <td className="px-3 py-3">
-                    {item.provider_name ? (
-                      <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">
-                        {item.provider_name}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    {item.stock !== null && item.stock !== undefined ? (
-                      <span className={`text-xs font-medium ${item.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                        {item.stock}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-3">
-                    <input type="number" min="0.01" step="0.01"
-                      max={item.stock !== null && item.stock !== undefined ? item.stock : undefined}
-                      value={item.quantity}
-                      onChange={e => {
-                        const val = e.target.value
-                        const max = item.stock !== null && item.stock !== undefined ? item.stock : Infinity
-                        if (parseFloat(val) > max) {
-                          updateItem(i, 'quantity', String(max))
-                        } else {
-                          updateItem(i, 'quantity', val)
-                        }
-                      }}
-                      className={`w-full text-center px-2 py-1 border rounded-lg text-sm focus:border-yellow-500 outline-none ${errors[`qty_${i}`] ? 'border-red-400' : 'border-gray-300'}`} />
-                    {item.stock !== null && item.stock !== undefined && (
-                      <p className="text-xs text-center mt-0.5 text-gray-400">máx: {item.stock}</p>
-                    )}
-                  </td>
-                  <td className="px-3 py-3 text-center text-gray-500 text-xs">{item.unit}</td>
-                  <td className="px-3 py-3">
-                    <input type="number" min="0.01" step="0.01" value={item.unit_price}
-                      onChange={e => updateItem(i, 'unit_price', e.target.value)}
-                      className={`w-full text-right px-2 py-1 border rounded-lg text-sm focus:border-yellow-500 outline-none ${errors[`price_${i}`] ? 'border-red-400' : 'border-gray-300'}`} />
-                  </td>
-                  <td className="px-3 py-3 text-right font-medium text-gray-900">
-                    {formatCurrency((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0))}
-                  </td>
-                  <td className="px-2 py-3 text-center">
-                    <button type="button" onClick={() => removeItem(i)}
-                      className="text-red-400 hover:text-red-600 text-lg leading-none">×</button>
-                  </td>
-                </tr>
-              ))}
+              {items.map((item, i) => {
+                const qty = parseFloat(item.quantity) || 0
+                const price = parseFloat(item.unit_price) || 0
+                const lineTotal = qty * price
+                const qtyInvalid = item.quantity !== '' && qty <= 0
+
+                return (
+                  <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-900 font-medium">{item.description}</td>
+                    <td className="px-3 py-3">
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={item.quantity}
+                        onChange={e => updateItem(i, 'quantity', e.target.value)}
+                        className={`w-full text-center px-2 py-1 border rounded-lg text-sm focus:border-yellow-500 outline-none ${
+                          qtyInvalid || errors[`qty_${i}`] ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                        }`}
+                      />
+                      {qtyInvalid && (
+                        <p className="text-xs text-red-500 text-center mt-0.5">Debe ser &gt; 0</p>
+                      )}
+                    </td>
+                    <td className="px-3 py-3">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={item.unit_price}
+                        onChange={e => updateItem(i, 'unit_price', e.target.value)}
+                        className={`w-full text-right px-2 py-1 border rounded-lg text-sm focus:border-yellow-500 outline-none ${
+                          errors[`price_${i}`] ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                        }`}
+                      />
+                    </td>
+                    <td className="px-3 py-3 text-right font-medium text-gray-900">
+                      {formatCLP(lineTotal)}
+                    </td>
+                    <td className="px-2 py-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => removeItem(i)}
+                        className="text-red-400 hover:text-red-600 text-lg leading-none"
+                        title="Eliminar línea"
+                      >
+                        ×
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -409,16 +434,57 @@ export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) 
       {/* Resumen financiero */}
       {items.length > 0 && (
         <div className="flex justify-end">
-          <div className="w-64 bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
+          <div className="w-80 bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
+            {/* Discount input */}
+            <div className="px-4 py-3 border-b border-gray-200">
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">
+                Descuento (%)
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={discountPercentage}
+                onChange={e => setDiscountPercentage(e.target.value)}
+                className={`w-full px-3 py-1.5 border rounded-lg text-sm focus:border-yellow-500 outline-none ${
+                  !isDiscountFieldValid ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                }`}
+              />
+              {!isDiscountFieldValid && (
+                <p className="text-xs text-red-500 mt-1">Debe estar entre 0 y 100</p>
+              )}
+              {errors.discount && (
+                <p className="text-xs text-red-500 mt-1">{errors.discount}</p>
+              )}
+            </div>
+
+            {/* Summary lines */}
             <div className="px-4 py-3 flex justify-between text-sm text-gray-700">
-              <span>Subtotal</span><span className="font-medium">{formatCurrency(subtotal)}</span>
+              <span>Subtotal</span>
+              <span className="font-medium">{formatCLP(subtotal)}</span>
             </div>
+
+            {discountPct > 0 && (
+              <div className="px-4 py-3 flex justify-between text-sm text-gray-700 border-t border-gray-200">
+                <span>Descuento ({discountPct}%)</span>
+                <span className="font-medium text-red-600">-{formatCLP(discountAmount)}</span>
+              </div>
+            )}
+
             <div className="px-4 py-3 flex justify-between text-sm text-gray-700 border-t border-gray-200">
-              <span>IVA (19%)</span><span className="font-medium">{formatCurrency(tax)}</span>
+              <span>Total</span>
+              <span className="font-medium">{formatCLP(total)}</span>
             </div>
+
+            <div className="px-4 py-3 flex justify-between text-sm text-gray-700 border-t border-gray-200">
+              <span>IVA (19%)</span>
+              <span className="font-medium">{formatCLP(taxAmount)}</span>
+            </div>
+
             <div className="px-4 py-3 flex justify-between bg-gray-900 text-yellow-400">
-              <span className="font-bold text-sm">TOTAL CLP</span>
-              <span className="font-bold text-sm">{formatCurrency(total)}</span>
+              <span className="font-bold text-sm">TOTAL NETO</span>
+              <span className="font-bold text-sm">{formatCLP(totalAmount)}</span>
             </div>
           </div>
         </div>
@@ -426,12 +492,18 @@ export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) 
 
       {/* Botones */}
       <div className="flex justify-end gap-3 pt-2">
-        <button type="button" onClick={onCancel}
-          className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        >
           Cancelar
         </button>
-        <button type="submit" disabled={loading}
-          className="px-5 py-2.5 text-sm font-bold text-gray-900 bg-yellow-500 hover:bg-yellow-600 rounded-lg transition-colors disabled:opacity-50">
+        <button
+          type="submit"
+          disabled={loading || !isDiscountFieldValid}
+          className="px-5 py-2.5 text-sm font-bold text-gray-900 bg-yellow-500 hover:bg-yellow-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
           {loading ? 'Guardando...' : 'Guardar Cotización'}
         </button>
       </div>

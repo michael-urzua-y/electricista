@@ -15,4 +15,4 @@ class QuoteAdmin(admin.ModelAdmin):
 
 @admin.register(QuoteItem)
 class QuoteItemAdmin(admin.ModelAdmin):
-    list_display = ['quote', 'product_name', 'quantity', 'unit', 'unit_price', 'line_total']
+    list_display = ['quote', 'description', 'quantity', 'unit_price', 'line_total']

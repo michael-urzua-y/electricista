@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import api from '../services/api'
 import {
   PlusIcon,
@@ -10,6 +10,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import PriceVariationBadge from '../components/PriceVariationBadge'
 import Pagination from '../components/Pagination'
+import MonthPicker from '../components/MonthPicker'
 
 const PAGE_SIZE = 10
 
@@ -23,7 +24,8 @@ export default function Invoices() {
   const [notification, setNotification] = useState(null)
   const [providers, setProviders] = useState([])
   const [loadingDetail, setLoadingDetail] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
+  const [pages, setPages] = useState({})
+  const [selectedPeriod, setSelectedPeriod] = useState(null)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -61,9 +63,8 @@ export default function Invoices() {
 
   const fetchInvoices = async () => {
     try {
-      const res = await api.get('/facturas/')
+      const res = await api.get('/facturas/?page_size=1000')
       const data = Array.isArray(res.data) ? res.data : (res.data.results || [])
-      console.log('Fetched invoices:', data)
       
       // Detectar cambios de estado para notificaciones
       if (invoices.length > 0) {
@@ -248,6 +249,30 @@ export default function Invoices() {
     }
   };
 
+  // Compute available months from invoices data
+  const availableMonths = useMemo(() => {
+    const set = new Set()
+    invoices.forEach(inv => {
+      const dateField = inv.issue_date
+      if (dateField) {
+        const [y, m] = dateField.substring(0, 7).split('-')
+        set.add(JSON.stringify({ year: parseInt(y), month: parseInt(m) }))
+      }
+    })
+    return [...set].map(s => JSON.parse(s))
+  }, [invoices])
+
+  // Filter invoices by selected period
+  const filteredInvoices = useMemo(() => {
+    if (!selectedPeriod) return invoices
+    return invoices.filter(inv => {
+      const dateField = inv.issue_date
+      if (!dateField) return false
+      const [y, m] = dateField.substring(0, 7).split('-')
+      return parseInt(y) === selectedPeriod.year && parseInt(m) === selectedPeriod.month
+    })
+  }, [invoices, selectedPeriod])
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -256,13 +281,38 @@ export default function Invoices() {
           <h1 className="text-3xl font-bold text-gray-900">Facturas</h1>
           <p className="text-gray-500 mt-1">Sube y gestiona tus facturas de compras</p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition-colors self-start sm:self-auto"
-        >
-          <PlusIcon className="w-5 h-5" />
-          Subir Factura
-        </button>
+        <div className="flex gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => window.location.href = '/proveedores'}
+            className="inline-flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-lg transition-colors text-sm"
+          >
+            🏪 Proveedores
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="inline-flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-bold text-sm transition-colors"
+          >
+            <PlusIcon className="w-5 h-5" />
+            Subir Factura
+          </button>
+        </div>
+      </div>
+
+      {/* Month filter */}
+      <div className="flex items-center gap-2 justify-end">
+        {selectedPeriod && (
+          <button
+            onClick={() => setSelectedPeriod(null)}
+            className="text-xs text-yellow-600 hover:text-yellow-700 font-medium"
+          >
+            Ver todos
+          </button>
+        )}
+        <MonthPicker
+          value={selectedPeriod}
+          onChange={setSelectedPeriod}
+          availableMonths={availableMonths}
+        />
       </div>
 
       {/* Upload Modal */}
@@ -400,94 +450,130 @@ export default function Invoices() {
         </div>
       )}
 
-      {/* Invoices table */}
-      {(() => {
-        const totalPages = Math.ceil(invoices.length / PAGE_SIZE)
-        const paginated = invoices.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+      {/* Invoices grouped by month */}
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-500" />
+        </div>
+      ) : invoices.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+          <DocumentIcon className="w-12 h-12 mb-3" />
+          <p className="text-sm">No hay facturas registradas</p>
+          <button onClick={() => setShowModal(true)} className="mt-4 text-yellow-600 hover:text-yellow-700 font-medium text-sm">
+            Subir tu primera factura
+          </button>
+        </div>
+      ) : filteredInvoices.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+          <DocumentIcon className="w-12 h-12 mb-3" />
+          <p className="text-sm">No hay facturas en este período</p>
+          <button onClick={() => setSelectedPeriod(null)} className="mt-4 text-yellow-600 hover:text-yellow-700 font-medium text-sm">
+            Ver todos los meses
+          </button>
+        </div>
+      ) : (() => {
+        // Group invoices by month
+        const groups = {}
+        filteredInvoices.forEach((inv) => {
+          const key = inv.issue_date ? inv.issue_date.substring(0, 7) : 'sin-fecha'
+          if (!groups[key]) groups[key] = []
+          groups[key].push(inv)
+        })
+        const sortedMonths = Object.entries(groups).sort(([a], [b]) => b.localeCompare(a))
+
+        const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+        const formatMonthLabel = (ym) => {
+          if (ym === 'sin-fecha') return 'Sin fecha'
+          const [year, month] = ym.split('-')
+          return `${monthNames[parseInt(month, 10) - 1]} ${year}`
+        }
+
         return (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            {/* Contador */}
-            {invoices.length > 0 && (
-              <div className="px-6 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-                <span className="text-sm text-gray-500">
-                  {invoices.length} factura(s) en total
-                </span>
-                {totalPages > 1 && (
-                  <span className="text-sm text-gray-500">
-                    Página {currentPage} de {totalPages}
-                  </span>
-                )}
-              </div>
-            )}
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-100">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Factura</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Proveedor</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Total</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Estado</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {loading ? (
-                    <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-400">Cargando...</td></tr>
-                  ) : invoices.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="px-6 py-12 text-center">
-                        <div className="flex flex-col items-center">
-                          <DocumentIcon className="w-12 h-12 text-gray-300 mb-3" />
-                          <p className="text-gray-500">No hay facturas registradas</p>
-                          <button onClick={() => setShowModal(true)} className="mt-4 text-primary-600 hover:text-primary-700 font-medium">
-                            Subir tu primera factura
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    paginated.map((invoice) => (
-                      <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div>
-                            <p className="font-medium text-gray-900">{invoice.invoice_number || `#${invoice.id}`}</p>
-                            {invoice.tiene_archivo && (
-                              <button onClick={() => handleVerFactura(invoice.id)} className="text-xs text-primary-600 hover:underline flex items-center gap-1 mt-0.5">
-                                <DocumentIcon className="w-3 h-3" />
-                                Ver factura
+          <div className="space-y-6">
+            {sortedMonths.map(([month, monthInvoices]) => {
+              const subtotal = monthInvoices.reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0)
+              const page = pages[month] || 1
+              const totalPages = Math.ceil(monthInvoices.length / PAGE_SIZE)
+              const paginated = monthInvoices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+              return (
+                <div key={month} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  {/* Month header */}
+                  <div className="flex items-center justify-between px-4 sm:px-6 py-4 bg-gray-900">
+                    <h2 className="text-lg font-bold text-yellow-400">
+                      {formatMonthLabel(month)}
+                    </h2>
+                    <div className="flex items-center gap-4">
+                      <span className="text-white text-sm font-medium hidden sm:inline">
+                        {monthInvoices.length} factura(s)
+                      </span>
+                      <span className="text-white text-sm font-medium">
+                        Total: <span className="text-yellow-400">{formatCurrency(subtotal)}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-100">
+                          <th className="text-left px-4 sm:px-6 py-3 font-semibold text-gray-600">Factura</th>
+                          <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden sm:table-cell">Fecha</th>
+                          <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">Proveedor</th>
+                          <th className="text-right px-4 py-3 font-semibold text-gray-600">Total</th>
+                          <th className="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>
+                          <th className="text-center px-4 py-3 font-semibold text-gray-600 w-20">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {paginated.map((invoice) => (
+                          <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 sm:px-6 py-3">
+                              <p className="font-medium text-gray-900">{invoice.invoice_number || `#${invoice.id}`}</p>
+                              {invoice.tiene_archivo && (
+                                <button onClick={() => handleVerFactura(invoice.id)} className="text-xs text-yellow-600 hover:underline flex items-center gap-1 mt-0.5">
+                                  <DocumentIcon className="w-3 h-3" />
+                                  Ver factura
+                                </button>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-gray-600 hidden sm:table-cell whitespace-nowrap">
+                              {invoice.issue_date ? format(new Date(invoice.issue_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: es }) : '—'}
+                            </td>
+                            <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{invoice.provider_name || '—'}</td>
+                            <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(invoice.total_amount)}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${getStatusColor(invoice.status)}`}>
+                                {(invoice.status === 'pending' || invoice.status === 'processing') && (
+                                  <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                )}
+                                {getStatusLabel(invoice.status)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <button onClick={() => fetchInvoiceDetail(invoice)} className="p-1.5 text-gray-400 hover:text-yellow-600 transition-colors" title="Ver detalles">
+                                <EyeIcon className="w-4 h-4" />
                               </button>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {invoice.issue_date ? format(new Date(invoice.issue_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: es }) : 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{invoice.provider_name || 'Sin proveedor'}</td>
-                        <td className="px-6 py-4 text-sm font-semibold text-gray-900">{formatCurrency(invoice.total_amount)}</td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full ${getStatusColor(invoice.status)}`}>
-                            {(invoice.status === 'pending' || invoice.status === 'processing') && (
-                              <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                            )}
-                            {getStatusLabel(invoice.status)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <button onClick={() => fetchInvoiceDetail(invoice)} className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors" title="Ver detalles">
-                            <EyeIcon className="w-5 h-5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={(p) => setPages(prev => ({ ...prev, [month]: p }))}
+                    totalItems={monthInvoices.length}
+                    pageSize={PAGE_SIZE}
+                  />
+                </div>
+              )
+            })}
           </div>
         )
       })()}

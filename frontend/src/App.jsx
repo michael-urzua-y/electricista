@@ -13,6 +13,10 @@ import QuoteDetail from './pages/QuoteDetail'
 import Clients from './pages/Clients'
 import ClientDetail from './pages/ClientDetail'
 import Accounting from './pages/Accounting'
+import Prices from './pages/Prices'
+import GastosGenerales from './pages/GastosGenerales'
+import Trabajadores from './pages/Trabajadores'
+import EstimadorTributario from './pages/EstimadorTributario'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 
 function PrivateRoute({ children }) {
@@ -32,7 +36,7 @@ function App() {
               <Layout />
             </PrivateRoute>
           }>
-            <Route index element={<Dashboard />} />
+            <Route index element={<Quotes />} />
             <Route path="facturas" element={<Invoices />} />
             <Route path="productos" element={<Products />} />
             <Route path="proveedores" element={<Providers />} />
@@ -43,6 +47,10 @@ function App() {
             <Route path="clients" element={<Clients />} />
             <Route path="clients/:id" element={<ClientDetail />} />
             <Route path="accounting" element={<Accounting />} />
+            <Route path="precios" element={<Prices />} />
+            <Route path="gastos-generales" element={<GastosGenerales />} />
+            <Route path="trabajadores" element={<Trabajadores />} />
+            <Route path="estimador-tributario" element={<EstimadorTributario />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

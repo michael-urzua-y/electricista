@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
+import { formatRut, validateRut } from '../utils/rutUtils'
 
 export default function CompanyProfileForm({ initialData, onSubmit, loading, apiErrors }) {
   const [name, setName] = useState(initialData?.name || '')
   const [rut, setRut] = useState(initialData?.rut || '')
+  const [rutError, setRutError] = useState('')
   const [address, setAddress] = useState(initialData?.address || '')
   const [phone, setPhone] = useState(initialData?.phone || '')
   const [email, setEmail] = useState(initialData?.email || '')
@@ -106,9 +108,20 @@ export default function CompanyProfileForm({ initialData, onSubmit, loading, api
           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">
             RUT <span className="text-red-400">*</span>
           </label>
-          <input value={rut} onChange={e => setRut(e.target.value)} required
-            className={fieldClass(!!apiErrors?.rut)} placeholder="76543210-9" />
-          {apiErrors?.rut && <p className="text-red-500 text-xs mt-1">{apiErrors.rut}</p>}
+          <input value={rut} onChange={e => {
+            const formatted = formatRut(e.target.value)
+            setRut(formatted)
+            if (formatted.length > 3 && !validateRut(formatted)) {
+              setRutError('RUT inválido')
+            } else {
+              setRutError('')
+            }
+          }}
+            onBlur={() => { if (rut && !validateRut(rut)) setRutError('RUT inválido') }}
+            maxLength={12}
+            required
+            className={fieldClass(!!apiErrors?.rut || !!rutError)} placeholder="76.543.210-9" />
+          {(rutError || apiErrors?.rut) && <p className="text-red-500 text-xs mt-1">{rutError || apiErrors.rut}</p>}
         </div>
 
         <div>

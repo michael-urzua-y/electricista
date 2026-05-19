@@ -1,3 +1,4 @@
+{% load quote_filters %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -8,9 +9,9 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: Arial, sans-serif;
-      font-size: 11pt;
+      font-size: 10pt;
       color: #1f2937;
-      padding: 30px 40px;
+      padding: 20px 25px;
     }
 
     /* ── Cabecera ── */
@@ -20,81 +21,81 @@
       align-items: flex-start;
       background-color: #111827;
       color: #EAB308;
-      padding: 20px 24px;
+      padding: 14px 18px;
       border-radius: 4px 4px 0 0;
       margin-bottom: 0;
     }
     .header .company-info h1 {
-      font-size: 18pt;
+      font-size: 15pt;
       font-weight: bold;
       color: #EAB308;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
     }
     .header .company-info p {
-      font-size: 9pt;
+      font-size: 8pt;
       color: #d1d5db;
-      margin: 2px 0;
+      margin: 1px 0;
     }
     .header .logo-wrap {
       text-align: right;
     }
     .header .logo-wrap img {
-      max-height: 70px;
-      max-width: 160px;
+      max-height: 55px;
+      max-width: 130px;
       object-fit: contain;
       background-color: #ffffff;
-      border-radius: 6px;
-      padding: 6px;
+      border-radius: 4px;
+      padding: 4px;
     }
 
     /* ── Banda de número de cotización ── */
     .quote-band {
       background-color: #EAB308;
       color: #111827;
-      padding: 8px 24px;
+      padding: 6px 18px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
+      margin-bottom: 14px;
     }
     .quote-band .quote-number {
-      font-size: 14pt;
+      font-size: 12pt;
       font-weight: bold;
     }
     .quote-band .quote-dates {
-      font-size: 9pt;
+      font-size: 8pt;
       text-align: right;
     }
 
     /* ── Secciones de datos ── */
     .section {
-      margin-bottom: 18px;
+      margin-bottom: 12px;
     }
     .section-title {
-      font-size: 10pt;
+      font-size: 9pt;
       font-weight: bold;
       color: #EAB308;
       background-color: #111827;
-      padding: 4px 10px;
-      margin-bottom: 8px;
+      padding: 3px 8px;
+      margin-bottom: 6px;
       border-radius: 2px;
     }
     .data-grid {
       display: flex;
       flex-wrap: wrap;
-      gap: 4px 20px;
+      gap: 3px 16px;
     }
     .data-item {
-      min-width: 200px;
+      min-width: 160px;
     }
     .data-item .label {
-      font-size: 8pt;
+      font-size: 7pt;
       color: #6b7280;
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
     .data-item .value {
-      font-size: 10pt;
+      font-size: 9pt;
       color: #1f2937;
     }
 
@@ -102,87 +103,75 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 18px;
+      margin-bottom: 12px;
     }
     thead tr {
       background-color: #111827;
       color: #EAB308;
     }
     thead th {
-      padding: 8px 10px;
+      padding: 6px 8px;
       text-align: left;
-      font-size: 9pt;
+      font-size: 8pt;
       font-weight: bold;
+      white-space: nowrap;
     }
     thead th.right { text-align: right; }
-    tbody tr:nth-child(even) {
-      background-color: #f9fafb;
-    }
+    thead th.center { text-align: center; }
     tbody td {
-      padding: 7px 10px;
-      font-size: 10pt;
-      border-bottom: 1px solid #d1d5db;
+      padding: 5px 8px;
+      font-size: 9pt;
+      border-bottom: 1px solid #e5e7eb;
       color: #1f2937;
+      white-space: nowrap;
     }
+    tbody td.wrap { white-space: normal; }
     tbody td.right { text-align: right; }
-    tfoot tr {
-      background-color: #f3f4f6;
-    }
-    tfoot td {
-      padding: 6px 10px;
-      font-size: 10pt;
-      border-top: 2px solid #d1d5db;
-    }
-    tfoot td.right { text-align: right; }
-    tfoot tr.total-row td {
-      background-color: #111827;
-      color: #EAB308;
-      font-weight: bold;
-      font-size: 11pt;
-    }
+    tbody td.center { text-align: center; }
 
     /* ── Resumen financiero ── */
     .summary {
-      width: 280px;
+      width: 240px;
       margin-left: auto;
-      margin-bottom: 18px;
+      margin-bottom: 12px;
     }
     .summary table {
       margin-bottom: 0;
     }
     .summary table td {
-      padding: 5px 10px;
-      font-size: 10pt;
-      border-bottom: 1px solid #d1d5db;
+      padding: 4px 8px;
+      font-size: 9pt;
+      border-bottom: 1px solid #e5e7eb;
+      white-space: nowrap;
     }
     .summary table td.right { text-align: right; }
     .summary table tr.total-row td {
       background-color: #111827;
       color: #EAB308;
       font-weight: bold;
-      font-size: 12pt;
+      font-size: 10pt;
       border-bottom: none;
     }
 
     /* ── Notas ── */
     .notes-box {
       border: 1px solid #d1d5db;
-      border-radius: 4px;
-      padding: 10px 14px;
-      font-size: 10pt;
+      border-radius: 3px;
+      padding: 8px 10px;
+      font-size: 9pt;
       color: #374151;
-      margin-bottom: 18px;
+      margin-bottom: 12px;
       white-space: pre-wrap;
     }
 
     /* ── Pie de página ── */
     .footer {
       text-align: center;
-      font-size: 8pt;
+      font-size: 7pt;
       color: #9ca3af;
       border-top: 1px solid #d1d5db;
-      padding-top: 8px;
-      margin-top: 10px;
+      padding-top: 6px;
+      margin-top: 8px;
     }
   </style>
 </head>
@@ -247,24 +236,30 @@
       <thead>
         <tr>
           <th>Descripción</th>
-          <th class="right">Cantidad</th>
-          <th>Unidad</th>
-          <th class="right">Precio Unitario</th>
-          <th class="right">Total Línea</th>
+          <th class="center">Cant.</th>
+          <th class="right">Precio Unit.</th>
+          <th class="right">Total</th>
         </tr>
       </thead>
       <tbody>
-        {% for item in items %}
+        {% regroup items by price_sub_item.item.name as grouped_items %}
+        {% for group in grouped_items %}
         <tr>
-          <td>{{ item.product_name|escape }}</td>
-          <td class="right">{{ item.quantity }}</td>
-          <td>{{ item.unit|escape }}</td>
-          <td class="right">$ {{ item.unit_price|floatformat:0 }}</td>
-          <td class="right">$ {{ item.line_total|floatformat:0 }}</td>
+          <td colspan="4" style="background-color:#f3f4f6; font-weight:bold; font-size:8pt; color:#374151; padding:4px 8px;">
+            {{ group.grouper|default:"Otros"|escape }}
+          </td>
         </tr>
+        {% for item in group.list %}
+        <tr>
+          <td class="wrap" style="padding-left:16px;">{{ item.description|escape }}</td>
+          <td class="center">{{ item.quantity|qty }}</td>
+          <td class="right">$ {{ item.unit_price|clp }}</td>
+          <td class="right">$ {{ item.line_total|clp }}</td>
+        </tr>
+        {% endfor %}
         {% empty %}
         <tr>
-          <td colspan="5" style="text-align:center; color:#9ca3af;">Sin ítems</td>
+          <td colspan="4" style="text-align:center; color:#9ca3af;">Sin ítems</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -277,17 +272,27 @@
       <tbody>
         <tr>
           <td>Subtotal</td>
-          <td class="right">$ {{ quote.subtotal|floatformat:0 }}</td>
+          <td class="right">$ {{ quote.subtotal|clp }}</td>
+        </tr>
+        {% if quote.discount_percentage %}
+        <tr>
+          <td>Descuento ({{ quote.discount_percentage }}%)</td>
+          <td class="right">-$ {{ quote.discount_amount|clp }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+          <td>Total</td>
+          <td class="right">$ {{ quote.total|clp }}</td>
         </tr>
         <tr>
           <td>IVA (19%)</td>
-          <td class="right">$ {{ quote.tax_amount|floatformat:0 }}</td>
+          <td class="right">$ {{ quote.tax_amount|clp }}</td>
         </tr>
       </tbody>
       <tfoot>
         <tr class="total-row">
-          <td>TOTAL CLP</td>
-          <td class="right">$ {{ quote.total_amount|floatformat:0 }}</td>
+          <td>TOTAL NETO CLP</td>
+          <td class="right">$ {{ quote.total_amount|clp }}</td>
         </tr>
       </tfoot>
     </table>

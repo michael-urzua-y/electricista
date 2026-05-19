@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, XMarkIcon, UserGroupIcon } from '@heroicons/react/24/outline'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { getQuotes, createQuote } from '../services/quotesApi'
 import QuoteStatusBadge from '../components/QuoteStatusBadge'
 import QuoteForm from '../components/QuoteForm'
 import Pagination from '../components/Pagination'
+import MonthPicker from '../components/MonthPicker'
 
 const PAGE_SIZE = 10
 
@@ -27,45 +28,60 @@ export default function Quotes() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalCount, setTotalCount] = useState(0)
+  const [selectedPeriod, setSelectedPeriod] = useState(null)
+  const [pages, setPages] = useState({})
   const [showModal, setShowModal] = useState(false)
   const [error, setError] = useState('')
 
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
-
-  const fetchQuotes = async (status = statusFilter, page = currentPage) => {
+  const fetchQuotes = async (status = statusFilter) => {
     setLoading(true)
     try {
-      const res = await getQuotes(status, page)
+      const res = await getQuotes(status)
       const data = res.data
       if (Array.isArray(data)) {
         setQuotes(data)
-        setTotalCount(data.length)
       } else {
         setQuotes(data.results || [])
-        setTotalCount(data.count || 0)
       }
     } catch {
       setQuotes([])
-      setTotalCount(0)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchQuotes(statusFilter, currentPage)
-  }, [statusFilter, currentPage])
+    fetchQuotes(statusFilter)
+  }, [statusFilter])
 
   const handleStatusFilter = (value) => {
     setStatusFilter(value)
-    setCurrentPage(1)
+    setPages({})
   }
 
-  const handlePageChange = (page) => {
-    setCurrentPage(page)
-  }
+  // Compute available months from quotes data
+  const availableMonths = useMemo(() => {
+    const set = new Set()
+    quotes.forEach(q => {
+      const dateField = q.created_at
+      if (dateField) {
+        const [y, m] = dateField.substring(0, 7).split('-')
+        set.add(JSON.stringify({ year: parseInt(y), month: parseInt(m) }))
+      }
+    })
+    return [...set].map(s => JSON.parse(s))
+  }, [quotes])
+
+  // Filter quotes by selected period
+  const filteredQuotes = useMemo(() => {
+    if (!selectedPeriod) return quotes
+    return quotes.filter(q => {
+      const dateField = q.created_at
+      if (!dateField) return false
+      const [y, m] = dateField.substring(0, 7).split('-')
+      return parseInt(y) === selectedPeriod.year && parseInt(m) === selectedPeriod.month
+    })
+  }, [quotes, selectedPeriod])
 
   const handleCreate = async (data) => {
     setSaving(true)
@@ -89,17 +105,26 @@ export default function Quotes() {
           <h1 className="text-3xl font-bold text-gray-900">Cotizaciones</h1>
           <p className="text-gray-500 mt-1">Gestiona tus cotizaciones de servicios y materiales</p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold px-4 py-2.5 rounded-lg transition-colors self-start sm:self-auto"
-        >
-          <PlusIcon className="w-5 h-5" />
-          Nueva Cotización
-        </button>
+        <div className="flex gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => navigate('/clients')}
+            className="inline-flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-4 py-2.5 rounded-lg transition-colors text-sm"
+          >
+            <UserGroupIcon className="w-4 h-4" />
+            Clientes
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="inline-flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold px-4 py-2.5 rounded-lg transition-colors text-sm"
+          >
+            <PlusIcon className="w-5 h-5" />
+            Nueva Cotización
+          </button>
+        </div>
       </div>
 
       {/* Filtro por estado */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {STATUS_OPTIONS.map(opt => (
           <button
             key={opt.value}
@@ -113,72 +138,138 @@ export default function Quotes() {
             {opt.label}
           </button>
         ))}
+        <div className="ml-auto flex items-center gap-2">
+          {selectedPeriod && (
+            <button
+              onClick={() => setSelectedPeriod(null)}
+              className="text-xs text-yellow-600 hover:text-yellow-700 font-medium"
+            >
+              Ver todos
+            </button>
+          )}
+          <MonthPicker
+            value={selectedPeriod}
+            onChange={setSelectedPeriod}
+            availableMonths={availableMonths}
+          />
+        </div>
       </div>
 
-      {/* Tabla */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-900 text-yellow-400">
-                <th className="text-left px-6 py-3 font-semibold">N° Cotización</th>
-                <th className="text-left px-6 py-3 font-semibold">Cliente</th>
-                <th className="text-left px-6 py-3 font-semibold">Estado</th>
-                <th className="text-right px-6 py-3 font-semibold">Total</th>
-                <th className="text-left px-6 py-3 font-semibold">Fecha</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loading ? (
-                <tr>
-                  <td colSpan="5" className="px-6 py-10 text-center text-gray-400">Cargando...</td>
-                </tr>
-              ) : quotes.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="px-6 py-12 text-center">
-                    <p className="text-gray-400 text-base">No hay cotizaciones{statusFilter ? ' con ese estado' : ''}</p>
-                    <button
-                      onClick={() => setShowModal(true)}
-                      className="mt-3 text-yellow-600 hover:text-yellow-700 font-medium text-sm"
-                    >
-                      Crear la primera cotización
-                    </button>
-                  </td>
-                </tr>
-              ) : (
-                quotes.map(quote => (
-                  <tr
-                    key={quote.id}
-                    onClick={() => navigate(`/cotizaciones/${quote.id}`)}
-                    className="hover:bg-yellow-50 cursor-pointer transition-colors"
-                  >
-                    <td className="px-6 py-4 font-semibold text-gray-900">{quote.quote_number}</td>
-                    <td className="px-6 py-4 text-gray-700">{quote.client_name || <span className="text-gray-400 italic">Sin nombre</span>}</td>
-                    <td className="px-6 py-4">
-                      <QuoteStatusBadge status={quote.status} />
-                    </td>
-                    <td className="px-6 py-4 text-right font-semibold text-gray-900">
-                      {formatCurrency(quote.total_amount)}
-                    </td>
-                    <td className="px-6 py-4 text-gray-500">
-                      {quote.created_at
-                        ? format(new Date(quote.created_at), 'dd/MM/yyyy', { locale: es })
-                        : '—'}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* Cotizaciones agrupadas por mes */}
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-500" />
         </div>
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-          totalItems={totalCount}
-          pageSize={PAGE_SIZE}
-        />
-      </div>
+      ) : filteredQuotes.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+          <span className="text-5xl mb-3">📋</span>
+          <p className="text-sm">No hay cotizaciones{statusFilter ? ' con ese estado' : ''}{selectedPeriod ? ' en este período' : ''}</p>
+          {selectedPeriod ? (
+            <button
+              onClick={() => setSelectedPeriod(null)}
+              className="mt-3 text-yellow-600 hover:text-yellow-700 font-medium text-sm"
+            >
+              Ver todos los meses
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowModal(true)}
+              className="mt-3 text-yellow-600 hover:text-yellow-700 font-medium text-sm"
+            >
+              Crear la primera cotización
+            </button>
+          )}
+        </div>
+      ) : (() => {
+        const groups = {}
+        filteredQuotes.forEach((q) => {
+          const key = q.created_at ? q.created_at.substring(0, 7) : 'sin-fecha'
+          if (!groups[key]) groups[key] = []
+          groups[key].push(q)
+        })
+        const sortedMonths = Object.entries(groups).sort(([a], [b]) => b.localeCompare(a))
+        const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+        const fmtMonth = (ym) => {
+          if (ym === 'sin-fecha') return 'Sin fecha'
+          const [year, month] = ym.split('-')
+          return `${monthNames[parseInt(month, 10) - 1]} ${year}`
+        }
+
+        return (
+          <div className="space-y-6">
+            {sortedMonths.map(([month, monthQuotes]) => {
+              const subtotal = monthQuotes.reduce((sum, q) => sum + (Number(q.total_amount) || 0), 0)
+              const page = pages[month] || 1
+              const totalPages = Math.ceil(monthQuotes.length / PAGE_SIZE)
+              const paginated = monthQuotes.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+              return (
+                <div key={month} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  {/* Month header */}
+                  <div className="flex items-center justify-between px-4 sm:px-6 py-4 bg-gray-900">
+                    <h2 className="text-lg font-bold text-yellow-400">
+                      {fmtMonth(month)}
+                    </h2>
+                    <div className="flex items-center gap-4">
+                      <span className="text-white text-sm font-medium hidden sm:inline">
+                        {monthQuotes.length} cotización(es)
+                      </span>
+                      <span className="text-white text-sm font-medium">
+                        Total: <span className="text-yellow-400">{formatCurrency(subtotal)}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-100">
+                          <th className="text-left px-4 sm:px-6 py-3 font-semibold text-gray-600">N° Cotización</th>
+                          <th className="text-left px-4 py-3 font-semibold text-gray-600">Cliente</th>
+                          <th className="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>
+                          <th className="text-right px-4 py-3 font-semibold text-gray-600">Total</th>
+                          <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden sm:table-cell">Fecha</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {paginated.map(quote => (
+                          <tr
+                            key={quote.id}
+                            onClick={() => navigate(`/cotizaciones/${quote.id}`)}
+                            className="hover:bg-yellow-50 cursor-pointer transition-colors"
+                          >
+                            <td className="px-4 sm:px-6 py-3 font-semibold text-gray-900">{quote.quote_number}</td>
+                            <td className="px-4 py-3 text-gray-700">{quote.client_name || <span className="text-gray-400 italic">Sin nombre</span>}</td>
+                            <td className="px-4 py-3 text-center">
+                              <QuoteStatusBadge status={quote.status} />
+                            </td>
+                            <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                              {formatCurrency(quote.total_amount)}
+                            </td>
+                            <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">
+                              {quote.created_at
+                                ? format(new Date(quote.created_at), 'dd/MM/yyyy', { locale: es })
+                                : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={(p) => setPages(prev => ({ ...prev, [month]: p }))}
+                    totalItems={monthQuotes.length}
+                    pageSize={PAGE_SIZE}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {/* Modal Nueva Cotización */}
       {showModal && (

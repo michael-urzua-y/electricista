@@ -6,7 +6,7 @@ from weasyprint import HTML
 def generate_quote_pdf(quote, company_profile) -> bytes:
     context = {
         'quote': quote,
-        'items': quote.items.select_related('product').all(),
+        'items': quote.items.select_related('price_sub_item__item').all(),
         'company': company_profile,
         'logo_src': _logo_data_uri(company_profile),
     }

@@ -281,30 +281,51 @@ export default function QuoteDetail() {
       {/* Ítems */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Productos</h2>
+          <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Ítems</h2>
         </div>
         {quote.items && quote.items.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-900 text-yellow-400">
-                  <th className="text-left px-6 py-3 font-semibold">Producto</th>
+                  <th className="text-left px-6 py-3 font-semibold">Descripción</th>
                   <th className="text-center px-4 py-3 font-semibold">Cantidad</th>
-                  <th className="text-center px-4 py-3 font-semibold">Unidad</th>
-                  <th className="text-right px-4 py-3 font-semibold">Precio Unit.</th>
-                  <th className="text-right px-6 py-3 font-semibold">Total línea</th>
+                  <th className="text-right px-4 py-3 font-semibold">Precio Unitario</th>
+                  <th className="text-right px-6 py-3 font-semibold">Total Línea</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {quote.items.map(item => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-3 font-medium text-gray-900">{item.product_name}</td>
-                    <td className="px-4 py-3 text-center text-gray-700">{Number(item.quantity)}</td>
-                    <td className="px-4 py-3 text-center text-gray-500">{item.unit}</td>
-                    <td className="px-4 py-3 text-right text-gray-700">{formatCurrency(item.unit_price)}</td>
-                    <td className="px-6 py-3 text-right font-semibold text-gray-900">{formatCurrency(item.line_total)}</td>
-                  </tr>
-                ))}
+                {(() => {
+                  const grouped = []
+                  let currentGroup = null
+                  quote.items.forEach(item => {
+                    const groupName = item.item_name || 'Otros'
+                    if (groupName !== currentGroup) {
+                      currentGroup = groupName
+                      grouped.push({ type: 'header', name: groupName, key: `h-${groupName}-${item.id}` })
+                    }
+                    grouped.push({ type: 'item', data: item, key: `i-${item.id}` })
+                  })
+                  return grouped.map(row => {
+                    if (row.type === 'header') {
+                      return (
+                        <tr key={row.key} className="bg-gray-100">
+                          <td colSpan={4} className="px-6 py-2 font-bold text-gray-700 text-xs uppercase tracking-wide">
+                            {row.name}
+                          </td>
+                        </tr>
+                      )
+                    }
+                    return (
+                      <tr key={row.key} className="hover:bg-gray-50">
+                        <td className="px-6 py-3 pl-10 font-medium text-gray-900">{row.data.description}</td>
+                        <td className="px-4 py-3 text-center text-gray-700">{Number(row.data.quantity)}</td>
+                        <td className="px-4 py-3 text-right text-gray-700">{formatCurrency(row.data.unit_price)}</td>
+                        <td className="px-6 py-3 text-right font-semibold text-gray-900">{formatCurrency(row.data.line_total)}</td>
+                      </tr>
+                    )
+                  })
+                })()}
               </tbody>
             </table>
           </div>
@@ -315,17 +336,27 @@ export default function QuoteDetail() {
 
       {/* Resumen financiero */}
       <div className="flex justify-end">
-        <div className="w-72 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="w-80 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-5 py-3 flex justify-between text-sm text-gray-700">
             <span>Subtotal</span>
             <span className="font-medium">{formatCurrency(quote.subtotal)}</span>
+          </div>
+          {Number(quote.discount_percentage) !== 0 && (
+            <div className="px-5 py-3 flex justify-between text-sm text-gray-700 border-t border-gray-100">
+              <span>Descuento ({Number(quote.discount_percentage)}%)</span>
+              <span className="font-medium text-red-600">-{formatCurrency(quote.discount_amount)}</span>
+            </div>
+          )}
+          <div className="px-5 py-3 flex justify-between text-sm text-gray-700 border-t border-gray-100">
+            <span>Total</span>
+            <span className="font-medium">{formatCurrency(quote.total)}</span>
           </div>
           <div className="px-5 py-3 flex justify-between text-sm text-gray-700 border-t border-gray-100">
             <span>IVA (19%)</span>
             <span className="font-medium">{formatCurrency(quote.tax_amount)}</span>
           </div>
           <div className="px-5 py-4 flex justify-between bg-gray-900 text-yellow-400">
-            <span className="font-bold">TOTAL CLP</span>
+            <span className="font-bold">TOTAL NETO</span>
             <span className="font-bold">{formatCurrency(quote.total_amount)}</span>
           </div>
         </div>

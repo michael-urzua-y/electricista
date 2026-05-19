@@ -44,47 +44,14 @@ def _get_conversion_rate(user, year: int, month: int) -> float:
 
 
 def _get_avg_margin(user, year: int, month: int) -> Optional[float]:
-    inv_unit_price_sq = (
-        ProviderInventory.objects
-        .filter(id=OuterRef('provider_inventory_id'))
-        .values('unit_price')[:1]
-    )
-    items_with_cost = (
-        QuoteItem.objects
-        .filter(
-            quote__user=user,
-            quote__status='approved',
-            quote__created_at__year=year,
-            quote__created_at__month=month,
-            provider_inventory_id__isnull=False,
-        )
-        .annotate(inv_unit_price=Subquery(inv_unit_price_sq, output_field=DecimalField()))
-        .filter(inv_unit_price__isnull=False)
-        .values('quote_id')
-        .annotate(
-            revenue=Sum('line_total'),
-            cost=Sum(ExpressionWrapper(
-                F('quantity') * F('inv_unit_price'),
-                output_field=DecimalField(max_digits=16, decimal_places=2),
-            )),
-        )
-        .filter(revenue__gt=0)
-    )
-    margins = []
-    for row in items_with_cost:
-        revenue = row['revenue']
-        cost = row['cost']
-        if revenue and revenue > 0:
-            margins.append(float((revenue - cost) / revenue * 100))
-    if not margins:
-        return None
-    return round(sum(margins) / len(margins), 2)
+    """Margen promedio — deshabilitado tras migración a PriceSubItem."""
+    return None
 
 
 def _get_top_products(user, year: int, month: int) -> list[dict]:
     """
-    Top 5 productos por cantidad total acumulada en ítems de cotizaciones del mes.
-    Suma las cantidades de todos los ítems con el mismo nombre de producto.
+    Top 5 servicios por cantidad total acumulada en ítems de cotizaciones del mes.
+    Usa el campo 'description' del nuevo modelo QuoteItem.
     """
     qs = (
         QuoteItem.objects
@@ -93,11 +60,11 @@ def _get_top_products(user, year: int, month: int) -> list[dict]:
             quote__created_at__year=year,
             quote__created_at__month=month,
         )
-        .values('product_name')
+        .values('description')
         .annotate(count=Sum('quantity'))
         .order_by('-count')[:5]
     )
-    return [{'name': row['product_name'], 'count': float(row['count'])} for row in qs]
+    return [{'name': row['description'], 'count': float(row['count'])} for row in qs]
 
 
 def _get_top_clients(user, year: int, month: int) -> list[dict]:
