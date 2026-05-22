@@ -4,6 +4,53 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal, ROUND_HALF_UP
 
 
+class SMTPConfig(models.Model):
+    """Configuración SMTP personal del usuario para envío de cotizaciones."""
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='smtp_config',
+    )
+    smtp_host = models.CharField(max_length=200, verbose_name='Host SMTP')
+    smtp_port = models.PositiveIntegerField(default=587, verbose_name='Puerto')
+    smtp_user = models.EmailField(verbose_name='Usuario SMTP', help_text='Correo de envío')
+    _smtp_password = models.TextField(verbose_name='Contraseña SMTP (encriptada)', db_column='smtp_password')
+    use_tls = models.BooleanField(default=True, verbose_name='Usar TLS')
+    use_ssl = models.BooleanField(default=False, verbose_name='Usar SSL')
+    is_active = models.BooleanField(default=True, verbose_name='Configuración activa')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Configuración SMTP'
+        verbose_name_plural = 'Configuraciones SMTP'
+        indexes = [
+            models.Index(fields=['user', 'is_active']),
+        ]
+
+    @property
+    def smtp_password(self):
+        """Desencripta la contraseña al leerla."""
+        from .encryption import decrypt_value
+        try:
+            return decrypt_value(self._smtp_password)
+        except Exception:
+            # Fallback: si no se puede desencriptar (dato viejo sin encriptar)
+            return self._smtp_password
+
+    @smtp_password.setter
+    def smtp_password(self, value):
+        """Encripta la contraseña al guardarla."""
+        from .encryption import encrypt_value
+        if value:
+            self._smtp_password = encrypt_value(value)
+        else:
+            self._smtp_password = ''
+
+    def __str__(self):
+        return f"SMTP {self.smtp_user} ({self.smtp_host})"
+
+
 class CompanyProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='company_profile')
     name = models.CharField(max_length=200, verbose_name='Nombre empresa')

@@ -7,9 +7,9 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 import logging
 
-from .models import CompanyProfile, Quote, QuoteEmailLog
+from .models import CompanyProfile, SMTPConfig, Quote, QuoteEmailLog
 from .serializers import (
-    CompanyProfileSerializer, QuoteListSerializer,
+    CompanyProfileSerializer, SMTPConfigSerializer, QuoteListSerializer,
     QuoteDetailSerializer, QuoteCreateSerializer,
 )
 
@@ -44,6 +44,107 @@ class CompanyProfileView(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+class SMTPConfigView(APIView):
+    """CRUD de la configuración SMTP del usuario."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            config = SMTPConfig.objects.get(user=request.user)
+            serializer = SMTPConfigSerializer(config)
+            return Response(serializer.data)
+        except SMTPConfig.DoesNotExist:
+            return Response({'detail': 'Configuración SMTP no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+    def post(self, request):
+        serializer = SMTPConfigSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            config = serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request):
+        config, _ = SMTPConfig.objects.get_or_create(user=request.user)
+        serializer = SMTPConfigSerializer(config, data=request.data, partial=False, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request):
+        config, _ = SMTPConfig.objects.get_or_create(user=request.user)
+        serializer = SMTPConfigSerializer(config, data=request.data, partial=True, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        try:
+            config = SMTPConfig.objects.get(user=request.user)
+            config.delete()
+            return Response({'detail': 'Configuración SMTP eliminada'}, status=status.HTTP_204_NO_CONTENT)
+        except SMTPConfig.DoesNotExist:
+            return Response({'detail': 'Configuración SMTP no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class SMTPTestView(APIView):
+    """Prueba de conexión SMTP sin guardar."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        import smtplib
+
+        data = request.data
+        host = data.get('smtp_host')
+        port = int(data.get('smtp_port', 587))
+        user = data.get('smtp_user')
+        password = data.get('smtp_password', '')
+        use_tls = data.get('use_tls', True)
+        use_ssl = data.get('use_ssl', False)
+
+        if not host or not user:
+            return Response(
+                {'detail': 'Faltan datos de conexión: host y usuario son requeridos'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        server = None
+        try:
+            if use_ssl:
+                server = smtplib.SMTP_SSL(host, port, timeout=15)
+            else:
+                server = smtplib.SMTP(host, port, timeout=15)
+                if use_tls:
+                    server.starttls()
+
+            if password:
+                server.login(user, password)
+
+            server.quit()
+            return Response({'detail': 'Conexión exitosa', 'status': 'ok'})
+
+        except smtplib.SMTPAuthenticationError:
+            if server:
+                try:
+                    server.quit()
+                except Exception:
+                    pass
+            return Response(
+                {'detail': 'Error de autenticación. Revisa tu correo y contraseña de aplicación.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except smtplib.SMTPConnectError:
+            return Response(
+                {'detail': f'No se pudo conectar a {host}:{port}. Revisa el servidor y puerto.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as exc:
+            return Response(
+                {'detail': str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
 class CompanyLogoView(APIView):
     """Sirve el logo de la empresa desde binario en BD."""
@@ -168,8 +269,14 @@ class QuoteViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        smtp_config = None
+        try:
+            smtp_config = SMTPConfig.objects.get(user=request.user, is_active=True)
+        except SMTPConfig.DoesNotExist:
+            pass
+
         from .email_service import send_quote_email
-        log = send_quote_email(quote, company_profile, request.user)
+        log = send_quote_email(quote, company_profile, request.user, smtp_config=smtp_config)
 
         if log.status == 'failed':
             return Response(

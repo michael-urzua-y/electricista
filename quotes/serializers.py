@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CompanyProfile, Quote, QuoteItem
+from .models import CompanyProfile, Quote, QuoteItem, SMTPConfig
 from .validators import validate_rut, validate_logo_base64, validate_text_safe
 from .quote_number_service import next_quote_number
 from prices.models import PriceSubItem
@@ -66,6 +66,39 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
             instance.logo_size = logo_file.size
             instance.logo_base64 = ''
             instance.save()
+        return instance
+
+
+class SMTPConfigSerializer(serializers.ModelSerializer):
+    """Serializer para la configuración SMTP del usuario."""
+    smtp_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    class Meta:
+        model = SMTPConfig
+        fields = [
+            'id', 'smtp_host', 'smtp_port', 'smtp_user',
+            'smtp_password', 'use_tls', 'use_ssl', 'is_active',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        password = validated_data.pop('smtp_password', '')
+        validated_data['user'] = user
+        instance = SMTPConfig(**validated_data)
+        instance.smtp_password = password  # Uses the encrypting setter
+        instance.save()
+        return instance
+
+    def update(self, instance, validated_data):
+        validated_data.pop('user', None)
+        password = validated_data.pop('smtp_password', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.smtp_password = password  # Uses the encrypting setter
+        instance.save()
         return instance
 
 

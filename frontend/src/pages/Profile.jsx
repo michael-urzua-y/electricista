@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { UserIcon, EnvelopeIcon } from '@heroicons/react/24/outline'
+import api from '../services/api'
+import { UserIcon, EnvelopeIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline'
 import CompanyProfileForm from '../components/CompanyProfileForm'
+import SMTPConfigForm from '../components/SMTPConfigForm'
 import { getCompanyProfile, saveCompanyProfile, patchCompanyProfile } from '../services/quotesApi'
 
 export default function Profile() {
@@ -13,13 +15,15 @@ export default function Profile() {
   const [profileApiErrors, setProfileApiErrors] = useState({})
   const [profileSuccess, setProfileSuccess] = useState('')
 
+  const [smtpExpanded, setSmtpExpanded] = useState(false)
+  const [hasSMTPConfig, setHasSMTPConfig] = useState(false)
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const res = await getCompanyProfile()
         setCompanyProfile(res.data)
       } catch (err) {
-        // 404 significa que aún no existe — se creará al guardar
         if (err.response?.status !== 404) {
           console.error('Error cargando perfil de empresa:', err)
         }
@@ -30,12 +34,25 @@ export default function Profile() {
     fetchProfile()
   }, [])
 
+  useEffect(() => {
+    // Verificar si ya existe configuración SMTP para decidir el estado inicial del acordeón
+    const fetchSMTP = async () => {
+      try {
+        await api.get('/empresa/smtp/')
+        setHasSMTPConfig(true)
+        setSmtpExpanded(true)
+      } catch {
+        setHasSMTPConfig(false)
+      }
+    }
+    fetchSMTP()
+  }, [])
+
   const handleSaveCompanyProfile = async (data, options = {}) => {
     setSavingProfile(true)
     setProfileApiErrors({})
     setProfileSuccess('')
     try {
-      // Si es FormData (con logo), usar PATCH multipart para no requerir todos los campos required
       const isMultipart = data instanceof FormData
       const res = isMultipart
         ? await patchCompanyProfile(data)
@@ -52,6 +69,13 @@ export default function Profile() {
     } finally {
       setSavingProfile(false)
     }
+  }
+
+  const handleSMTPSaved = () => {
+    setHasSMTPConfig(true)
+    setSmtpExpanded(false)
+    setProfileSuccess('Configuración de correo guardada correctamente')
+    setTimeout(() => setProfileSuccess(''), 5000)
   }
 
   return (
@@ -131,6 +155,41 @@ export default function Profile() {
             loading={savingProfile}
             apiErrors={profileApiErrors}
           />
+        )}
+      </div>
+
+      {/* Configuración de correo SMTP */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setSmtpExpanded(!smtpExpanded)}
+          className="w-full flex items-center justify-between p-6 hover:bg-gray-50 transition-colors"
+        >
+          <div className="text-left">
+            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <EnvelopeIcon className="w-5 h-5 text-primary-700" />
+              Correo para envío de cotizaciones
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Configura tu correo para enviar cotizaciones a tus clientes
+              {hasSMTPConfig && (
+                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  Configurado
+                </span>
+              )}
+            </p>
+          </div>
+          {smtpExpanded ? (
+            <ChevronUpIcon className="w-5 h-5 text-gray-400" />
+          ) : (
+            <ChevronDownIcon className="w-5 h-5 text-gray-400" />
+          )}
+        </button>
+
+        {smtpExpanded && (
+          <div className="px-6 pb-6 border-t border-gray-100">
+            <SMTPConfigForm onSaved={handleSMTPSaved} />
+          </div>
         )}
       </div>
     </div>
