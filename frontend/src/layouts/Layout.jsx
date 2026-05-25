@@ -73,14 +73,14 @@ export default function Layout() {
         sidebarCollapsed ? 'w-20' : 'w-64'
       }`}>
         <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-          {!sidebarCollapsed && (
-            <div className="flex items-center gap-2">
-              <img src="/monayelectric-logo-horizontal.png" alt="Logo" className="h-10 w-auto" />
-            </div>
-          )}
-          {sidebarCollapsed && (
-            <img src="/monayelectric-logo.png" alt="Logo" className="w-8 h-8 mx-auto" />
-          )}
+           {!sidebarCollapsed && (
+             <div className="flex items-center gap-2">
+               <img src="/monay-solutions-logo-horizontal.png" alt="Logo" className="h-10 w-auto" />
+             </div>
+           )}
+           {sidebarCollapsed && (
+             <img src="/monay-solutions-logo.png" alt="Logo" className="w-8 h-8 mx-auto" />
+           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="flex items-center justify-center p-2 text-gray-400 hover:text-yellow-400 hover:bg-gray-800 rounded-lg transition-colors ml-auto"
@@ -106,9 +106,9 @@ export default function Layout() {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-6 border-b border-gray-700 flex items-center gap-3">
-          <img src="/monayelectric-logo-horizontal.png" alt="Logo" className="h-10 w-auto" />
-        </div>
+         <div className="p-6 border-b border-gray-700 flex items-center gap-3">
+           <img src="/monay-solutions-logo-horizontal.png" alt="Logo" className="h-10 w-auto" />
+         </div>
         <SidebarContent />
       </aside>
 
@@ -129,7 +129,7 @@ export default function Layout() {
               <Bars3Icon className="w-6 h-6" />
             </button>
             <span className="text-base font-bold text-white flex items-center gap-2">
-              <img src="/monayelectric-logo-horizontal.png" alt="Logo" className="h-7 w-auto" />
+              <img src="/monay-solutions-logo-horizontal.png" alt="Logo" className="h-7 w-auto" />
             </span>
           </div>
 
@@ -143,14 +143,11 @@ export default function Layout() {
               <div className="w-8 h-8 rounded-full bg-yellow-500 flex items-center justify-center flex-shrink-0">
                 <UserIcon className="w-4 h-4 text-gray-900" />
               </div>
-              <div className="hidden sm:block text-left">
-                <p className="text-sm font-semibold text-white">
+             <div className="hidden sm:block text-left">
+               <p className="text-sm font-semibold text-white">
                   {user?.username || 'Usuario'}
                 </p>
-                <p className="text-xs text-yellow-400">
-                  Mi Perfil
-                </p>
-              </div>
+             </div>
             </button>
             <button
               onClick={handleLogout}

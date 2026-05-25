@@ -7,10 +7,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['monayelectric-logo.png', 'vite.svg'],
+      includeAssets: ['monay-solutions-logo.png', 'vite.svg'],
       manifest: {
-        name: 'Monayelectric - Gestión Empresarial',
-        short_name: 'Monayelectric',
+        name: 'Monay Solutions - Gestión Empresarial',
+        short_name: 'Monay Solutions',
         description: 'Sistema integral de gestión para electricistas: facturas, cotizaciones, contabilidad y stock',
         theme_color: '#eab308',
         background_color: '#111827',
@@ -88,6 +88,7 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
+    allowedHosts: 'all',
     proxy: {
       '/api': {
         target: 'http://backend:8000',

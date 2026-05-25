@@ -100,7 +100,7 @@ export default function CompanyProfileForm({ initialData, onSubmit, loading, api
             Nombre empresa <span className="text-red-400">*</span>
           </label>
           <input value={name} onChange={e => setName(e.target.value)} required
-            className={fieldClass(!!apiErrors?.name)} placeholder="Monayelectric SpA" />
+            className={fieldClass(!!apiErrors?.name)} placeholder="Monay Solutions SpA" />
           {apiErrors?.name && <p className="text-red-500 text-xs mt-1">{apiErrors.name}</p>}
         </div>
 

@@ -60,7 +60,7 @@ export default function Login() {
         <div className="hidden lg:flex lg:w-3/4 flex-col justify-between px-16 xl:px-24 py-12">
           {/* Logo top-left */}
           <div>
-            <img src="/monayelectric-logo.png" alt="Logo" className="h-40 w-auto drop-shadow-2xl" />
+            <img src="/monay-solutions-logo.png" alt="Logo" className="h-40 w-auto drop-shadow-2xl" />
           </div>
 
           {/* Text content */}
