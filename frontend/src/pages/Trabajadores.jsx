@@ -108,18 +108,17 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
     }
   }
 
+  const normalizeMoneyDigits = (raw) => String(raw).replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+
   // Format number with dot thousands separator for display
   const formatMoneyDisplay = (raw) => {
-    const num = parseFloat(String(raw).replace(',', '.'))
-    if (Number.isNaN(num)) return ''
-    return num.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+    const digits = normalizeMoneyDigits(raw)
+    if (!digits) return ''
+    return Number(digits).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
   }
 
   // Strip formatting to get raw number for backend
-  const stripMoneyFormat = (formatted) => {
-    return parseFloat(String(formatted).replace(/\./g, '').replace(',', '.'))
-      .toString()
-  }
+  const stripMoneyFormat = (formatted) => normalizeMoneyDigits(formatted)
 
   // For integer money fields - format with thousands separator
   const handleMoneyChange = (e) => {
