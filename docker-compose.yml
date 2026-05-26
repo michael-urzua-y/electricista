@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: electricista_db
+    container_name: monaysolutions_db
     environment:
       POSTGRES_DB: electricista
       POSTGRES_USER: postgres
@@ -11,7 +11,7 @@ services:
     ports:
       - "5433:5432"
     networks:
-      - electricista_net
+      - monaysolutions_net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -20,13 +20,13 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: electricista_redis
+    container_name: monaysolutions_redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
-      - electricista_net
+      - monaysolutions_net
     command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -35,14 +35,18 @@ services:
       retries: 5
 
   backend:
-    build: .
-    container_name: electricista_backend
+    build:
+      context: .
+      args:
+        INSTALL_DEV_DEPS: "true"
+    container_name: monaysolutions_backend
+    user: root
     command: >
-      sh -c "sleep 10 &&
+      sh -c "sleep 5 &&
              python manage.py migrate &&
              python -m scripts.init_db &&
              python manage.py collectstatic --noinput &&
-             gunicorn electricista.wsgi:application --bind 0.0.0.0:8000 --timeout 120"
+             gunicorn monaysolutions.wsgi:application --bind 0.0.0.0:8000 --timeout 120"
     volumes:
       - .:/app
       - static_volume:/app/static
@@ -57,20 +61,26 @@ services:
       DB_HOST: postgres
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
       MISTRAL_API_KEY: ${MISTRAL_API_KEY}
-      SECRET_KEY: ${SECRET_KEY:-django-insecure-dev-only-change-in-production}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY environment variable is required}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks:
-      - electricista_net
+      - monaysolutions_net
 
   celery:
-    build: .
-    container_name: electricista_celery
-    command: celery -A electricista worker -l INFO
+    build:
+      context: .
+      args:
+        INSTALL_DEV_DEPS: "true"
+    container_name: monaysolutions_celery
+    user: root
+    command: celery -A monaysolutions worker -l INFO
     volumes:
       - .:/app
       - media_volume:/app/media
@@ -82,17 +92,19 @@ services:
       DB_HOST: postgres
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
       MISTRAL_API_KEY: ${MISTRAL_API_KEY}
-      SECRET_KEY: ${SECRET_KEY:-django-insecure-dev-only-change-in-production}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY environment variable is required}
     depends_on:
       - redis
       - postgres
     networks:
-      - electricista_net
+      - monaysolutions_net
 
   frontend:
     image: node:18-alpine
-    container_name: electricista_frontend
+    container_name: monaysolutions_frontend
     working_dir: /app/frontend
     volumes:
       - ./frontend:/app/frontend
@@ -103,7 +115,7 @@ services:
     depends_on:
       - backend
     networks:
-      - electricista_net
+      - monaysolutions_net
 
 volumes:
   postgres_data:
@@ -112,5 +124,5 @@ volumes:
   media_volume:
 
 networks:
-  electricista_net:
+  monaysolutions_net:
     driver: bridge

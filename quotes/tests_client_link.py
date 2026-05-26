@@ -77,11 +77,9 @@ class TestQuoteCreateSerializerWithDb:
 
     ITEM_DATA = [
         {
-            'product': None,
+            'description': 'Cable 2.5mm',
             'quantity': '2.00',
             'unit_price': '1000.00',
-            'product_name_override': 'Cable 2.5mm',
-            'unit_override': 'metro',
         }
     ]
 

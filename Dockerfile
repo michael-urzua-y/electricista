@@ -23,17 +23,23 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Instalar dependencias de Python
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+ARG INSTALL_DEV_DEPS=false
+COPY requirements.txt requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements.txt && \
+    if [ "$INSTALL_DEV_DEPS" = "true" ]; then \
+        pip install --no-cache-dir -r requirements-dev.txt; \
+    fi
 
 # Copiar proyecto
 COPY . .
 
-# Crear usuario no-root
-RUN adduser --disabled-password --gecos '' appuser && \
+# Crear directorios necesarios y asignar permisos
+RUN mkdir -p /app/static /app/media && \
+    adduser --disabled-password --gecos '' appuser && \
     chown -R appuser:appuser /app
+
 USER appuser
 
 EXPOSE 8000
 
-CMD sh -c "python manage.py migrate && python -m scripts.init_db && gunicorn electricista.wsgi:application --bind 0.0.0.0:8000"
+CMD sh -c "python manage.py migrate && python -m scripts.init_db && python manage.py collectstatic --noinput && gunicorn monaysolutions.wsgi:application --bind 0.0.0.0:8000"

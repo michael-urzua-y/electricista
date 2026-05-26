@@ -6,7 +6,9 @@ import pytest
 from decimal import Decimal
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
-from provider_inventory.models import ProviderInventory
+from invoices.models import Invoice, InvoiceItem
+from provider_inventory.models import ProviderInventory, ProviderInventoryAuditLog
+from provider_inventory.services import InvoiceProcessingService
 from products.models import Provider
 
 
@@ -31,7 +33,6 @@ def provider():
     return Provider.objects.create(
         name='Test Provider',
         rut='12.345.678-9',
-        email='provider@test.com',
     )
 
 
@@ -258,8 +259,44 @@ class TestLowStockCountEndpoint:
             stock_quantity=Decimal('5.00'),
             minimum_stock=Decimal('10.00'),
         )
-        
+
         response = api_client.get('/api/inventory/low-stock/count/')
         assert response.status_code == 200
-        assert list(response.data.keys()) == ['count']
+        assert set(response.data.keys()) == {'count'}
         assert isinstance(response.data['count'], int)
+
+
+@pytest.mark.django_db
+def test_invoice_inventory_processing_is_idempotent(user, provider):
+    """Reprocessing the same invoice item should not duplicate stock."""
+    invoice = Invoice.objects.create(
+        user=user,
+        provider=provider,
+        invoice_number='F-001',
+        issue_date='2026-05-26',
+        status='processing',
+    )
+    item = InvoiceItem.objects.create(
+        invoice=invoice,
+        description='Cable 2.5mm',
+        quantity=Decimal('2.00'),
+        unit_price=Decimal('500.00'),
+        total_price=Decimal('1000.00'),
+        unit_measure='metro',
+    )
+
+    first = InvoiceProcessingService.process_invoice(invoice.id)
+    second = InvoiceProcessingService.process_invoice(invoice.id)
+
+    inventory = ProviderInventory.objects.get(
+        product_name='Cable 2.5mm',
+        provider=provider,
+    )
+    assert inventory.stock_quantity == Decimal('2.00')
+    assert first['items_created'] == 1
+    assert second['items_skipped'] == 1
+    assert ProviderInventoryAuditLog.objects.filter(
+        inventory=inventory,
+        invoice_id=invoice.id,
+        invoice_item_id=item.id,
+    ).count() == 1

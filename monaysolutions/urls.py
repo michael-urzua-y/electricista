@@ -11,8 +11,8 @@ from rest_framework_simplejwt.views import (
 
 from products.views import ProviderViewSet, ProductViewSet, ComparacionViewSet
 from invoices.views import FacturaViewSet
-from electricista.views import CurrentUserView, DailyTotalsView, DashboardKpisView
-from electricista.tax_estimator import TaxEstimatorView, AvailableMonthsView
+from monaysolutions.views import CurrentUserView, DailyTotalsView, DashboardKpisView
+from monaysolutions.tax_estimator import TaxEstimatorView, AvailableMonthsView
 
 router = DefaultRouter()
 router.register(r'proveedores', ProviderViewSet, basename='proveedor')

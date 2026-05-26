@@ -80,7 +80,7 @@ class InvoiceProcessingService:
     @staticmethod
     def process_invoice(invoice_id: int) -> Dict[str, Any]:
         invoice = Invoice.objects.get(id=invoice_id)
-        processed, created_list, failed = [], [], []
+        processed, created_list, skipped, failed = [], [], [], []
 
         with transaction.atomic():
             for item in invoice.items.all():
@@ -88,6 +88,8 @@ class InvoiceProcessingService:
                     result = InvoiceProcessingService.process_invoice_item(item, invoice)
                     if result['status'] == 'matched':
                         processed.append(result)
+                    elif result['status'] == 'skipped':
+                        skipped.append(result)
                     else:
                         created_list.append(result)
                 except Exception as e:
@@ -98,8 +100,9 @@ class InvoiceProcessingService:
             'invoice_id': invoice_id,
             'items_processed': len(processed),
             'items_created': len(created_list),
+            'items_skipped': len(skipped),
             'items_failed': len(failed),
-            'details': processed + created_list,
+            'details': processed + created_list + skipped,
             'errors': failed,
         }
 
@@ -121,6 +124,21 @@ class InvoiceProcessingService:
         )
 
         inventory = ProviderInventory.objects.select_for_update().get(id=inventory.id)
+        existing_audit = ProviderInventoryAuditLog.objects.filter(
+            inventory=inventory,
+            source='invoice',
+            invoice_item_id=item.id,
+        ).exists()
+        if existing_audit:
+            return {
+                'invoice_item_id': item.id,
+                'product_name': item.description,
+                'provider_id': invoice.provider_id,
+                'quantity': float(item.quantity),
+                'status': 'skipped',
+                'inventory_id': inventory.id,
+            }
+
         quantity_before = inventory.stock_quantity
         inventory.stock_quantity += item.quantity
 
@@ -129,7 +147,6 @@ class InvoiceProcessingService:
 
         # Si la factura trae margen y el inventario no tiene uno configurado, usarlo
         if hasattr(item, 'markup_percentage') and item.markup_percentage:
-            from decimal import Decimal
             if not inventory.markup_percentage or inventory.markup_percentage == Decimal('0'):
                 inventory.markup_percentage = item.markup_percentage
 
@@ -144,6 +161,7 @@ class InvoiceProcessingService:
             quantity_changed=item.quantity,
             source='invoice',
             invoice_id=invoice.id,
+            invoice_item_id=item.id,
         )
 
         return {

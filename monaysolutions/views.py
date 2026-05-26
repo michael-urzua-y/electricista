@@ -42,7 +42,7 @@ class DashboardKpisView(APIView):
         if not (1 <= month <= 12):
             return Response({'error': 'month debe estar entre 1 y 12'}, status=status.HTTP_400_BAD_REQUEST)
 
-        from electricista.kpi_service import get_dashboard_kpis
+        from monaysolutions.kpi_service import get_dashboard_kpis
         try:
             data = get_dashboard_kpis(user=request.user, year=year, month=month)
             return Response(data)

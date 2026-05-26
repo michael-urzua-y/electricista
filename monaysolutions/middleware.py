@@ -1,5 +1,5 @@
 """
-Middleware de seguridad personalizado para Electricista Pro
+Middleware de seguridad personalizado para Monay Solutions
 Incluye: Rate limiting, logging de seguridad, headers de seguridad
 """
 

@@ -54,6 +54,14 @@ class Command(BaseCommand):
                             }
                         )
 
+                        if ProviderInventoryAuditLog.objects.filter(
+                            inventory=inventory,
+                            source='invoice',
+                            invoice_item_id=item.id,
+                        ).exists():
+                            skipped += 1
+                            continue
+
                         quantity_before = inventory.stock_quantity
                         inventory.stock_quantity += item.quantity
 
@@ -74,6 +82,7 @@ class Command(BaseCommand):
                             quantity_changed=item.quantity,
                             source='invoice',
                             invoice_id=invoice.id,
+                            invoice_item_id=item.id,
                         )
 
                         if is_new:

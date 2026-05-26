@@ -32,3 +32,15 @@ export const deleteSubItem = (id) =>
 // --- Búsqueda de Sub-Ítems (para cotizaciones) ---
 export const searchSubItems = (searchText) =>
   api.get('/prices/subitems/', { params: { search: searchText } })
+
+// --- Excel Import/Export ---
+export const downloadPriceTemplate = () =>
+  api.get('/prices/items/download-template/', { responseType: 'blob' })
+
+export const uploadPriceExcel = (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return api.post('/prices/items/upload-excel/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}

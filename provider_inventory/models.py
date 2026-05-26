@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from django.conf import settings
 
 UNIT_CHOICES = [
@@ -114,6 +115,7 @@ class ProviderInventoryAuditLog(models.Model):
     quantity_changed = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Cantidad cambiada')
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES, verbose_name='Origen')
     invoice_id = models.BigIntegerField(null=True, blank=True, verbose_name='ID Factura')
+    invoice_item_id = models.BigIntegerField(null=True, blank=True, verbose_name='ID Ítem Factura')
     quote_id = models.BigIntegerField(null=True, blank=True, verbose_name='ID Cotización')
     quote_item_id = models.BigIntegerField(null=True, blank=True, verbose_name='ID Ítem Cotización')
     user = models.ForeignKey(
@@ -134,7 +136,15 @@ class ProviderInventoryAuditLog(models.Model):
             models.Index(fields=['source', 'timestamp']),
             models.Index(fields=['user', 'timestamp']),
             models.Index(fields=['invoice_id']),
+            models.Index(fields=['invoice_item_id']),
             models.Index(fields=['quote_id']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['inventory', 'source', 'invoice_item_id'],
+                condition=Q(invoice_item_id__isnull=False),
+                name='unique_inventory_invoice_item_audit',
+            ),
         ]
         verbose_name = 'Auditoría de Inventario'
         verbose_name_plural = 'Auditorías de Inventario'

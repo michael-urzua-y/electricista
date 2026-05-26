@@ -1,4 +1,4 @@
-# Electricista Pro — Sistema Integral de Gestión Empresarial
+# Monay Solutions — Sistema Integral de Gestión Empresarial
 
 Sistema full-stack enterprise-ready para electricistas que incluye gestión completa de materiales, contabilidad, clientes, cotizaciones y dashboard de KPIs. Sube facturas (PDF/imágenes), extrae ítems automáticamente con OCR + IA, genera cotizaciones profesionales, lleva libros contables y controla stock mínimo.
 
@@ -97,6 +97,25 @@ Sistema full-stack enterprise-ready para electricistas que incluye gestión comp
 - **Dashboard interactivo** — Gráficos de gasto mensual y distribución por proveedor (Recharts)
 - **Exportación Excel** — Libros contables con formato profesional
 
+### 💰 Lista de Precios de Servicios
+- **Categorías y sub-ítems** — Organización jerárquica de precios de servicios (ej: "PUNTO DE RED" con sub-ítems)
+- **Carga masiva Excel** — Importar/exportar listas de precios desde archivos .xlsx
+- **Plantilla de importación** — Formato estándar con ejemplos incluidos
+- **Numeración automática** — Los ítems y sub-ítems se numeran automáticamente
+
+### 🧾 Gastos Generales
+- **Registro de egresos** — Control de gastos operativos con múltiples tipos de documentos
+- **Tipos de documento** — Boleta, factura, honorario, recibo, voucher u otro
+- **Comprobantes adjuntos** — Soporte para PDF/imágenes con captura desde cámara
+- **Marca empresa** — Identifica gastos con factura que tiene RUT empresa (para IVA crédito)
+- **Filtrado por período** — Agrupación mensual con subtotales
+
+### 👷 Gestión de Trabajadores
+- **Remuneraciones completas** — Sueldo bruto, gratificación, colación, movilización, otras asignaciones
+- **Tasas previsionales** — AFP (10.69%), Salud (7%), Cesantía (0.6%), adicional isapre
+- **Impuesto único 2da categoría** — Cálculo automático según tramos UTM 2026
+- **Validación de RUT chileno** — En formulario con formato automático
+
 ### 🌐 Experiencia de Usuario
 - **Búsqueda inteligente** — Autocompletado de clientes en cotizaciones con debounce
 - **Tooltips informativos** — Explicaciones detalladas en KPIs y contabilidad
@@ -108,8 +127,8 @@ Sistema full-stack enterprise-ready para electricistas que incluye gestión comp
 ## Arquitectura
 
 ```
-electricista/                  ← raíz del proyecto Django
-├── electricista/              ← configuración del proyecto
+monaysolutions/                ← raíz del proyecto Django
+├── monaysolutions/            ← configuración del proyecto
 │   ├── settings.py            ← config DB, JWT, Celery, Redis, CORS
 │   ├── urls.py                ← router principal + endpoints JWT
 │   ├── celery.py              ← configuración de Celery
@@ -383,17 +402,18 @@ Invoice.total_amount calculado, status = "completed"
 ```bash
 # 1. Clonar el repositorio
 git clone <repo-url>
-cd electricista
+cd monaysolutions
 
 # 2. Configurar variables de entorno
 cp .env.example .env
-# Editar .env y agregar MISTRAL_API_KEY y SECRET_KEY
+# Editar .env y agregar una SECRET_KEY real.
+# MISTRAL_API_KEY es opcional para levantar el sistema, pero requerida para parseo IA.
 
 # 3. Levantar todos los servicios
-docker-compose up -d
+docker compose up -d
 
 # 4. Crear superusuario (opcional)
-docker-compose exec backend python manage.py createsuperuser
+docker compose exec backend python manage.py createsuperuser
 
 # 5. Acceder
 #    Frontend:   http://localhost:5173
@@ -412,11 +432,20 @@ Los servicios que levanta Docker:
 - `celery` — Worker Celery para procesamiento de facturas
 - `frontend` — Node 18 + Vite en puerto 5173
 
+Estado rápido de contenedores:
+
+```bash
+docker compose ps
+docker compose logs -f backend
+docker compose logs -f frontend
+```
+
 **Características de Docker**:
 - ✅ Volúmenes persistentes para BD y caché
 - ✅ Healthchecks automáticos
 - ✅ Red interna para comunicación entre servicios
 - ✅ Variables de entorno configurables
+- ✅ En `docker compose`, backend/celery instalan dependencias de desarrollo para ejecutar `pytest`
 
 ### Opción 2: Instalación manual
 
@@ -443,7 +472,7 @@ python manage.py collectstatic
 python manage.py runserver
 
 # En otra terminal: worker Celery
-celery -A electricista worker -l INFO
+celery -A monaysolutions worker -l INFO
 
 # Frontend
 cd frontend
@@ -470,6 +499,11 @@ DB_PORT=5432
 # Redis
 REDIS_HOST=redis  # En Docker, en local: localhost
 REDIS_PORT=6379
+REDIS_URL=redis://redis:6379
+
+# Celery
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/0
 
 # Mistral AI (requerido para parseo de facturas)
 # Obtener en: https://console.mistral.ai
@@ -482,11 +516,15 @@ SENTRY_DSN=https://xxxxx@xxxxx.ingest.sentry.io/xxxxx
 CORS_ALLOWED_ORIGINS=http://localhost:5173
 
 # Hosts permitidos
-ALLOWED_HOSTS=localhost,127.0.0.1,tu-dominio.com
+ALLOWED_HOSTS=localhost,127.0.0.1,monaysolutions.cl
 
 # Seguridad (producción)
 SECURE_SSL_REDIRECT=True
 SECURE_HSTS_SECONDS=31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS=True
+SECURE_HSTS_PRELOAD=True
+SESSION_COOKIE_SECURE=True
+CSRF_COOKIE_SECURE=True
 ```
 
 ---
@@ -560,49 +598,49 @@ La sección **Comparación de Precios** tiene 4 pestañas:
 ### Desarrollo
 ```bash
 # Iniciar sistema
-docker-compose up -d
+docker compose up -d
 
 # Ver logs en tiempo real
-docker-compose logs -f backend
+docker compose logs -f backend
 
 # Ejecutar migraciones
-docker-compose exec -T backend python manage.py migrate
+docker compose exec -T backend python manage.py migrate
 
 # Crear superuser
-docker-compose exec backend python manage.py createsuperuser
+docker compose exec backend python manage.py createsuperuser
 
 # Acceder a shell Django
-docker-compose exec backend python manage.py shell
+docker compose exec backend python manage.py shell
 ```
 
 ### Testing
 ```bash
 # Tests unitarios
-docker-compose exec -T backend pytest
+docker compose exec -T backend pytest
 
 # Verificar migraciones
-docker-compose exec -T backend python manage.py showmigrations
+docker compose exec -T backend python manage.py showmigrations
 
 # Verificar configuración de seguridad
-docker-compose exec -T backend python manage.py check --deploy
+docker compose exec -T backend python manage.py check --deploy
 ```
 
 ### Producción
 ```bash
 # Recolectar estáticos
-docker-compose exec -T backend python manage.py collectstatic --noinput
+docker compose exec -T backend python manage.py collectstatic --noinput
 
 # Backup de BD
-docker-compose exec -T postgres pg_dump -U postgres electricista > backup.sql
+docker compose exec -T postgres pg_dump -U postgres monaysolutions > backup.sql
 
 # Restaurar BD
-docker-compose exec -T postgres psql -U postgres electricista < backup.sql
+docker compose exec -T postgres psql -U postgres monaysolutions < backup.sql
 
 # Detener servicios
-docker-compose down
+docker compose down
 
 # Detener y eliminar volúmenes (CUIDADO: elimina datos)
-docker-compose down -v
+docker compose down -v
 ```
 
 ---
@@ -611,26 +649,35 @@ docker-compose down -v
 
 ```bash
 # Backend
-docker-compose exec -T backend pytest
+docker compose exec -T backend pytest
 
 # Frontend (lint)
 cd frontend
 npm run lint
 
 # Verificar seguridad
-docker-compose exec -T backend python manage.py check --deploy
+docker compose exec -T backend python manage.py check --deploy
 ```
 
----
+### `prices` app
+- **PriceItem** — Ítem de precio con número de orden y nombre (ej: PUNTO DE RED)
+- **PriceSubItem** — Sub-ítem con descripción, valor neto y número secuencial
 
-## 🔒 Seguridad en Producción
+### `expenses` app
+- **Expense** — Gasto general con fecha, detalle, monto, tipo documento, proveedor, observaciones, comprobante binario y marca "factura empresa"
+
+### `workers` app
+- **Worker** — Trabajador con nombre, RUT, cargo, sueldo bruto, gratificación, colación, movilización, otras asignaciones, tasas AFP/Salud/Cesantía, adicional salud, cálculo automático de impuesto único 2da categoría (Chile 2026)
+
+---
 
 ### Antes de desplegar
 1. ✅ Generar certificado SSL/TLS (Let's Encrypt recomendado)
 2. ✅ Configurar Sentry DSN en `.env`
 3. ✅ Cambiar `DEBUG=False`
 4. ✅ Configurar `ALLOWED_HOSTS` con tu dominio
-5. ✅ Ejecutar `python manage.py check --deploy`
+5. ✅ Definir `SECRET_KEY` en el entorno; Docker no usa fallback inseguro
+6. ✅ Ejecutar `python manage.py check --deploy`
 
 ### En producción
 - ✅ HTTPS obligatorio (redirige HTTP a HTTPS)

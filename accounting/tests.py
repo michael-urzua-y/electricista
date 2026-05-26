@@ -2,9 +2,10 @@
 Tests para el módulo contable.
 """
 from decimal import Decimal
-from datetime import date
+from datetime import date, datetime
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework import status
 
@@ -30,10 +31,8 @@ class AccountingAPITestCase(TestCase):
         
         # Crear proveedor para facturas
         self.provider = Provider.objects.create(
-            user=self.user,
             name='Proveedor Test',
             rut='12345678-9',
-            email='proveedor@test.com'
         )
     
     def test_libro_compras_requires_auth(self):
@@ -58,7 +57,7 @@ class AccountingAPITestCase(TestCase):
         response = self.client.get('/api/accounting/libro-compras/?year=2024&month=12')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['count'], 0)
-        self.assertEqual(len(response.data['results']['results']), 0)
+        self.assertEqual(len(response.data['results']), 0)
     
     def test_libro_compras_with_data(self):
         """Verifica que retorna facturas del período correcto."""
@@ -89,16 +88,16 @@ class AccountingAPITestCase(TestCase):
         response = self.client.get('/api/accounting/libro-compras/?year=2024&month=12')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['count'], 1)
-        self.assertEqual(len(response.data['results']['results']), 1)
+        self.assertEqual(len(response.data['results']), 1)
         
         # Verificar datos
-        item = response.data['results']['results'][0]
+        item = response.data['results'][0]
         self.assertEqual(item['folio'], 'F-001')
         self.assertEqual(item['rut_proveedor'], '12345678-9')
         self.assertEqual(float(item['neto']), 100000.0)
         
         # Verificar totales
-        totals = response.data['results']['totals']
+        totals = response.data['totals']
         self.assertEqual(float(totals['neto']), 100000.0)
         self.assertEqual(float(totals['iva']), 19000.0)
         self.assertEqual(float(totals['total']), 119000.0)
@@ -118,6 +117,7 @@ class AccountingAPITestCase(TestCase):
             client_name='Cliente Test',
             client_rut='98765432-1',
             status='approved',
+            status_updated_at=timezone.make_aware(datetime(2024, 12, 15, 12, 0)),
             subtotal=Decimal('200000'),
             tax_amount=Decimal('38000'),
             total_amount=Decimal('238000')

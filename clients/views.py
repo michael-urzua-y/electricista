@@ -159,11 +159,11 @@ class ClientViewSet(viewsets.ModelViewSet):
             .aggregate(total=Sum('total_amount'))['total']
         ) or 0
 
-        # Top 5 productos por frecuencia en QuoteItem (cualquier estado)
+        # Top 5 servicios por frecuencia en QuoteItem (cualquier estado)
         top_products = (
             QuoteItem.objects
             .filter(quote__user=request.user, quote__client=client)
-            .values('product_name')
+            .values('description')
             .annotate(count=Count('id'))
             .order_by('-count')[:5]
         )
@@ -171,7 +171,11 @@ class ClientViewSet(viewsets.ModelViewSet):
         return Response({
             'total_approved': total_approved,
             'top_products': [
-                {'name': item['product_name'], 'count': item['count']}
+                {
+                    'name': item['description'],
+                    'product_name': item['description'],
+                    'count': item['count'],
+                }
                 for item in top_products
             ],
         })

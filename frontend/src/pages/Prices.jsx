@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ArrowDownTrayIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline'
 import {
   getPriceItems,
   getPriceItem,
@@ -9,6 +9,8 @@ import {
   createSubItem,
   updateSubItem,
   deleteSubItem,
+  downloadPriceTemplate,
+  uploadPriceExcel,
 } from '../services/pricesApi'
 import PriceItemForm from '../components/PriceItemForm'
 import PriceSubItemForm from '../components/PriceSubItemForm'
@@ -118,18 +120,55 @@ export default function Prices() {
     fetchItems()
   }
 
-  const handleDeleteSubItem = async (subItem) => {
-    if (!window.confirm(`¿Eliminar "${subItem.description}"?`)) return
-    try {
-      await deleteSubItem(subItem.id)
-      showSuccess('Sub-ítem eliminado')
-      fetchItems()
-    } catch (err) {
-      setError(err.response?.data?.detail || 'No se pudo eliminar')
-    }
-  }
+   const handleDeleteSubItem = async (subItem) => {
+     if (!window.confirm(`¿Eliminar "${subItem.description}"?`)) return
+     try {
+       await deleteSubItem(subItem.id)
+       showSuccess('Sub-ítem eliminado')
+       fetchItems()
+     } catch (err) {
+       setError(err.response?.data?.detail || 'No se pudo eliminar')
+     }
+   }
 
-  // --- Pagination helpers ---
+   const handleDownloadTemplate = async () => {
+     try {
+       const res = await downloadPriceTemplate()
+       // The response is a blob, we need to create a download link
+       const url = window.URL.createObjectURL(new Blob([res.data]))
+       const link = document.createElement('a')
+       link.href = url
+       link.setAttribute('download', 'plantilla_precios.xlsx')
+       document.body.appendChild(link)
+       link.click()
+       link.parentNode.removeChild(link)
+     } catch (err) {
+       setError(err.response?.data?.detail || 'Error al descargar la plantilla')
+     }
+   }
+
+   const handleExcelUpload = async (e) => {
+     const file = e.target.files[0]
+     if (!file) return
+     setLoading(true)
+     setError('')
+     try {
+       const res = await uploadPriceExcel(file)
+       setSuccessMsg(res.data.message || 'Archivo procesado correctamente')
+       if (res.data.errors && res.data.errors.length > 0) {
+         setError('Errores en el archivo: ' + res.data.errors.join(', '))
+       }
+       // Reset the file input
+       e.target.value = ''
+       fetchItems()
+     } catch (err) {
+       setError(err.response?.data?.detail || 'Error al procesar el archivo')
+     } finally {
+       setLoading(false)
+     }
+   }
+
+   // --- Pagination helpers ---
   const getPage = (itemId) => pages[itemId] || 1
   const setPage = (itemId, page) => setPages((prev) => ({ ...prev, [itemId]: page }))
 
@@ -140,20 +179,39 @@ export default function Prices() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Precios</h1>
-          <p className="text-gray-500 mt-1">Lista de precios de servicios por categoría</p>
-        </div>
-        <button
-          onClick={() => { setEditingItem(null); setShowItemModal(true) }}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-900 bg-yellow-500 hover:bg-yellow-600 rounded-lg transition-colors"
-        >
-          <PlusIcon className="w-4 h-4" />
-          Nuevo Ítem
-        </button>
-      </div>
+       {/* Header */}
+       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+         <div>
+           <h1 className="text-3xl font-bold text-gray-900">Precios</h1>
+           <p className="text-gray-500 mt-1">Lista de precios de servicios por categoría</p>
+         </div>
+         <div className="flex items-center gap-3">
+           <button
+             onClick={() => { setEditingItem(null); setShowItemModal(true) }}
+             className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-900 bg-yellow-500 hover:bg-yellow-600 rounded-lg transition-colors"
+           >
+             <PlusIcon className="w-4 h-4" />
+             Nuevo Ítem
+           </button>
+           <button
+             onClick={handleDownloadTemplate}
+             className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-900 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
+           >
+             <ArrowDownTrayIcon className="w-4 h-4" />
+             Plantilla
+           </button>
+           <label className="flex items-center gap-2 cursor-pointer">
+             <ArrowUpTrayIcon className="w-4 h-4 text-gray-900 hover:text-gray-700" />
+             <input
+               type="file"
+               accept=".xlsx"
+               onChange={handleExcelUpload}
+               className="sr-only"
+             />
+             Subir Excel
+           </label>
+         </div>
+       </div>
 
       {/* Mensajes */}
       {error && (
