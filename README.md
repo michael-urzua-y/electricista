@@ -1,6 +1,6 @@
 # Monay Solutions — Sistema Integral de Gestión Empresarial
 
-Sistema full-stack enterprise-ready para electricistas que incluye gestión completa de materiales, contabilidad, clientes, cotizaciones y dashboard de KPIs. Sube facturas (PDF/imágenes), extrae ítems automáticamente con OCR + IA, genera cotizaciones profesionales, lleva libros contables y controla stock mínimo.
+Sistema full-stack para gestionar cotizaciones, compras, gastos generales, listas de precios, trabajadores y estimación tributaria. Sube facturas (PDF/imágenes), extrae ítems automáticamente con OCR + IA, genera cotizaciones profesionales y consolida información operativa para la gestión mensual.
 
 **Estado**: ✅ Producción-Ready | **Seguridad**: ⭐⭐⭐⭐⭐ | **Performance**: ⭐⭐⭐⭐⭐ | **Responsividad**: ⭐⭐⭐⭐⭐
 
@@ -40,7 +40,7 @@ Sistema full-stack enterprise-ready para electricistas que incluye gestión comp
 ## 🚀 Performance Optimizado
 
 ### Base de Datos
-- ✅ **Índices compuestos en modelos críticos** — Facturas, cotizaciones, clientes, precios, gastos e inventario
+- ✅ **Índices compuestos en modelos críticos** — Facturas, cotizaciones, precios, gastos y trabajadores
   - `user + status` — Filtrar por usuario y estado
   - `provider + issue_date` — Filtrar por proveedor y fecha
   - `user + created_at` — Filtrar por usuario y fecha creación
@@ -53,7 +53,7 @@ Sistema full-stack enterprise-ready para electricistas que incluye gestión comp
 - ✅ **Prefetch personalizado** — Para items de facturas
 
 ### Caché y Compresión
-- ✅ **Redis cache** — Proveedores cacheados (5 min timeout)
+- ✅ **Redis cache** — Caché compartido para backend y procesos asíncronos
 - ✅ **Compresión GZIP** — Respuestas más pequeñas
 - ✅ **Invalidación automática** — Cache se actualiza al cambiar datos
 
@@ -70,32 +70,32 @@ Sistema full-stack enterprise-ready para electricistas que incluye gestión comp
 
 ## Características
 
-### 🏢 Gestión Empresarial Completa
-- **Gestión de Clientes** — CRUD completo con validación de RUT chileno, historial de cotizaciones
-- **Sistema de Cotizaciones** — Generación profesional con PDF, envío por email, estados (borrador/enviada/aprobada/rechazada)
-- **Contabilidad Integrada** — Libros de compras y ventas, resumen mensual con IVA, exportación a Excel
-- **Dashboard KPIs** — Métricas de negocio disponibles por API; el acceso desde menú está comentado temporalmente
-- **Control de Stock** — Alertas de stock mínimo, gestión por proveedor, notificaciones automáticas
+### 🏢 Gestión Empresarial Actual
+- **Cotizaciones** — Generación profesional con PDF, envío por email y estados (borrador/enviada/aprobada/rechazada)
+- **Compras** — Carga de facturas PDF/imágenes con OCR + IA y revisión de ítems
+- **Gastos Generales** — Registro de egresos operativos con comprobantes adjuntos
+- **Precios** — Lista de precios de servicios con categorías, sub-ítems e importación Excel
+- **Trabajadores** — Remuneraciones, descuentos previsionales y sueldo líquido
+- **Estimador Tributario** — Consolidación mensual para apoyo de planificación tributaria
 
 ### 🔐 Seguridad y Performance
 - **Autenticación JWT** — Login seguro con tokens de acceso y refresco (SimpleJWT)
 - **Rate Limiting** — 5 intentos/min en login, 20-30 en endpoints de API
 - **Validación exhaustiva** — MIME types, tamaño máximo (10MB), caracteres peligrosos bloqueados
-- **Queries optimizadas** — 6 índices creados, select_related, prefetch_related
-- **Caché Redis** — Proveedores cacheados (5 min timeout)
+- **Queries optimizadas** — Índices, select_related y prefetch_related en consultas críticas
+- **Caché Redis** — Cache compartido y broker para tareas asíncronas
 
 ### 🤖 Procesamiento Inteligente
 - **OCR + IA** — Extrae texto con Tesseract/PyMuPDF y parsea con Mistral AI (`mistral-large-latest`)
-- **Fuzzy matching de productos** — Evita duplicados usando similitud de texto (thefuzz, umbral 92%)
-- **Extracción de RUT desde OCR** — Identifica automáticamente RUT de proveedores en facturas
+- **Normalización de ítems** — Evita duplicados en ítems extraídos usando similitud de texto (thefuzz, umbral 92%)
+- **Extracción de datos desde OCR** — Identifica automáticamente datos relevantes de la factura
 - **Procesamiento asíncrono** — Celery + Redis para no bloquear al usuario
 
-### 📊 Análisis y Reportes
-- **Historial de precios** — Registra cada precio por producto y proveedor automáticamente
-- **Comparación de precios** — 4 modos por API: automática, manual, resumen mensual y entre proveedores; el menú está comentado temporalmente
+### 📊 Operación y Reportes Activos
 - **Márgenes de ganancia** — Configurable por factura y por ítem individual
-- **Dashboard interactivo** — Vista implementada con Recharts, actualmente fuera del menú principal
-- **Exportación Excel** — Libros contables con formato profesional
+- **PDF de cotizaciones** — Generación de documentos profesionales
+- **Importación Excel** — Carga masiva de lista de precios de servicios
+- **Comprobantes** — Visualización de archivos asociados a compras y gastos
 
 ### 💰 Lista de Precios de Servicios
 - **Categorías y sub-ítems** — Organización jerárquica de precios de servicios (ej: "PUNTO DE RED" con sub-ítems)
@@ -118,13 +118,13 @@ Sistema full-stack enterprise-ready para electricistas que incluye gestión comp
 
 ### 🌐 Experiencia de Usuario
 - **Búsqueda inteligente** — Autocompletado de clientes en cotizaciones con debounce
-- **Tooltips informativos** — Explicaciones detalladas en KPIs y contabilidad
-- **Actualización automática** — Stock mínimo se actualiza instantáneamente
+- **Tooltips informativos** — Explicaciones en formularios y cálculos
+- **Actualización automática** — Compras en proceso se actualizan mediante polling
 - **Zona horaria Chile** — `America/Santiago`, moneda CLP, validación RUT chileno
 
 ---
 
-## Arquitectura
+## Arquitectura Visible Actual
 
 ```
 monaysolutions/                ← raíz del proyecto Django
@@ -132,77 +132,49 @@ monaysolutions/                ← raíz del proyecto Django
 │   ├── settings.py            ← config DB, JWT, Celery, Redis, CORS
 │   ├── urls.py                ← router principal + endpoints JWT
 │   ├── celery.py              ← configuración de Celery
-│   ├── kpi_service.py         ← servicio de KPIs de negocio
 │   ├── tax_estimator.py       ← estimador tributario mensual
-│   ├── views.py               ← CurrentUserView, DailyTotalsView, DashboardKpisView
+│   ├── views.py               ← usuario actual y totales auxiliares
 │   └── wsgi.py / asgi.py
 │
-├── products/                  ← app de productos y proveedores
-│   ├── models.py              ← Provider (con RUT), Product, PriceHistory
-│   ├── views.py               ← ProviderViewSet, ProductViewSet, ComparacionViewSet
-│   └── serializers.py
-│
-├── provider_inventory/        ← app de inventario por proveedor
-│   ├── models.py              ← ProviderInventory + ProviderInventoryAuditLog
-│   ├── views.py               ← inventario, stock bajo y auditoría
-│   └── services.py            ← búsqueda, stock bajo y procesamiento idempotente
-│
-├── invoices/                  ← app de facturas
+├── invoices/                  ← menú Compras
 │   ├── models.py              ← Invoice, InvoiceItem
-│   ├── views.py               ← FacturaViewSet (CRUD + 4 endpoints de comparación)
+│   ├── views.py               ← carga, listado, detalle, archivo original y margen de ítems
 │   ├── services.py            ← process_invoice() — orquesta OCR → IA → DB
 │   ├── ocr.py                 ← OCRProcessor (PyMuPDF → Tesseract → PyPDF2)
 │   ├── ai_parser.py           ← InvoiceAIParser (Mistral API + parser básico regex)
-│   ├── comparison.py          ← lógica pura de comparación de precios
 │   ├── tasks.py               ← tarea Celery: process_invoice_task
 │   └── signals.py
 │
-├── clients/                   ← app de clientes
-│   ├── models.py              ← Client con validación RUT chileno
-│   ├── views.py               ← ClientViewSet con búsqueda
-│   ├── validators.py          ← validador de RUT chileno
-│   └── serializers.py
-│
-├── quotes/                    ← app de cotizaciones
+├── quotes/                    ← menú Cotizaciones + perfil empresa/SMTP
 │   ├── models.py              ← CompanyProfile, SMTPConfig, Quote, QuoteItem, QuoteEmailLog
 │   ├── views.py               ← perfil empresa, SMTP, QuoteViewSet, PDF/email
 │   ├── email_service.py       ← envío de emails con cotización
 │   └── serializers.py
 │
-├── accounting/                ← app de contabilidad
-│   ├── models.py              ← sin modelos propios; usa Invoice, Quote y Expense
-│   ├── views.py               ← libros de compras/ventas, resumen mensual
-│   ├── services.py            ← lógica contable, extracción RUT OCR, Excel
-│   └── urls.py
-│
-├── prices/                    ← lista de precios de servicios
+├── prices/                    ← menú Precios
 │   ├── models.py              ← PriceItem, PriceSubItem
 │   ├── views.py               ← CRUD, búsqueda e importación/exportación Excel
 │   └── serializers.py
 │
-├── expenses/                  ← gastos generales
+├── expenses/                  ← menú Gastos Generales
 │   ├── models.py              ← Expense con comprobante binario
 │   ├── views.py               ← CRUD + endpoint de comprobante
 │   └── serializers.py
 │
-├── workers/                   ← trabajadores y remuneraciones
+├── workers/                   ← menú Trabajadores
 │   ├── models.py              ← Worker con cálculos previsionales
 │   ├── views.py               ← WorkerViewSet
 │   └── serializers.py
 │
 ├── frontend/                  ← SPA React + Vite
 │   └── src/
-│       ├── pages/             ← Dashboard, Invoices, Products, Providers,
-│       │                         PriceComparison, Profile, Login, Clients,
-│       │                         Accounting, Prices, GastosGenerales,
-│       │                         Trabajadores, EstimadorTributario
-│       ├── components/        ← ComparisonTable, PriceVariationBadge,
-│       │                         InvoiceSearchInput, Pagination, KpiCard,
-│       │                         LowStockBadge, ClientForm, QuoteForm,
-│       │                         SMTPConfigForm, CompanyProfileForm
+│       ├── pages/             ← Quotes, Invoices, Prices, GastosGenerales,
+│       │                         Trabajadores, EstimadorTributario, Profile, Login
+│       ├── components/        ← QuoteForm, PriceItemForm, PriceSubItemForm,
+│       │                         SMTPConfigForm, CompanyProfileForm, MonthPicker
 │       ├── contexts/          ← AuthContext (JWT + localStorage)
-│       ├── services/          ← api.js, clientsApi.js, accountingApi.js,
-│       │                         dashboardApi.js, pricesApi.js, workersApi.js
+│       ├── services/          ← api.js, quotesApi.js, pricesApi.js,
+│       │                         expensesApi.js, workersApi.js, taxApi.js
 │       └── layouts/           ← Layout principal con sidebar
 │
 ├── scripts/                   ← scripts de inicialización y utilidades
@@ -227,8 +199,8 @@ monaysolutions/                ← raíz del proyecto Django
 | PyMuPDF (fitz) | 1.23 | Extracción de texto nativo en PDFs |
 | Tesseract OCR | — | OCR para PDFs escaneados e imágenes |
 | Mistral AI | mistral-large-latest | Parseo inteligente de facturas |
-| thefuzz | 0.20 | Fuzzy matching de nombres de productos |
-| django-redis | 5.4 | Caché de proveedores |
+| thefuzz | 0.20 | Normalización de nombres de ítems |
+| django-redis | 5.4 | Caché backend |
 | sentry-sdk | 1.40 | Error tracking y monitoreo |
 | django-ratelimit | 4.1 | Rate limiting |
 | whitenoise | 6.6 | Servir archivos estáticos en producción |
@@ -240,7 +212,6 @@ monaysolutions/                ← raíz del proyecto Django
 | React | 18 | UI library |
 | Vite | 5 | Build tool y dev server |
 | TailwindCSS | 3.3 | Estilos utilitarios |
-| Recharts | 2.10 | Gráficos de barras interactivos |
 | Axios | 1.6 | Cliente HTTP con interceptores JWT |
 | React Router | 6.20 | Navegación SPA |
 | Heroicons | 2.0 | Iconografía |
@@ -250,22 +221,9 @@ monaysolutions/                ← raíz del proyecto Django
 
 ## Modelos de datos
 
-### `products` app
-- **Provider** — nombre, sitio web, categoría, logo, RUT, activo/inactivo
-- **Product** — nombre, marca, modelo, categoría, unidad, proveedor FK
-- **PriceHistory** — precio por producto + proveedor + fecha (se crea automáticamente al procesar facturas)
-
-### `provider_inventory` app
-- **ProviderInventory** — producto por proveedor, stock, precio unitario, stock mínimo, margen y última factura procesada
-- **ProviderInventoryAuditLog** — auditoría de movimientos de inventario; guarda `invoice_item_id` para evitar reprocesar el mismo ítem dos veces
-
 ### `invoices` app
 - **Invoice** — archivo, proveedor, fecha emisión, total, subtotal, IVA, estado (`pending → processing → completed/failed`), margen general, texto OCR
 - **InvoiceItem** — descripción, cantidad, precio unitario, precio total, margen individual, precio de venta calculado, variación respecto a factura anterior
-
-### `clients` app
-- **Client** — nombre, RUT (validado), email, teléfono, dirección, activo/inactivo
-- **ClientSettings** — configuración de días de inactividad para KPIs/clientes inactivos
 
 ### `quotes` app
 - **CompanyProfile** — perfil de empresa del usuario, RUT, datos de contacto y logo binario
@@ -304,29 +262,6 @@ GET/POST/PUT/PATCH/DELETE /api/empresa/smtp/      → configuración SMTP
 POST          /api/empresa/smtp/test/    → probar conexión SMTP
 ```
 
-### Proveedores
-```
-GET    /api/proveedores/              → listar (con caché Redis)
-POST   /api/proveedores/              → crear
-GET    /api/proveedores/{id}/         → detalle
-PATCH  /api/proveedores/{id}/         → actualizar
-DELETE /api/proveedores/{id}/         → eliminar
-POST   /api/proveedores/{id}/toggle_active/  → activar/desactivar
-```
-
-### Clientes
-```
-GET    /api/clients/?q=texto             → listar con búsqueda
-POST   /api/clients/                     → crear (validación RUT chileno)
-GET    /api/clients/{id}/                → detalle
-PATCH  /api/clients/{id}/                → actualizar
-DELETE /api/clients/{id}/                → desactivar si no tiene cotizaciones activas
-GET    /api/clients/{id}/quotes/         → cotizaciones del cliente
-GET    /api/clients/{id}/stats/          → estadísticas del cliente
-GET    /api/clients/inactive/            → clientes inactivos
-GET/PATCH /api/clients/settings/         → días de inactividad
-```
-
 ### Cotizaciones
 ```
 GET    /api/cotizaciones/                     → listar (filtro: status)
@@ -340,60 +275,13 @@ POST   /api/cotizaciones/{id}/cambiar-estado/ → cambiar estado
 GET    /api/cotizaciones/{id}/email-logs/     → historial de envíos
 ```
 
-### Contabilidad
-```
-GET /api/accounting/libro-compras/?year=&month=&page=        → libro de compras paginado
-GET /api/accounting/libro-compras/export/?year=&month=       → exportar Excel libro compras
-GET /api/accounting/libro-ventas/?year=&month=&page=         → libro de ventas paginado
-GET /api/accounting/libro-ventas/export/?year=&month=        → exportar Excel libro ventas
-GET /api/accounting/resumen/?year=&month=                    → resumen con IVA y variaciones
-```
-
-### Dashboard KPIs
-```
-GET /api/dashboard/kpis/?year=&month=   → métricas de negocio (conversión, ventas, clientes inactivos, stock bajo)
-```
-
-### Inventario y Stock Bajo
-```
-GET   /api/provider-inventory/              → listar inventario por proveedor
-GET   /api/provider-inventory/{id}/         → detalle con auditoría reciente
-PATCH /api/provider-inventory/{id}/         → actualizar `minimum_stock` o `markup_percentage`
-POST  /api/provider-inventory/search/       → buscar productos en inventario
-POST  /api/provider-inventory/process_invoice/ → procesar inventario desde una factura
-GET   /api/inventory/low-stock/             → productos bajo stock mínimo
-GET   /api/inventory/low-stock/count/       → conteo de productos bajo stock
-GET   /api/audit-logs/                      → auditoría de inventario
-```
-
-### Productos
-```
-GET  /api/productos/                        → listar (filtros: provider, category)
-GET  /api/productos/{id}/price_history/     → historial de precios
-```
-
-### Facturas
+### Compras y facturas
 ```
 GET    /api/facturas/                          → listar (filtros: provider, status)
 POST   /api/facturas/                          → subir factura (multipart/form-data)
 GET    /api/facturas/{id}/                     → detalle con ítems y variaciones
 PATCH  /api/facturas/{id}/update-item/         → actualizar margen de un ítem
-GET    /api/facturas/stats/                    → estadísticas del usuario
-GET    /api/facturas/diarios/?year=&month=     → totales diarios del mes
 GET    /api/facturas/{id}/ver-factura/         → ver archivo original almacenado en BD
-```
-
-### Comparación de precios
-```
-GET /api/facturas/{id}/comparar-anterior/      → vs factura anterior del mismo proveedor
-GET /api/facturas/comparar-manual/?factura_base=&factura_comparar=  → comparación manual
-GET /api/facturas/comparar-mes/?proveedor_id=&year=&month=          → resumen mensual
-GET /api/facturas/comparar-proveedores/        → mismo producto entre distintos proveedores
-```
-
-### Comparación de tabla de precios
-```
-GET /api/comparacion/   → tabla de productos con precio más barato/caro por proveedor
 ```
 
 ### Lista de precios de servicios
@@ -448,16 +336,10 @@ InvoiceAIParser.parse(ocr_text)
         ↓
 _process_items(): por cada ítem parseado
   ├── _find_matching_product(): búsqueda exacta → fuzzy (umbral 92%)
-  ├── Si no existe → Product.objects.create()
-  ├── InvoiceItem.objects.create()
-  └── PriceHistory.objects.create()
+  ├── normaliza/crea referencias internas si corresponde
+  └── InvoiceItem.objects.create()
         ↓
 Invoice.total_amount calculado, status = "completed"
-        ↓
-provider_inventory.signals procesa la factura completada
-  ├── incrementa ProviderInventory
-  ├── crea ProviderInventoryAuditLog con invoice_item_id
-  └── omite ítems ya auditados para evitar duplicar stock
 ```
 
 ---
@@ -510,7 +392,7 @@ Los servicios que levanta Docker:
 - `redis` — Redis 7 en puerto 6379 (con healthcheck)
 - `backend` — Django + Gunicorn en puerto 8000
   - Ejecuta migraciones automáticamente
-  - Inicializa BD con demo user y 5 proveedores
+  - Inicializa BD con usuario demo y datos base
   - Recolecta archivos estáticos
 - `celery` — Worker Celery para procesamiento de facturas
 - `frontend` — Node 18 + Vite en puerto 5173
@@ -619,8 +501,6 @@ CSRF_COOKIE_SECURE=True
 El menú principal actual muestra solo los módulos que se usarán en esta etapa:
 **Cotizaciones**, **Compras**, **Gastos Generales**, **Precios**, **Trabajadores** y **Estimador Tributario**.
 
-Las vistas de **Dashboard**, **Clientes**, **Comparación**, **Contabilidad**, **Productos** y **Proveedores** siguen implementadas en el código, pero están comentadas temporalmente en `frontend/src/layouts/Layout.jsx` para simplificar la operación inicial de un solo usuario.
-
 ### Crear Cotización
 1. Ir a **Cotizaciones** → **Nueva Cotización**
 2. Buscar cliente escribiendo nombre, RUT o email (autocompletado)
@@ -633,13 +513,13 @@ Las vistas de **Dashboard**, **Clientes**, **Comparación**, **Contabilidad**, *
 2. Seleccionar archivo PDF o imagen
 3. Completar fecha de emisión y proveedor (obligatorios)
 4. Opcionalmente ingresar número de factura y margen de ganancia general
-5. El sistema procesa en segundo plano: OCR → IA/fallback → ítems → historial de precios → inventario
+5. El sistema procesa en segundo plano: OCR → IA/fallback → ítems revisables
 6. La tabla se actualiza automáticamente con polling cada 3 segundos mientras hay facturas en proceso
 
 ### Ver detalle de factura
 - Click en el ícono de ojo en la tabla de facturas
 - Muestra todos los ítems con precio unitario, total, margen editable y precio de venta
-- La columna **Variación** compara cada producto con la factura anterior del mismo proveedor
+- La columna **Variación** compara cada ítem con la factura anterior del mismo proveedor
 - El margen de cada ítem es editable directamente en la tabla
 
 ### Precios
@@ -658,14 +538,6 @@ Las vistas de **Dashboard**, **Clientes**, **Comparación**, **Contabilidad**, *
 ### Estimador tributario
 - Consolida ventas aprobadas, gastos, honorarios y remuneraciones del mes.
 - Entrega una estimación mensual para apoyar planificación tributaria.
-
-### Módulos implementados pero ocultos del menú
-- **Clientes**: CRUD, búsqueda, clientes inactivos y estadísticas.
-- **Contabilidad**: libro de compras, libro de ventas, resumen mensual y exportación Excel.
-- **Dashboard KPIs**: conversión, ventas, top servicios/clientes, clientes inactivos y stock bajo.
-- **Productos/Proveedores/Comparación**: consulta de productos, proveedores, historial y comparación de precios.
-
----
 
 ## 🔧 Comandos útiles
 
@@ -757,20 +629,19 @@ docker compose exec -T backend python manage.py check --deploy
 ### UX/UI
 - [ ] Sistema de notificaciones toast para feedback inmediato
 - [ ] Skeleton loaders para mejor experiencia de carga
-- [ ] Búsqueda global en header (facturas, productos, proveedores)
+- [ ] Búsqueda global en header para cotizaciones, compras y gastos
 - [ ] Notificaciones en tiempo real de procesamiento de facturas
 
 ### Funcionalidades de Negocio
 - [ ] Notificaciones push/email cuando el precio sube más del umbral configurado
 - [ ] Importación masiva de facturas desde CSV
 - [ ] Reportes PDF de gastos mensuales y cotizaciones
-- [ ] Reconocimiento de productos con visión IA (GPT-4 Vision)
+- [ ] Reconocimiento de ítems de factura con visión IA
 - [ ] Multi-usuario con roles (admin, operador, solo lectura)
 - [ ] Integración con SII (Servicio de Impuestos Internos de Chile)
 
 ### Tecnología
 - [ ] App móvil (React Native)
-- [ ] API REST completa para contabilidad
 - [ ] Webhooks para integraciones externas
 - [ ] Backup automático de base de datos
 
