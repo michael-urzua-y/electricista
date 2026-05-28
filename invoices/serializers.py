@@ -70,7 +70,7 @@ class InvoiceListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
         fields = ['id', 'user', 'provider', 'provider_name', 'invoice_number',
-                  'issue_date', 'total_amount', 'currency', 'status',
+                  'issue_date', 'received_date', 'total_amount', 'currency', 'status',
                   'file_name', 'file_type', 'tiene_archivo', 'created_at', 'items_count']
         read_only_fields = ['id', 'user', 'status', 'created_at']
 
@@ -91,7 +91,7 @@ class InvoiceDetailSerializer(serializers.ModelSerializer):
         model = Invoice
         fields = ['id', 'user', 'user_name', 'provider', 'provider_name',
                   'invoice_number', 'issue_date', 'total_amount', 'tax_amount',
-                  'subtotal_amount', 'currency', 'file_name', 'file_type',
+                  'subtotal_amount', 'currency', 'received_date', 'file_name', 'file_type',
                   'file_size', 'tiene_archivo', 'ocr_text',
                   'status', 'processing_notes', 'created_at', 'updated_at', 'items']
         read_only_fields = ['id', 'user', 'status', 'ocr_text', 'created_at', 'updated_at']
@@ -116,9 +116,10 @@ class InvoiceUploadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Invoice
-        fields = ['file', 'invoice_number', 'issue_date', 'provider', 'markup_percentage']
+        fields = ['file', 'invoice_number', 'issue_date', 'received_date', 'provider', 'markup_percentage']
         extra_kwargs = {
-            'issue_date': {'required': True}
+            'issue_date': {'required': True},
+            'received_date': {'required': False},
         }
 
     def validate_file(self, value):
@@ -184,6 +185,21 @@ class InvoiceUploadSerializer(serializers.ModelSerializer):
         logger.info(f"[INVOICE] Date validated: {value}")
         return value
 
+    def validate_received_date(self, value):
+        """Validar fecha de recepción tributaria usada por el estimador."""
+        if value is None:
+            return value
+
+        from datetime import date
+        today = date.today()
+
+        if value > today:
+            raise serializers.ValidationError('La fecha de recepción no puede ser futura.')
+        if value < date(2020, 1, 1):
+            raise serializers.ValidationError('La fecha de recepción no puede ser anterior a 2020.')
+
+        return value
+
     def validate_markup_percentage(self, value):
         """Validar porcentaje de margen"""
         if value < 0:
@@ -199,6 +215,13 @@ class InvoiceUploadSerializer(serializers.ModelSerializer):
         if provider and not provider.is_active:
             raise serializers.ValidationError(
                 {'provider': 'El proveedor está inactivo.'}
+            )
+
+        issue_date = data.get('issue_date')
+        received_date = data.get('received_date')
+        if issue_date and received_date and received_date < issue_date:
+            raise serializers.ValidationError(
+                {'received_date': 'La fecha de recepción no puede ser anterior a la fecha de emisión.'}
             )
         
         # Validar que el usuario no ha subido demasiadas facturas hoy

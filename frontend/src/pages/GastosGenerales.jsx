@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, PaperClipIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, PaperClipIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline'
 import { getExpenses, createExpense, updateExpense, deleteExpense, getComprobante } from '../services/expensesApi'
 import MonthPicker from '../components/MonthPicker'
 
@@ -23,6 +23,23 @@ function parseNumberFromThousands(value) {
   return Number.isNaN(num) ? '' : num.toString()
 }
 
+function HelpTooltip({ text }) {
+  return (
+    <span className="relative inline-flex group">
+      <button
+        type="button"
+        className="inline-flex items-center justify-center text-gray-400 hover:text-yellow-600 focus:text-yellow-600 focus:outline-none"
+        aria-label={text}
+      >
+        <QuestionMarkCircleIcon className="w-4 h-4" />
+      </button>
+      <span className="pointer-events-none absolute left-1/2 bottom-full z-50 mb-2 w-64 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs font-normal leading-relaxed text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+        {text}
+      </span>
+    </span>
+  )
+}
+
 function formatMonth(yearMonth) {
   const [year, month] = yearMonth.split('-')
   const months = [
@@ -36,6 +53,7 @@ const DOCUMENT_TYPE_OPTIONS = [
   { value: '', label: 'Seleccionar...' },
   { value: 'boleta', label: 'Boleta' },
   { value: 'factura', label: 'Factura' },
+  { value: 'factura_exenta', label: 'Factura exenta' },
   { value: 'honorario', label: 'Honorario' },
   { value: 'recibo', label: 'Recibo' },
   { value: 'voucher', label: 'Voucher' },
@@ -254,8 +272,9 @@ function ExpenseFormModal({ expense, onClose, onSuccess }) {
 
           {/* Fecha */}
           <div>
-            <label htmlFor="expense-date" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="expense-date" className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
               Fecha <span className="text-red-500">*</span>
+              <HelpTooltip text="Para facturas con RUT empresa, usa la fecha de recepción del documento." />
             </label>
             <input
               id="expense-date"
@@ -269,6 +288,7 @@ function ExpenseFormModal({ expense, onClose, onSuccess }) {
               }`}
             />
             {errors.date && <p className="mt-1 text-xs text-red-500">{errors.date}</p>}
+            <p className="mt-1 text-xs text-gray-500">Para facturas con RUT empresa, usa la fecha de recepción.</p>
           </div>
 
           {/* Detalle */}
@@ -293,8 +313,9 @@ function ExpenseFormModal({ expense, onClose, onSuccess }) {
 
           {/* Monto Total */}
           <div>
-            <label htmlFor="expense-amount" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="expense-amount" className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
               Monto Total <span className="text-red-500">*</span>
+              <HelpTooltip text="Ingresa el monto bruto del comprobante. Si es factura afecta, el estimador separa neto e IVA." />
             </label>
             <input
               id="expense-amount"
@@ -342,8 +363,9 @@ function ExpenseFormModal({ expense, onClose, onSuccess }) {
 
           {/* Tipo Documento */}
           <div>
-            <label htmlFor="expense-doctype" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="expense-doctype" className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
               Tipo
+              <HelpTooltip text="Factura genera IVA crédito si también marcas RUT empresa. Factura exenta no genera IVA crédito." />
             </label>
             <select
               id="expense-doctype"
@@ -402,8 +424,9 @@ function ExpenseFormModal({ expense, onClose, onSuccess }) {
               onChange={(e) => setForm((prev) => ({ ...prev, is_company_invoice: e.target.checked }))}
               className="w-4 h-4 text-yellow-500 border-gray-300 rounded focus:ring-yellow-400"
             />
-            <label htmlFor="expense-company-invoice" className="text-sm font-medium text-gray-700">
+            <label htmlFor="expense-company-invoice" className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700">
               ¿Factura con RUT empresa?
+              <HelpTooltip text="Marca esta opción solo si el documento viene a nombre/RUT de la empresa y debe considerarse en el estimador." />
             </label>
           </div>
 

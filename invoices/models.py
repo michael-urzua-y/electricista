@@ -22,6 +22,7 @@ class Invoice(models.Model):
     provider = models.ForeignKey('products.Provider', on_delete=models.SET_NULL, blank=True, null=True, related_name='invoices', verbose_name='Proveedor')
     invoice_number = models.CharField(max_length=100, blank=True, null=True, verbose_name='Número de factura')
     issue_date = models.DateField(verbose_name='Fecha emisión', null=True, blank=True, db_index=True)
+    received_date = models.DateField(verbose_name='Fecha recepción', null=True, blank=True, db_index=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, verbose_name='Monto total')
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, verbose_name='Impuestos')
     subtotal_amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, verbose_name='Subtotal')

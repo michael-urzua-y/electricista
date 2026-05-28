@@ -72,11 +72,11 @@ Sistema full-stack para gestionar cotizaciones, compras, gastos generales, lista
 
 ### 🏢 Gestión Empresarial Actual
 - **Cotizaciones** — Generación profesional con PDF, envío por email y estados (borrador/enviada/aprobada/rechazada)
-- **Compras** — Carga de facturas PDF/imágenes con OCR + IA y revisión de ítems
-- **Gastos Generales** — Registro de egresos operativos con comprobantes adjuntos
+- **Compras** — Carga de facturas PDF/imágenes con OCR + IA, fecha de recepción y revisión de ítems
+- **Gastos Generales** — Registro de egresos operativos con comprobantes adjuntos e identificación tributaria
 - **Precios** — Lista de precios de servicios con categorías, sub-ítems e importación Excel
-- **Trabajadores** — Remuneraciones, descuentos previsionales y sueldo líquido
-- **Estimador Tributario** — Consolidación mensual para apoyo de planificación tributaria
+- **Trabajadores** — Remuneraciones, Fonasa/Isapre, descuentos previsionales y sueldo líquido
+- **Estimador Tributario** — Consolidación mensual con IVA débito/crédito, cortes y total a transferir
 
 ### 🔐 Seguridad y Performance
 - **Autenticación JWT** — Login seguro con tokens de acceso y refresco (SimpleJWT)
@@ -105,16 +105,27 @@ Sistema full-stack para gestionar cotizaciones, compras, gastos generales, lista
 
 ### 🧾 Gastos Generales
 - **Registro de egresos** — Control de gastos operativos con múltiples tipos de documentos
-- **Tipos de documento** — Boleta, factura, honorario, recibo, voucher u otro
+- **Tipos de documento** — Boleta, factura, factura exenta, honorario, recibo, voucher u otro
 - **Comprobantes adjuntos** — Soporte para PDF/imágenes con captura desde cámara
 - **Marca empresa** — Identifica gastos con factura que tiene RUT empresa (para IVA crédito)
 - **Filtrado por período** — Agrupación mensual con subtotales
 
 ### 👷 Gestión de Trabajadores
 - **Remuneraciones completas** — Sueldo bruto, gratificación, colación, movilización, otras asignaciones
-- **Tasas previsionales** — AFP (10.69%), Salud (7%), Cesantía (0.6%), adicional isapre
+- **Salud legal fija** — La cotización de salud queda bloqueada en 7%
+- **Fonasa/Isapre** — Fonasa calcula solo 7%; Isapre calcula plan en UF o pesos y diferencia automática
+- **Valor UF diario** — Endpoint backend consulta `mindicador.cl`, cachea el valor diario y permite fallback manual
+- **Tasas previsionales** — AFP, Salud legal (7%) y Cesantía, con desglose por monto
 - **Impuesto único 2da categoría** — Cálculo automático según tramos UTM 2026
 - **Validación de RUT chileno** — En formulario con formato automático
+
+### 🧮 Estimador Tributario
+- **Ventas estimadas** — Usa cotizaciones aprobadas como proyección mientras no exista integración de facturas emitidas
+- **Compras recibidas** — Usa facturas por fecha de recepción para calcular IVA crédito fiscal
+- **Gastos con factura empresa** — Incluye gastos generales con factura como compras del giro para IVA crédito
+- **Documentos exentos** — Controla facturas exentas sin generar IVA crédito
+- **Cortes tributarios** — Muestra corte sin guía y con guía de despacho, además del mes de pago
+- **Resumen final** — Presenta impuesto determinado, PPM, retenciones, impuesto trabajadores, honorarios y total a transferir
 
 ### 🌐 Experiencia de Usuario
 - **Búsqueda inteligente** — Autocompletado de clientes en cotizaciones con debounce
@@ -137,8 +148,8 @@ monaysolutions/                ← raíz del proyecto Django
 │   └── wsgi.py / asgi.py
 │
 ├── invoices/                  ← menú Compras
-│   ├── models.py              ← Invoice, InvoiceItem
-│   ├── views.py               ← carga, listado, detalle, archivo original y margen de ítems
+│   ├── models.py              ← Invoice, InvoiceItem, fecha de recepción
+│   ├── views.py               ← carga, listado, detalle, archivo original, filtros y margen de ítems
 │   ├── services.py            ← process_invoice() — orquesta OCR → IA → DB
 │   ├── ocr.py                 ← OCRProcessor (PyMuPDF → Tesseract → PyPDF2)
 │   ├── ai_parser.py           ← InvoiceAIParser (Mistral API + parser básico regex)
@@ -157,13 +168,13 @@ monaysolutions/                ← raíz del proyecto Django
 │   └── serializers.py
 │
 ├── expenses/                  ← menú Gastos Generales
-│   ├── models.py              ← Expense con comprobante binario
+│   ├── models.py              ← Expense con comprobante binario, factura empresa y exentas
 │   ├── views.py               ← CRUD + endpoint de comprobante
 │   └── serializers.py
 │
 ├── workers/                   ← menú Trabajadores
-│   ├── models.py              ← Worker con cálculos previsionales
-│   ├── views.py               ← WorkerViewSet
+│   ├── models.py              ← Worker con cálculos previsionales, Fonasa/Isapre y UF
+│   ├── views.py               ← WorkerViewSet + endpoint valor UF
 │   └── serializers.py
 │
 ├── frontend/                  ← SPA React + Vite
@@ -222,7 +233,7 @@ monaysolutions/                ← raíz del proyecto Django
 ## Modelos de datos
 
 ### `invoices` app
-- **Invoice** — archivo, proveedor, fecha emisión, total, subtotal, IVA, estado (`pending → processing → completed/failed`), margen general, texto OCR
+- **Invoice** — archivo, proveedor, fecha emisión, fecha recepción, total, subtotal, IVA, estado (`pending → processing → completed/failed`), margen general, texto OCR
 - **InvoiceItem** — descripción, cantidad, precio unitario, precio total, margen individual, precio de venta calculado, variación respecto a factura anterior
 
 ### `quotes` app
@@ -240,7 +251,7 @@ monaysolutions/                ← raíz del proyecto Django
 - **Expense** — gasto general con fecha, detalle, monto, tipo de documento, proveedor, observaciones, comprobante binario y marca de factura empresa
 
 ### `workers` app
-- **Worker** — trabajador con remuneraciones, tasas previsionales y cálculo automático de sueldo líquido e impuesto único de segunda categoría
+- **Worker** — trabajador con remuneraciones, sistema de salud, plan Isapre en UF/pesos, tasas previsionales, desglose de descuentos, sueldo líquido e impuesto único de segunda categoría
 
 ---
 
@@ -284,6 +295,10 @@ PATCH  /api/facturas/{id}/update-item/         → actualizar margen de un ítem
 GET    /api/facturas/{id}/ver-factura/         → ver archivo original almacenado en BD
 ```
 
+Campos tributarios relevantes:
+- `issue_date` — fecha de emisión del documento
+- `received_date` — fecha en que el receptor registra/recibe la factura; el estimador la usa para compras recibidas
+
 ### Lista de precios de servicios
 ```
 GET/POST /api/prices/items/                         → categorías de precios
@@ -306,6 +321,7 @@ GET /api/gastos/{id}/comprobante/       → ver comprobante almacenado en BD
 ```
 GET/POST /api/trabajadores/                  → listar/crear trabajadores
 GET/PUT/PATCH/DELETE /api/trabajadores/{id}/ → detalle/edición/eliminación
+GET /api/trabajadores/valor-uf/              → valor UF diario para planes Isapre en UF
 ```
 
 ### Estimador tributario
@@ -313,6 +329,13 @@ GET/PUT/PATCH/DELETE /api/trabajadores/{id}/ → detalle/edición/eliminación
 GET /api/estimador-tributario/?year=&month=       → estimación mensual
 GET /api/estimador-tributario/meses/              → meses disponibles
 ```
+
+El estimador consolida:
+- ventas estimadas desde cotizaciones aprobadas
+- IVA crédito de compras recibidas y gastos con factura empresa
+- documentos exentos sin IVA crédito
+- PPM, retenciones de honorarios e impuesto único de trabajadores
+- cortes tributarios y mes de pago
 
 ---
 
@@ -511,10 +534,11 @@ El menú principal actual muestra solo los módulos que se usarán en esta etapa
 ### Compras y facturas
 1. Ir a **Compras** → **Subir Factura**
 2. Seleccionar archivo PDF o imagen
-3. Completar fecha de emisión y proveedor (obligatorios)
+3. Completar proveedor, fecha de emisión y fecha de recepción
 4. Opcionalmente ingresar número de factura y margen de ganancia general
 5. El sistema procesa en segundo plano: OCR → IA/fallback → ítems revisables
 6. La tabla se actualiza automáticamente con polling cada 3 segundos mientras hay facturas en proceso
+7. Para el estimador tributario, las compras se consideran por **fecha de recepción**
 
 ### Ver detalle de factura
 - Click en el ícono de ojo en la tabla de facturas
@@ -530,14 +554,22 @@ El menú principal actual muestra solo los módulos que se usarán en esta etapa
 ### Gastos generales
 - Registrar egresos operativos con tipo de documento, proveedor y comprobante.
 - Marcar gastos con factura de empresa para apoyar el cálculo tributario.
+- Usar **Factura exenta** cuando el documento no genera IVA crédito.
 
 ### Trabajadores
-- Registrar sueldo bruto, gratificación, asignaciones, tasas AFP/Salud/Cesantía y adicional de salud.
-- El sistema calcula descuentos, impuesto único y sueldo líquido.
+- Registrar sueldo bruto, gratificación, asignaciones, tasa AFP y seguro de cesantía.
+- La salud legal queda fija en 7%.
+- Elegir **Fonasa** para calcular solo 7% legal.
+- Elegir **Isapre** para ingresar el plan en UF o pesos; el sistema calcula la diferencia Isapre automáticamente.
+- En plan UF, el backend consulta el valor UF diario y lo cachea.
+- El sistema calcula descuentos, base tributable, impuesto único y sueldo líquido.
 
 ### Estimador tributario
-- Consolida ventas aprobadas, gastos, honorarios y remuneraciones del mes.
-- Entrega una estimación mensual para apoyar planificación tributaria.
+- Consolida ventas aprobadas, compras recibidas, gastos con factura empresa, honorarios y remuneraciones del mes.
+- Ventas se muestran como estimación desde cotizaciones aprobadas hasta integrar facturas de venta electrónicas.
+- Compras con factura descuentan **IVA crédito**, no el valor neto completo.
+- Muestra cortes del período: sin guía hasta día 5 y con guía de despacho hasta día 10 del mes siguiente.
+- Entrega impuesto determinado, total impuesto a pagar y total a transferir para separar caja durante el mes.
 
 ## 🔧 Comandos útiles
 

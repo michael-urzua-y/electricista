@@ -4,7 +4,8 @@ import {
   PlusIcon,
   DocumentIcon,
   EyeIcon,
-  XMarkIcon
+  XMarkIcon,
+  QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -13,6 +14,27 @@ import Pagination from '../components/Pagination'
 import MonthPicker from '../components/MonthPicker'
 
 const PAGE_SIZE = 10
+
+function todayISO() {
+  return new Date().toISOString().split('T')[0]
+}
+
+function HelpTooltip({ text }) {
+  return (
+    <span className="relative inline-flex group">
+      <button
+        type="button"
+        className="inline-flex items-center justify-center text-gray-400 hover:text-yellow-600 focus:text-yellow-600 focus:outline-none"
+        aria-label={text}
+      >
+        <QuestionMarkCircleIcon className="w-4 h-4" />
+      </button>
+      <span className="pointer-events-none absolute left-1/2 bottom-full z-50 mb-2 w-64 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs font-normal leading-relaxed text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+        {text}
+      </span>
+    </span>
+  )
+}
 
 export default function Invoices() {
   const [invoices, setInvoices] = useState([])
@@ -31,6 +53,7 @@ export default function Invoices() {
   const [formData, setFormData] = useState({
     file: null,
     issue_date: '',
+    received_date: todayISO(),
     invoice_number: '',
     provider: '',
     markup_percentage: 0
@@ -138,6 +161,7 @@ export default function Invoices() {
     const errors = {}
     if (!formData.file) errors.file = 'El archivo es obligatorio'
     if (!formData.issue_date) errors.issue_date = 'La fecha es obligatoria'
+    if (!formData.received_date) errors.received_date = 'La recepción es obligatoria'
     if (!formData.provider) errors.provider = 'Selecciona un proveedor'
     setFormErrors(errors)
     return Object.keys(errors).length === 0
@@ -155,6 +179,7 @@ export default function Invoices() {
       // Ensure date is sent in YYYY-MM-DD format without timezone conversion
       // The HTML date input already provides this format
       formDataToSend.append('issue_date', formData.issue_date)
+      formDataToSend.append('received_date', formData.received_date || todayISO())
       formDataToSend.append('provider', formData.provider)
       if (formData.invoice_number) {
         formDataToSend.append('invoice_number', formData.invoice_number)
@@ -165,7 +190,7 @@ export default function Invoices() {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
-      setFormData({ file: null, issue_date: '', invoice_number: '', provider: '', markup_percentage: 0 })
+      setFormData({ file: null, issue_date: '', received_date: todayISO(), invoice_number: '', provider: '', markup_percentage: 0 })
       setShowModal(false)
       fetchInvoices()
     } catch (error) {
@@ -321,7 +346,7 @@ export default function Invoices() {
           <div className="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 animate-fade-in">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900">Subir Nueva Factura</h2>
-              <button onClick={() => { setShowModal(false); setFormData({ file: null, issue_date: '', invoice_number: '', provider: '', markup_percentage: 0 }); setFormErrors({}) }} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => { setShowModal(false); setFormData({ file: null, issue_date: '', received_date: todayISO(), invoice_number: '', provider: '', markup_percentage: 0 }); setFormErrors({}) }} className="text-gray-400 hover:text-gray-600">
                 <XMarkIcon className="w-6 h-6" />
               </button>
             </div>
@@ -348,8 +373,9 @@ export default function Invoices() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
                   Fecha de emisión
+                  <HelpTooltip text="Fecha que aparece en la factura del proveedor." />
                 </label>
                 <input
                   type="date"
@@ -363,9 +389,28 @@ export default function Invoices() {
                 {formErrors.issue_date && <p className="text-red-500 text-sm mt-1">{formErrors.issue_date}</p>}
               </div>
 
+              <div>
+                <label className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
+                  Fecha de recepción
+                  <HelpTooltip text="Fecha en que recibiste la factura. El estimador usa esta fecha para ubicar el IVA crédito." />
+                </label>
+                <input
+                  type="date"
+                  name="received_date"
+                  value={formData.received_date}
+                  onChange={handleChange}
+                  max={todayISO()}
+                  min="2020-01-01"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 outline-none"
+                />
+                {formErrors.received_date && <p className="text-red-500 text-sm mt-1">{formErrors.received_date}</p>}
+                <p className="text-xs text-gray-500 mt-1">El estimador tributario usa esta fecha para el IVA crédito.</p>
+              </div>
+
                <div>
-                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                 <label className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
                    Proveedor
+                   <HelpTooltip text="Proveedor emisor de la factura. Se usa para controlar compras, precios e historial." />
                  </label>
                  <select
                    name="provider"
@@ -386,8 +431,9 @@ export default function Invoices() {
                </div>
 
                <div>
-                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                 <label className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
                    Número de factura (opcional)
+                   <HelpTooltip text="Folio o número del documento. Ayuda a cuadrar con el resumen del contador." />
                  </label>
                  <input
                    type="text"
@@ -424,7 +470,7 @@ export default function Invoices() {
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => { setShowModal(false); setFormData({ file: null, issue_date: '', invoice_number: '', provider: '', markup_percentage: 0 }); setFormErrors({}) }}
+                  onClick={() => { setShowModal(false); setFormData({ file: null, issue_date: '', received_date: todayISO(), invoice_number: '', provider: '', markup_percentage: 0 }); setFormErrors({}) }}
                   className="flex-1 px-4 py-3 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   Cancelar
@@ -519,7 +565,8 @@ export default function Invoices() {
                       <thead>
                         <tr className="bg-gray-50 border-b border-gray-100">
                           <th className="text-left px-4 sm:px-6 py-3 font-semibold text-gray-600">Factura</th>
-                          <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden sm:table-cell">Fecha</th>
+                          <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden sm:table-cell">Emisión</th>
+                          <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden lg:table-cell">Recepción</th>
                           <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">Proveedor</th>
                           <th className="text-right px-4 py-3 font-semibold text-gray-600">Total</th>
                           <th className="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>
@@ -540,6 +587,9 @@ export default function Invoices() {
                             </td>
                             <td className="px-4 py-3 text-gray-600 hidden sm:table-cell whitespace-nowrap">
                               {invoice.issue_date ? format(new Date(invoice.issue_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: es }) : '—'}
+                            </td>
+                            <td className="px-4 py-3 text-gray-600 hidden lg:table-cell whitespace-nowrap">
+                              {invoice.received_date ? format(new Date(invoice.received_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: es }) : '—'}
                             </td>
                             <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{invoice.provider_name || '—'}</td>
                             <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(invoice.total_amount)}</td>
@@ -604,6 +654,12 @@ export default function Invoices() {
                   <p className="text-xs font-medium text-gray-500 uppercase">Fecha</p>
                   <p className="mt-1 text-gray-900">
                     {selectedInvoice.issue_date ? format(new Date(selectedInvoice.issue_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: es }) : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase">Recepción</p>
+                  <p className="mt-1 text-gray-900">
+                    {selectedInvoice.received_date ? format(new Date(selectedInvoice.received_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: es }) : 'N/A'}
                   </p>
                 </div>
                  <div>

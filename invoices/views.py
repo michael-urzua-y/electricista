@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from django.db.models import Prefetch
+from django.utils import timezone
 import logging
 from .models import Invoice, InvoiceItem
 from products.models import Provider
@@ -104,6 +105,7 @@ class FacturaViewSet(viewsets.ModelViewSet):
             file_name=file_name,
             file_size=file_size,
             file_type=file_ext,
+            received_date=serializer.validated_data.get('received_date') or timezone.localdate(),
         )
 
         # Enviar a Celery para procesar OCR + IA en segundo plano

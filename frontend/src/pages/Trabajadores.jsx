@@ -1,11 +1,29 @@
-import { useState, useEffect, useCallback } from 'react'
-import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline'
-import { getWorkers, createWorker, updateWorker, deleteWorker } from '../services/workersApi'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, InformationCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
+import { getWorkers, createWorker, updateWorker, deleteWorker, getUfValue } from '../services/workersApi'
 
 function formatCLP(value) {
   const num = Number(value)
   if (Number.isNaN(num)) return '$0'
   return '$' + num.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
+
+function formatDateCL(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+function InfoTooltip({ text }) {
+  return (
+    <span className="relative inline-flex group">
+      <InformationCircleIcon className="w-4 h-4 text-gray-400" aria-hidden="true" />
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden w-64 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs font-normal leading-relaxed text-white shadow-lg group-hover:block">
+        {text}
+      </span>
+    </span>
+  )
 }
 
 function WorkerFormModal({ worker, onClose, onSuccess }) {
@@ -21,6 +39,11 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
     transport_allowance: '0',
     other_allowance: '0',
     additional_health: '0',
+    health_system: 'fonasa',
+    health_plan_unit: 'uf',
+    health_plan_uf: '0',
+    health_plan_clp: '0',
+    health_uf_value: '0',
     afp_rate: '10.69',
     health_rate: '7.00',
     unemployment_rate: '0.60',
@@ -29,6 +52,9 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [ufLoading, setUfLoading] = useState(false)
+  const [ufError, setUfError] = useState('')
+  const [ufInfo, setUfInfo] = useState(null)
 
   useEffect(() => {
     if (worker) {
@@ -36,6 +62,11 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
         const n = Math.round(Number(val) || 0)
         return n === 0 ? '0' : n.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
       }
+      const healthSystem = worker.health_system || (Number(worker.additional_health) > 0 ? 'isapre' : 'fonasa')
+      const healthPlanUnit = worker.health_plan_unit === 'manual' ? 'clp' : (worker.health_plan_unit || 'uf')
+      const legacyPlanClp = Number(worker.health_plan_clp) > 0
+        ? worker.health_plan_clp
+        : worker.health_total_amount
       setForm({
         name: worker.name || '',
         rut: worker.rut || '',
@@ -46,8 +77,13 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
         transport_allowance: fmt(worker.transport_allowance),
         other_allowance: fmt(worker.other_allowance),
         additional_health: fmt(worker.additional_health),
+        health_system: healthSystem,
+        health_plan_unit: healthPlanUnit,
+        health_plan_uf: worker.health_plan_uf?.toString() || '0',
+        health_plan_clp: fmt(legacyPlanClp),
+        health_uf_value: worker.health_uf_value?.toString() || '0',
         afp_rate: worker.afp_rate?.toString() || '10.69',
-        health_rate: worker.health_rate?.toString() || '7.00',
+        health_rate: '7.00',
         unemployment_rate: worker.unemployment_rate?.toString() || '0.60',
         is_active: worker.is_active ?? true,
       })
@@ -120,6 +156,24 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
   // Strip formatting to get raw number for backend
   const stripMoneyFormat = (formatted) => normalizeMoneyDigits(formatted)
 
+  const normalizeDecimal = (raw) => String(raw || '')
+    .replace(',', '.')
+    .replace(/[^0-9.]/g, '')
+    .replace(/(\..*)\./g, '$1')
+
+  const decimalNumber = (raw) => {
+    const parsed = Number(normalizeDecimal(raw))
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const handleDecimalChange = (e) => {
+    const { name, value } = e.target
+    setForm((prev) => ({ ...prev, [name]: value.replace(',', '.') }))
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: '' }))
+    }
+  }
+
   // For integer money fields - format with thousands separator
   const handleMoneyChange = (e) => {
     const { name, value } = e.target
@@ -129,6 +183,89 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
       setErrors((prev) => ({ ...prev, [name]: '' }))
     }
   }
+
+  const fetchUfValue = useCallback(async () => {
+    if (ufLoading) return
+    setUfLoading(true)
+    setUfError('')
+    try {
+      const res = await getUfValue()
+      const value = Number(res.data?.value)
+      if (!Number.isFinite(value) || value <= 0) {
+        throw new Error('Valor UF inválido')
+      }
+      setForm((prev) => ({ ...prev, health_uf_value: value.toFixed(2) }))
+      setUfInfo({
+        date: res.data?.date,
+        source: res.data?.source,
+        stale: Boolean(res.data?.stale),
+      })
+    } catch {
+      setUfError('No se pudo actualizar la UF. Puedes ingresarla manualmente.')
+    } finally {
+      setUfLoading(false)
+    }
+  }, [ufLoading])
+
+  const handleHealthSystemChange = (healthSystem) => {
+    setForm((prev) => ({
+      ...prev,
+      health_system: healthSystem,
+      health_rate: '7.00',
+      additional_health: '0',
+      health_plan_unit: healthSystem === 'isapre'
+        ? (prev.health_plan_unit === 'clp' ? 'clp' : 'uf')
+        : 'uf',
+    }))
+  }
+
+  const handleHealthPlanUnitChange = (healthPlanUnit) => {
+    setForm((prev) => ({ ...prev, health_plan_unit: healthPlanUnit }))
+  }
+
+  useEffect(() => {
+    const shouldFetchUf = form.health_system === 'isapre'
+      && form.health_plan_unit === 'uf'
+      && decimalNumber(form.health_uf_value) <= 0
+      && !ufLoading
+      && !ufError
+
+    if (shouldFetchUf) {
+      fetchUfValue()
+    }
+  }, [form.health_system, form.health_plan_unit, form.health_uf_value, fetchUfValue, ufLoading, ufError])
+
+  const payrollPreview = useMemo(() => {
+    const money = (name) => Number(stripMoneyFormat(form[name]) || 0)
+    const taxableBase = money('gross_salary') + money('gratification')
+    const afpAmount = Math.round(taxableBase * decimalNumber(form.afp_rate) / 100)
+    const legalHealth = Math.round(taxableBase * decimalNumber(form.health_rate) / 100)
+    const unemploymentAmount = Math.round(taxableBase * decimalNumber(form.unemployment_rate) / 100)
+
+    let planAmount = 0
+    let additionalHealth = 0
+    if (form.health_system === 'isapre') {
+      if (form.health_plan_unit === 'uf') {
+        planAmount = Math.round(decimalNumber(form.health_plan_uf) * decimalNumber(form.health_uf_value))
+        additionalHealth = Math.max(planAmount - legalHealth, 0)
+      } else {
+        planAmount = money('health_plan_clp')
+        additionalHealth = Math.max(planAmount - legalHealth, 0)
+      }
+    }
+
+    const totalHealth = legalHealth + additionalHealth
+    return {
+      taxableBase,
+      afpAmount,
+      legalHealth,
+      planAmount,
+      additionalHealth,
+      totalHealth,
+      unemploymentAmount,
+      deductionsAmount: afpAmount + totalHealth + unemploymentAmount,
+    }
+  }, [form])
 
   const validate = () => {
     const newErrors = {}
@@ -146,6 +283,14 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
     if (Number.isNaN(health) || health < 0 || health > 30) newErrors.health_rate = 'Debe estar entre 0 y 30'
     const unemp = parseFloat(form.unemployment_rate)
     if (Number.isNaN(unemp) || unemp < 0 || unemp > 10) newErrors.unemployment_rate = 'Debe estar entre 0 y 10'
+    if (form.health_system === 'isapre' && form.health_plan_unit === 'uf') {
+      if (decimalNumber(form.health_plan_uf) <= 0) newErrors.health_plan_uf = 'Ingresa las UF del plan'
+      if (decimalNumber(form.health_uf_value) <= 0) newErrors.health_uf_value = 'Ingresa el valor UF'
+    }
+    if (form.health_system === 'isapre' && form.health_plan_unit === 'clp') {
+      const planClp = Number(stripMoneyFormat(form.health_plan_clp) || 0)
+      if (planClp <= 0) newErrors.health_plan_clp = 'Ingresa el valor del plan'
+    }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -166,7 +311,12 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
         meal_allowance: stripMoneyFormat(form.meal_allowance) || '0',
         transport_allowance: stripMoneyFormat(form.transport_allowance) || '0',
         other_allowance: stripMoneyFormat(form.other_allowance) || '0',
-        additional_health: stripMoneyFormat(form.additional_health) || '0',
+        additional_health: '0',
+        health_system: form.health_system,
+        health_plan_unit: form.health_plan_unit,
+        health_plan_uf: normalizeDecimal(form.health_plan_uf) || '0',
+        health_plan_clp: stripMoneyFormat(form.health_plan_clp) || '0',
+        health_uf_value: normalizeDecimal(form.health_uf_value) || '0',
         afp_rate: form.afp_rate,
         health_rate: form.health_rate,
         unemployment_rate: form.unemployment_rate,
@@ -203,7 +353,7 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl w-full max-w-lg my-8 animate-fade-in">
+      <div className="bg-white rounded-2xl w-full max-w-2xl my-8 animate-fade-in">
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
           <h2 className="text-xl font-bold text-gray-900">
             {isEditing ? 'Editar Trabajador' : 'Nuevo Trabajador'}
@@ -317,7 +467,7 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
             <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3 pb-1 border-b border-yellow-400">
               Haberes No Imponibles
             </h3>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label htmlFor="worker-meal" className="block text-sm font-medium text-gray-700 mb-1">
                   Colación
@@ -369,9 +519,9 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
           {/* Tasas de Descuento */}
           <div>
             <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3 pb-1 border-b border-yellow-400">
-              Tasas de Descuento
+              Descuentos Previsionales
             </h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label htmlFor="worker-afp" className="block text-sm font-medium text-gray-700 mb-1">% AFP</label>
                 <input
@@ -386,7 +536,10 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
                 />
               </div>
               <div>
-                <label htmlFor="worker-health" className="block text-sm font-medium text-gray-700 mb-1">% Salud</label>
+                <label htmlFor="worker-health" className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
+                  % Salud legal
+                  <InfoTooltip text="La cotización legal de salud es 7%. En Isapre, el plan puede costar más y la diferencia se calcula aparte." />
+                </label>
                 <input
                   id="worker-health"
                   name="health_rate"
@@ -394,8 +547,8 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
                   step="0.01"
                   min="0"
                   value={form.health_rate}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-100 text-gray-600 cursor-not-allowed"
                 />
               </div>
               <div>
@@ -411,18 +564,176 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
                 />
               </div>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-semibold text-gray-800">Sistema de salud</span>
+                  <InfoTooltip text="Fonasa usa solo el 7% legal. Isapre calcula la diferencia entre ese 7% y el valor pactado del plan." />
+                </div>
+                <div className="grid grid-cols-2 rounded-lg border border-gray-300 bg-white p-0.5">
+                  {[
+                    ['fonasa', 'Fonasa'],
+                    ['isapre', 'Isapre'],
+                  ].map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => handleHealthSystemChange(value)}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                        form.health_system === value
+                          ? 'bg-gray-900 text-white'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {form.health_system === 'isapre' && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 rounded-lg border border-gray-300 bg-white p-0.5">
+                    {[
+                      ['uf', 'UF'],
+                      ['clp', 'Pesos'],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => handleHealthPlanUnitChange(value)}
+                        className={`px-2 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                          form.health_plan_unit === value
+                            ? 'bg-yellow-500 text-gray-900'
+                            : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {form.health_plan_unit === 'uf' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label htmlFor="worker-health-plan-uf" className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
+                          Plan UF
+                          <InfoTooltip text="Usa las UF pactadas del plan. En una liquidación suele aparecer como 3.184 UF o similar." />
+                        </label>
+                        <input
+                          id="worker-health-plan-uf"
+                          name="health_plan_uf"
+                          type="text"
+                          inputMode="decimal"
+                          value={form.health_plan_uf}
+                          onChange={handleDecimalChange}
+                          placeholder="3.184"
+                          className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 ${errors.health_plan_uf ? 'border-red-400' : 'border-gray-300'}`}
+                        />
+                        {errors.health_plan_uf && <p className="mt-1 text-xs text-red-500">{errors.health_plan_uf}</p>}
+                      </div>
+                      <div>
+                        <label htmlFor="worker-health-uf-value" className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
+                          Valor UF hoy
+                          <InfoTooltip text="Se actualiza desde mindicador.cl y queda disponible para calcular el plan del día." />
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            id="worker-health-uf-value"
+                            name="health_uf_value"
+                            type="text"
+                            inputMode="decimal"
+                            value={form.health_uf_value}
+                            onChange={handleDecimalChange}
+                            readOnly={!ufError}
+                            placeholder="39841.72"
+                            className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 ${
+                              errors.health_uf_value
+                                ? 'border-red-400'
+                                : ufError
+                                  ? 'border-yellow-400 bg-white'
+                                  : 'border-gray-200 bg-gray-100 text-gray-700'
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            onClick={fetchUfValue}
+                            disabled={ufLoading}
+                            title="Actualizar UF"
+                            className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                          >
+                            <ArrowPathIcon className={`w-4 h-4 ${ufLoading ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                        {ufInfo && !ufError && (
+                          <p className="mt-1 text-xs text-gray-500">
+                            {ufInfo.stale ? 'Último valor disponible' : 'Actualizado'} {formatDateCL(ufInfo.date)}
+                            {ufInfo.source ? ` · ${ufInfo.source}` : ''}
+                          </p>
+                        )}
+                        {ufError && <p className="mt-1 text-xs text-yellow-700">{ufError}</p>}
+                        {errors.health_uf_value && <p className="mt-1 text-xs text-red-500">{errors.health_uf_value}</p>}
+                      </div>
+                    </div>
+                  )}
+
+                  {form.health_plan_unit === 'clp' && (
+                    <div>
+                      <label htmlFor="worker-health-plan-clp" className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
+                        Plan salud $
+                        <InfoTooltip text="Ingresa el valor total del plan pactado. La diferencia Isapre se calcula restando la cotización legal." />
+                      </label>
+                      <input
+                        id="worker-health-plan-clp"
+                        name="health_plan_clp"
+                        type="text"
+                        inputMode="numeric"
+                        value={form.health_plan_clp}
+                        onChange={handleMoneyChange}
+                        placeholder="0"
+                        className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 ${errors.health_plan_clp ? 'border-red-400' : 'border-gray-300'}`}
+                      />
+                      {errors.health_plan_clp && <p className="mt-1 text-xs text-red-500">{errors.health_plan_clp}</p>}
+                    </div>
+                  )}
+
+                </div>
+              )}
+
+              {form.health_system === 'fonasa' ? (
+                <div className="rounded-lg bg-white border border-gray-200 px-3 py-2">
+                  <p className="text-[11px] font-medium text-gray-500">Cotización Fonasa 7%</p>
+                  <p className="text-sm font-bold text-gray-900">{formatCLP(payrollPreview.legalHealth)}</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="rounded-lg bg-white border border-gray-200 px-3 py-2">
+                    <p className="text-[11px] font-medium text-gray-500">7% legal</p>
+                    <p className="text-sm font-bold text-gray-900">{formatCLP(payrollPreview.legalHealth)}</p>
+                  </div>
+                  <div className="rounded-lg bg-white border border-gray-200 px-3 py-2">
+                    <p className="text-[11px] font-medium text-gray-500">Plan Isapre</p>
+                    <p className="text-sm font-bold text-gray-900">{formatCLP(payrollPreview.planAmount || payrollPreview.legalHealth)}</p>
+                  </div>
+                  <div className="rounded-lg bg-white border border-gray-200 px-3 py-2">
+                    <p className="text-[11px] font-medium text-gray-500">Diferencia Isapre</p>
+                    <p className="text-sm font-bold text-gray-900">{formatCLP(payrollPreview.additionalHealth)}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 mt-3">
               <div>
-                <label htmlFor="worker-additional-health" className="block text-sm font-medium text-gray-700 mb-1">Adicional Salud $</label>
-                <input
-                  id="worker-additional-health"
-                  name="additional_health"
-                  type="text"
-                  inputMode="numeric"
-                  value={form.additional_health}
-                  onChange={handleMoneyChange}
-                  placeholder="0"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                />
+                <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
+                  Base tributable
+                  <InfoTooltip text="Base imponible menos AFP, salud completa y seguro de cesantía. Es el valor usado para estimar el impuesto único." />
+                </label>
+                <div className="w-full px-3 py-2 rounded-lg text-sm bg-gray-100 border border-gray-200 text-gray-900 font-semibold">
+                  {formatCLP(Math.max(payrollPreview.taxableBase - payrollPreview.deductionsAmount, 0))}
+                </div>
               </div>
             </div>
           </div>

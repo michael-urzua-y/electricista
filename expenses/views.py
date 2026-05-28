@@ -19,8 +19,11 @@ class ExpenseViewSet(viewsets.ModelViewSet):
         return ExpenseListSerializer
 
     def get_queryset(self):
-        """Todos los usuarios ven todos los gastos (acceso compartido)."""
-        return Expense.objects.select_related('created_by').all()
+        """Aislar gastos por usuario; staff puede auditar todos."""
+        qs = Expense.objects.select_related('created_by')
+        if self.request.user.is_staff:
+            return qs.all()
+        return qs.filter(created_by=self.request.user)
 
     def perform_create(self, serializer):
         """Crear gasto con archivo binario en BD."""

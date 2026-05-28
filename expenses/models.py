@@ -8,6 +8,7 @@ class Expense(models.Model):
     DOCUMENT_TYPE_CHOICES = [
         ('boleta', 'Boleta'),
         ('factura', 'Factura'),
+        ('factura_exenta', 'Factura exenta'),
         ('honorario', 'Honorario'),
         ('recibo', 'Recibo'),
         ('voucher', 'Voucher'),

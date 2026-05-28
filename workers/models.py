@@ -10,6 +10,22 @@ UTM_VALUE = Decimal('67294')
 class Worker(models.Model):
     """Modelo para trabajadores de la empresa."""
 
+    HEALTH_SYSTEM_FONASA = 'fonasa'
+    HEALTH_SYSTEM_ISAPRE = 'isapre'
+    HEALTH_SYSTEM_CHOICES = [
+        (HEALTH_SYSTEM_FONASA, 'Fonasa'),
+        (HEALTH_SYSTEM_ISAPRE, 'Isapre'),
+    ]
+
+    HEALTH_PLAN_MANUAL = 'manual'
+    HEALTH_PLAN_UF = 'uf'
+    HEALTH_PLAN_CLP = 'clp'
+    HEALTH_PLAN_UNIT_CHOICES = [
+        (HEALTH_PLAN_MANUAL, 'Adicional manual'),
+        (HEALTH_PLAN_UF, 'Plan en UF'),
+        (HEALTH_PLAN_CLP, 'Plan en pesos'),
+    ]
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -44,6 +60,30 @@ class Worker(models.Model):
         max_digits=12, decimal_places=2, default=Decimal('0'),
         verbose_name='Adicional Salud (Isapre)'
     )
+    health_system = models.CharField(
+        max_length=10,
+        choices=HEALTH_SYSTEM_CHOICES,
+        default=HEALTH_SYSTEM_FONASA,
+        verbose_name='Sistema de salud',
+    )
+    health_plan_unit = models.CharField(
+        max_length=10,
+        choices=HEALTH_PLAN_UNIT_CHOICES,
+        default=HEALTH_PLAN_MANUAL,
+        verbose_name='Tipo de plan de salud',
+    )
+    health_plan_uf = models.DecimalField(
+        max_digits=8, decimal_places=4, default=Decimal('0'),
+        verbose_name='Plan salud UF',
+    )
+    health_plan_clp = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal('0'),
+        verbose_name='Plan salud pesos',
+    )
+    health_uf_value = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal('0'),
+        verbose_name='Valor UF salud',
+    )
     afp_rate = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal('10.69'),
         verbose_name='% AFP'
@@ -73,17 +113,66 @@ class Worker(models.Model):
         """Base imponible = sueldo bruto + gratificación."""
         return self.gross_salary + self.gratification
 
+    @staticmethod
+    def _round_peso(amount):
+        return amount.quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+
     @property
     def total_deductions_rate(self):
         """Tasa total de descuentos (AFP + Salud + Cesantía)."""
         return self.afp_rate + self.health_rate + self.unemployment_rate
 
     @property
+    def afp_amount(self):
+        """Cotización AFP sobre base imponible."""
+        return self._round_peso(self.taxable_base * self.afp_rate / Decimal('100'))
+
+    @property
+    def health_legal_amount(self):
+        """Cotización legal de salud, normalmente 7% de la base imponible."""
+        return self._round_peso(self.taxable_base * self.health_rate / Decimal('100'))
+
+    @property
+    def health_plan_amount(self):
+        """Valor pactado del plan de salud cuando la persona está en Isapre."""
+        if self.health_system != self.HEALTH_SYSTEM_ISAPRE:
+            return Decimal('0')
+
+        if self.health_plan_unit == self.HEALTH_PLAN_UF:
+            return self._round_peso(self.health_plan_uf * self.health_uf_value)
+
+        if self.health_plan_unit == self.HEALTH_PLAN_CLP:
+            return self._round_peso(self.health_plan_clp)
+
+        return self.health_legal_amount + self._round_peso(self.additional_health)
+
+    @property
+    def health_additional_amount(self):
+        """Diferencia adicional cuando el plan Isapre supera la cotización legal."""
+        if self.health_system != self.HEALTH_SYSTEM_ISAPRE:
+            return Decimal('0')
+
+        if self.health_plan_unit in [self.HEALTH_PLAN_UF, self.HEALTH_PLAN_CLP]:
+            return max(self.health_plan_amount - self.health_legal_amount, Decimal('0'))
+
+        return self._round_peso(self.additional_health)
+
+    @property
+    def health_total_amount(self):
+        """Total descontado por salud: 7% legal más adicional Isapre si aplica."""
+        return self.health_legal_amount + self.health_additional_amount
+
+    @property
+    def unemployment_amount(self):
+        """Seguro de cesantía de cargo del trabajador."""
+        return self._round_peso(
+            self.taxable_base * self.unemployment_rate / Decimal('100')
+        )
+
+    @property
     def deductions_amount(self):
         """Monto total de descuentos previsionales sobre base imponible."""
-        return (self.taxable_base * self.total_deductions_rate / Decimal('100')).quantize(
-            Decimal('1'), rounding=ROUND_HALF_UP
-        )
+        return self.afp_amount + self.health_total_amount + self.unemployment_amount
 
     @property
     def taxable_income(self):
@@ -139,8 +228,8 @@ class Worker(models.Model):
 
     @property
     def total_deductions(self):
-        """Total descuentos = previsionales + adicional salud + impuesto."""
-        return self.deductions_amount + self.additional_health + self.tax_amount
+        """Total descuentos = previsionales, salud completa e impuesto."""
+        return self.deductions_amount + self.tax_amount
 
     @property
     def net_salary(self):
