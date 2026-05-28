@@ -9,6 +9,7 @@ from rest_framework.pagination import PageNumberPagination
 
 from .services import get_libro_compras, get_libro_ventas, get_resumen_mensual, export_to_excel
 from monaysolutions.config import ACCOUNTING_PAGE_SIZE, API_MAX_PAGE_SIZE
+from monaysolutions.module_access import HasModuleAccess
 
 
 class AccountingPagination(PageNumberPagination):
@@ -19,7 +20,7 @@ class AccountingPagination(PageNumberPagination):
 
 
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.IsAuthenticated, HasModuleAccess])
 def libro_compras_view(request):
     """
     GET /api/accounting/libro-compras/?year=2024&month=12
@@ -70,7 +71,7 @@ def libro_compras_view(request):
 
 
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.IsAuthenticated, HasModuleAccess])
 def libro_compras_export_view(request):
     """
     GET /api/accounting/libro-compras/export/?year=2024&month=12
@@ -118,7 +119,7 @@ def libro_compras_export_view(request):
 
 
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.IsAuthenticated, HasModuleAccess])
 def libro_ventas_view(request):
     """
     GET /api/accounting/libro-ventas/?year=2024&month=12
@@ -168,7 +169,7 @@ def libro_ventas_view(request):
 
 
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.IsAuthenticated, HasModuleAccess])
 def libro_ventas_export_view(request):
     """
     GET /api/accounting/libro-ventas/export/?year=2024&month=12
@@ -216,7 +217,7 @@ def libro_ventas_export_view(request):
 
 
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.IsAuthenticated, HasModuleAccess])
 def resumen_mensual_view(request):
     """
     GET /api/accounting/resumen/?year=2024&month=12

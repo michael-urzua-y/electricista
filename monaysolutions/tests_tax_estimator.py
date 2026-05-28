@@ -2,6 +2,7 @@ from datetime import datetime, date
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -10,6 +11,7 @@ from expenses.models import Expense
 from invoices.models import Invoice
 from products.models import Provider
 from quotes.models import Quote
+from monaysolutions.module_access import MODULE_GROUP_PREFIX
 
 
 User = get_user_model()
@@ -22,6 +24,9 @@ class TaxEstimatorAPITestCase(TestCase):
             username='taxuser',
             email='tax@example.com',
             password='testpass123',
+        )
+        self.user.groups.add(
+            Group.objects.create(name=f'{MODULE_GROUP_PREFIX}tax_estimator')
         )
         self.other_user = User.objects.create_user(
             username='otheruser',

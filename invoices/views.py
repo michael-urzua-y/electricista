@@ -17,21 +17,19 @@ from .comparison import obtener_factura_anterior
 from .services import process_invoice
 from .tasks import process_invoice_task
 from django.db import transaction
+from monaysolutions.module_access import HasModuleAccess
 
 logger = logging.getLogger(__name__)
 
 
 class FacturaViewSet(viewsets.ModelViewSet):
     """API para gestionar facturas"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
     parser_classes = [MultiPartParser, FormParser]
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff:
-            qs = Invoice.objects.all()
-        else:
-            qs = Invoice.objects.filter(user=user)
+        qs = Invoice.objects.filter(user=user)
         
         # Optimizaciones de performance
         if self.action == 'list':
@@ -155,10 +153,7 @@ class FacturaViewSet(viewsets.ModelViewSet):
     def ver_factura(self, request, pk=None):
         """Reconstruye y sirve el archivo original de la factura desde binario en BD."""
         user = request.user
-        if user.is_staff:
-            invoice = get_object_or_404(Invoice, pk=pk)
-        else:
-            invoice = get_object_or_404(Invoice, pk=pk, user=user)
+        invoice = get_object_or_404(Invoice, pk=pk, user=user)
 
         if not invoice.file_data:
             return Response(
@@ -191,10 +186,7 @@ class FacturaViewSet(viewsets.ModelViewSet):
         from decimal import Decimal
 
         user = request.user
-        if user.is_staff:
-            factura = get_object_or_404(Invoice, pk=pk)
-        else:
-            factura = get_object_or_404(Invoice, pk=pk, user=user)
+        factura = get_object_or_404(Invoice, pk=pk, user=user)
 
         factura_anterior = obtener_factura_anterior(factura)
 

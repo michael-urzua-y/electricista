@@ -24,6 +24,7 @@ from monaysolutions.config import (
     TAX_ESTIMATOR_RENTA_AT_YEAR,
     TWO_PLACES,
 )
+from monaysolutions.module_access import HasModuleAccess
 
 
 MESES = [
@@ -139,7 +140,7 @@ def _period_cutoff_status(year, month):
 class TaxEstimatorView(APIView):
     """Estimador tributario mensual con soporte de mes/año seleccionable."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasModuleAccess]
 
     def get(self, request):
         user = request.user
@@ -324,7 +325,7 @@ class TaxEstimatorView(APIView):
 class AvailableMonthsView(APIView):
     """Retorna meses que tienen datos tributarios estimables."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasModuleAccess]
 
     def get(self, request):
         user = request.user

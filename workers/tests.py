@@ -2,11 +2,13 @@ from decimal import Decimal
 from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
 from .models import Worker
+from monaysolutions.module_access import MODULE_GROUP_PREFIX
 
 
 class WorkerPayrollCalculationTests(TestCase):
@@ -16,6 +18,8 @@ class WorkerPayrollCalculationTests(TestCase):
             email='payroll@example.com',
             password='testpass123',
         )
+        group, _ = Group.objects.get_or_create(name=f'{MODULE_GROUP_PREFIX}workers')
+        self.user.groups.add(group)
         cache.clear()
 
     def test_isapre_uf_plan_calculates_additional_health_from_liquidation(self):

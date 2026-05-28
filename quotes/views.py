@@ -12,12 +12,13 @@ from .serializers import (
     CompanyProfileSerializer, SMTPConfigSerializer, QuoteListSerializer,
     QuoteDetailSerializer, QuoteCreateSerializer,
 )
+from monaysolutions.module_access import HasModuleAccess
 
 logger = logging.getLogger(__name__)
 
 
 class CompanyProfileView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
@@ -47,7 +48,7 @@ class CompanyProfileView(APIView):
 
 class SMTPConfigView(APIView):
     """CRUD de la configuración SMTP del usuario."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
 
     def get(self, request):
         try:
@@ -91,7 +92,7 @@ class SMTPConfigView(APIView):
 
 class SMTPTestView(APIView):
     """Prueba de conexión SMTP sin guardar."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
 
     def post(self, request):
         import smtplib
@@ -148,7 +149,7 @@ class SMTPTestView(APIView):
 
 class CompanyLogoView(APIView):
     """Sirve el logo de la empresa desde binario en BD."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
 
     def get(self, request):
         try:
@@ -185,7 +186,7 @@ class CompanyLogoView(APIView):
 
 
 class QuoteViewSet(viewsets.ModelViewSet):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
 
     def get_queryset(self):
         qs = Quote.objects.filter(user=self.request.user)

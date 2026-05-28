@@ -7,13 +7,14 @@ from django.db.models import Prefetch
 from invoices.models import InvoiceItem
 from .models import Provider, Product, PriceHistory
 from .serializers import ProviderSerializer, ProductSerializer, PriceHistorySerializer
+from monaysolutions.module_access import HasModuleAccess
 
 
 class ProviderViewSet(viewsets.ModelViewSet):
     """API para proveedores"""
     queryset = Provider.objects.all()
     serializer_class = ProviderSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
 
     def list(self, request, *args, **kwargs):
         # Intentar obtener de cache primero
@@ -62,7 +63,7 @@ class ProviderViewSet(viewsets.ModelViewSet):
 class ProductViewSet(viewsets.ModelViewSet):
     """API para productos"""
     serializer_class = ProductSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
     search_fields = ['name', 'brand', 'model']
     pagination_class = None  # Desactiva la paginación para ver todos los productos juntos
 
@@ -112,7 +113,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 class ComparacionViewSet(viewsets.ViewSet):
     """API para comparación de precios por producto entre proveedores"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
 
     def list(self, request):
         """

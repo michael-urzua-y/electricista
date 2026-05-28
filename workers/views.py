@@ -9,12 +9,13 @@ from rest_framework.response import Response
 
 from .models import Worker
 from .serializers import WorkerSerializer
+from monaysolutions.module_access import HasModuleAccess
 
 
 class WorkerViewSet(viewsets.ModelViewSet):
     """API para gestionar trabajadores."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
     serializer_class = WorkerSerializer
 
     def get_queryset(self):

@@ -61,6 +61,7 @@ coverage/
 .env
 .env.local
 .env.*.local
+.env.production
 
 # Docker
 docker-compose.override.yml

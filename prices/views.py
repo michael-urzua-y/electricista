@@ -16,6 +16,7 @@ from .serializers import (
     PriceSubItemSerializer,
     PriceSubItemSearchSerializer,
 )
+from monaysolutions.module_access import HasModuleAccess
 
 
 class PriceItemViewSet(viewsets.ModelViewSet):
@@ -29,7 +30,7 @@ class PriceItemViewSet(viewsets.ModelViewSet):
     destroy: DELETE /api/prices/items/{id}/
     subitems: GET/POST /api/prices/items/{id}/subitems/
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
 
     def get_queryset(self):
         return (
@@ -264,7 +265,7 @@ class PriceSubItemViewSet(viewsets.ModelViewSet):
     - Si search tiene < 2 caracteres, retorna lista vacía
     - Filtra por description__icontains y limita a 20 resultados
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
 
     def get_serializer_class(self):
         search = self.request.query_params.get('search', '').strip()

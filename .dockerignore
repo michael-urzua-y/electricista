@@ -26,6 +26,9 @@ static/
 
 # Env files (se pasan por docker-compose)
 .env
+.env.local
+.env.production
+.env.*.local
 
 # Docker
 docker-compose.yml

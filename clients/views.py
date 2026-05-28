@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 
 from .models import Client, ClientSettings
 from .serializers import ClientSerializer, ClientListSerializer, ClientSettingsSerializer
+from monaysolutions.module_access import HasModuleAccess
 
 
 class ClientViewSet(viewsets.ModelViewSet):
@@ -28,7 +29,7 @@ class ClientViewSet(viewsets.ModelViewSet):
     stats:  GET /api/clients/{id}/stats/   — estadísticas del cliente
     inactive: GET /api/clients/inactive/   — clientes inactivos
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
 
     def get_queryset(self):
         from django.db.models import Max, Sum
@@ -242,7 +243,7 @@ class ClientSettingsView(APIView):
     GET  /api/clients/settings/ — obtener configuración (o defaults)
     PATCH /api/clients/settings/ — actualizar configuración
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
 
     def get(self, request):
         settings_obj, _ = ClientSettings.objects.get_or_create(

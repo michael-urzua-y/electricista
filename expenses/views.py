@@ -5,12 +5,13 @@ from rest_framework.response import Response
 from django.http import HttpResponse
 from .models import Expense
 from .serializers import ExpenseListSerializer, ExpenseCreateUpdateSerializer
+from monaysolutions.module_access import HasModuleAccess
 
 
 class ExpenseViewSet(viewsets.ModelViewSet):
     """API para gestionar gastos generales."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
     parser_classes = [MultiPartParser, FormParser]
 
     def get_serializer_class(self):
@@ -19,11 +20,8 @@ class ExpenseViewSet(viewsets.ModelViewSet):
         return ExpenseListSerializer
 
     def get_queryset(self):
-        """Aislar gastos por usuario; staff puede auditar todos."""
-        qs = Expense.objects.select_related('created_by')
-        if self.request.user.is_staff:
-            return qs.all()
-        return qs.filter(created_by=self.request.user)
+        """Aislar gastos por usuario dentro de la app."""
+        return Expense.objects.select_related('created_by').filter(created_by=self.request.user)
 
     def perform_create(self, serializer):
         """Crear gasto con archivo binario en BD."""

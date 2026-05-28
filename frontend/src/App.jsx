@@ -25,6 +25,18 @@ function PrivateRoute({ children }) {
   return token ? children : <Navigate to="/login" />
 }
 
+function ModuleRoute({ module, children }) {
+  const { user, hasModule, defaultPath } = useAuth()
+  if (!user) return null
+  return hasModule(module) ? children : <Navigate to={defaultPath} replace />
+}
+
+function DefaultRoute() {
+  const { hasModule, defaultPath } = useAuth()
+  if (hasModule('quotes')) return <Quotes />
+  return <Navigate to={defaultPath} replace />
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -36,21 +48,21 @@ function App() {
               <Layout />
             </PrivateRoute>
           }>
-            <Route index element={<Quotes />} />
-            <Route path="facturas" element={<Invoices />} />
-            <Route path="productos" element={<Products />} />
-            <Route path="proveedores" element={<Providers />} />
-            <Route path="comparacion" element={<PriceComparison />} />
+            <Route index element={<DefaultRoute />} />
+            <Route path="facturas" element={<ModuleRoute module="invoices"><Invoices /></ModuleRoute>} />
+            <Route path="productos" element={<ModuleRoute module="products"><Products /></ModuleRoute>} />
+            <Route path="proveedores" element={<ModuleRoute module="products"><Providers /></ModuleRoute>} />
+            <Route path="comparacion" element={<ModuleRoute module="products"><PriceComparison /></ModuleRoute>} />
             <Route path="perfil" element={<Profile />} />
-            <Route path="cotizaciones" element={<Quotes />} />
-            <Route path="cotizaciones/:id" element={<QuoteDetail />} />
-            <Route path="clients" element={<Clients />} />
-            <Route path="clients/:id" element={<ClientDetail />} />
-            <Route path="accounting" element={<Accounting />} />
-            <Route path="precios" element={<Prices />} />
-            <Route path="gastos-generales" element={<GastosGenerales />} />
-            <Route path="trabajadores" element={<Trabajadores />} />
-            <Route path="estimador-tributario" element={<EstimadorTributario />} />
+            <Route path="cotizaciones" element={<ModuleRoute module="quotes"><Quotes /></ModuleRoute>} />
+            <Route path="cotizaciones/:id" element={<ModuleRoute module="quotes"><QuoteDetail /></ModuleRoute>} />
+            <Route path="clients" element={<ModuleRoute module="clients"><Clients /></ModuleRoute>} />
+            <Route path="clients/:id" element={<ModuleRoute module="clients"><ClientDetail /></ModuleRoute>} />
+            <Route path="accounting" element={<ModuleRoute module="accounting"><Accounting /></ModuleRoute>} />
+            <Route path="precios" element={<ModuleRoute module="prices"><Prices /></ModuleRoute>} />
+            <Route path="gastos-generales" element={<ModuleRoute module="expenses"><GastosGenerales /></ModuleRoute>} />
+            <Route path="trabajadores" element={<ModuleRoute module="workers"><Trabajadores /></ModuleRoute>} />
+            <Route path="estimador-tributario" element={<ModuleRoute module="tax_estimator"><EstimadorTributario /></ModuleRoute>} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

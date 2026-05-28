@@ -6,15 +6,24 @@ from django.contrib.auth import get_user_model
 from invoices.models import Invoice
 import logging
 from datetime import date
+from monaysolutions.module_access import HasModuleAccess, module_payload_for_user
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
+    allowed_modules = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff']
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name',
+            'is_staff', 'allowed_modules',
+        ]
+
+    def get_allowed_modules(self, obj):
+        return module_payload_for_user(obj)
 
 
 class CurrentUserView(APIView):
@@ -26,7 +35,7 @@ class CurrentUserView(APIView):
 
 
 class DashboardKpisView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasModuleAccess]
 
     def get(self, request):
         today = date.today()
@@ -52,7 +61,7 @@ class DashboardKpisView(APIView):
 
 
 class DailyTotalsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasModuleAccess]
 
     def get(self, request):
         year = request.GET.get('year')

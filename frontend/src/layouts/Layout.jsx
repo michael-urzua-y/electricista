@@ -6,10 +6,9 @@ import {
   Bars3Icon,
   ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline'
-import LowStockBadge from '../components/LowStockBadge'
 
 export default function Layout() {
-  const { user, logout } = useAuth()
+  const { user, logout, hasModule } = useAuth()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -24,15 +23,15 @@ export default function Layout() {
     // { to: '/clients',     emoji: '👥', label: 'Clientes',     color: 'text-teal-600',    bg: 'bg-teal-50'    },
     // { to: '/comparacion', emoji: '📊', label: 'Comparación',  color: 'text-orange-600',  bg: 'bg-orange-50'  },
     // { to: '/accounting',  emoji: '📒', label: 'Contabilidad', color: 'text-indigo-600',  bg: 'bg-indigo-50'  },
-    { to: '/', emoji: '📋', label: 'Cotizaciones', color: 'text-yellow-600', bg: 'bg-yellow-50' },
-    { to: '/facturas',    emoji: '📄', label: 'Compras',     color: 'text-violet-600',  bg: 'bg-violet-50'  },
-    { to: '/gastos-generales', emoji: '🧾', label: 'Gastos Generales', color: 'text-red-600', bg: 'bg-red-50' },
-    { to: '/precios',     emoji: '💰', label: 'Precios',      color: 'text-amber-600',   bg: 'bg-amber-50'   },
+    { to: '/', module: 'quotes', emoji: '📋', label: 'Cotizaciones', color: 'text-yellow-600', bg: 'bg-yellow-50' },
+    { to: '/facturas', module: 'invoices', emoji: '📄', label: 'Compras', color: 'text-violet-600', bg: 'bg-violet-50' },
+    { to: '/gastos-generales', module: 'expenses', emoji: '🧾', label: 'Gastos Generales', color: 'text-red-600', bg: 'bg-red-50' },
+    { to: '/precios', module: 'prices', emoji: '💰', label: 'Precios', color: 'text-amber-600', bg: 'bg-amber-50' },
     // { to: '/productos',   emoji: '📦', label: 'Productos',    color: 'text-emerald-600', bg: 'bg-emerald-50', badge: <LowStockBadge /> },
     // { to: '/proveedores', emoji: '🏪', label: 'Proveedores',  color: 'text-pink-600',    bg: 'bg-pink-50'    },
-    { to: '/trabajadores', emoji: '👷', label: 'Trabajadores', color: 'text-cyan-600', bg: 'bg-cyan-50' },
-    { to: '/estimador-tributario', emoji: '🧮', label: 'Estimador Tributario', color: 'text-purple-600', bg: 'bg-purple-50' },
-  ]
+    { to: '/trabajadores', module: 'workers', emoji: '👷', label: 'Trabajadores', color: 'text-cyan-600', bg: 'bg-cyan-50' },
+    { to: '/estimador-tributario', module: 'tax_estimator', emoji: '🧮', label: 'Estimador Tributario', color: 'text-purple-600', bg: 'bg-purple-50' },
+  ].filter((item) => hasModule(item.module))
 
   const SidebarContent = () => (
     <>

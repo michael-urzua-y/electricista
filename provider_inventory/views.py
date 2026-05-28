@@ -17,6 +17,7 @@ from .serializers import (
 from .services import InventoryService, InvoiceProcessingService, AuditService, get_low_stock_items
 from invoices.models import Invoice
 from monaysolutions.config import API_MAX_PAGE_SIZE, LOW_STOCK_PAGE_SIZE
+from monaysolutions.module_access import HasModuleAccess
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class ProviderInventoryViewSet(viewsets.ModelViewSet):
     """ViewSet para ProviderInventory."""
     queryset = ProviderInventory.objects.all()
     serializer_class = ProviderInventorySerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
     http_method_names = ['get', 'patch', 'head', 'options']  # no POST/PUT/DELETE
 
     def get_serializer_class(self):
@@ -91,7 +92,7 @@ class ProviderInventoryViewSet(viewsets.ModelViewSet):
 
 class AuditLogView(APIView):
     """View para consultar logs de auditoría."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
 
     def get(self, request):
         try:
@@ -111,7 +112,7 @@ class AuditLogView(APIView):
 
 class LowStockListView(APIView):
     """View para listar ítems con stock bajo."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
     pagination_class = LowStockPagination
 
     def get(self, request):
@@ -134,7 +135,7 @@ class LowStockListView(APIView):
 
 class LowStockCountView(APIView):
     """View para obtener el conteo de ítems con stock bajo."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasModuleAccess]
 
     def get(self, request):
         try:

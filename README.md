@@ -244,6 +244,9 @@ monaysolutions/                ← raíz del proyecto Django
 │
 ├── scripts/                   ← scripts de inicialización y utilidades
 ├── docker-compose.yml         ← postgres, redis, backend, celery, frontend
+├── docker-compose.prod.yml    ← stack productivo con backend, celery, frontend build y Caddy
+├── deploy/Caddyfile           ← HTTPS automático y proxy para app/API en producción
+├── docs/DEPLOYMENT.md         ← guía para publicar en VPS + Cloudflare
 ├── Dockerfile                 ← imagen Python 3.11 + Tesseract + poppler
 ├── requirements.txt           ← dependencias de producción
 └── requirements-dev.txt       ← dependencias de desarrollo (pytest, etc.)
