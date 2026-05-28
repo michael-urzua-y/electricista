@@ -71,11 +71,15 @@ Sistema full-stack para gestionar cotizaciones, compras, gastos generales, lista
 ## Características
 
 ### 🏢 Gestión Empresarial Actual
+- **Dashboard** — KPIs principales, gráficos mensuales y alertas de stock bajo
 - **Cotizaciones** — Generación profesional con PDF, envío por email y estados (borrador/enviada/aprobada/rechazada)
+- **Clientes** — CRUD de clientes con RUT, email, teléfono y configuración de inactividad
 - **Compras** — Carga de facturas PDF/imágenes con OCR + IA, fecha de recepción y revisión de ítems
+- **Inventario por Proveedor** — Stock automático desde facturas, alertas de stock bajo y auditoría completa
 - **Gastos Generales** — Registro de egresos operativos con comprobantes adjuntos e identificación tributaria
 - **Precios** — Lista de precios de servicios con categorías, sub-ítems e importación Excel
 - **Trabajadores** — Remuneraciones, Fonasa/Isapre, descuentos previsionales y sueldo líquido
+- **Contabilidad** — Libro de compras, libro de ventas y resumen mensual con exportación Excel
 - **Estimador Tributario** — Consolidación mensual con IVA débito/crédito, cortes y total a transferir
 
 ### 🔐 Seguridad y Performance
@@ -92,10 +96,32 @@ Sistema full-stack para gestionar cotizaciones, compras, gastos generales, lista
 - **Procesamiento asíncrono** — Celery + Redis para no bloquear al usuario
 
 ### 📊 Operación y Reportes Activos
+- **Dashboard con KPIs** — Resumen visual de cotizaciones, compras, gastos y alertas de stock
 - **Márgenes de ganancia** — Configurable por factura y por ítem individual
 - **PDF de cotizaciones** — Generación de documentos profesionales
 - **Importación Excel** — Carga masiva de lista de precios de servicios
 - **Comprobantes** — Visualización de archivos asociados a compras y gastos
+- **Gráficos mensuales** — Evolución de compras y ventas en el tiempo
+
+### 👥 Gestión de Clientes
+- **CRUD completo** — Crear, editar y eliminar clientes con RUT, nombre, email, teléfono y dirección
+- **Validación de RUT** — Formato y dígito verificador chileno
+- **Configuración de inactividad** — Días configurables para marcar clientes inactivos
+- **Integración con cotizaciones** — Autocompletado al crear cotizaciones
+
+### 📦 Inventario por Proveedor
+- **Stock automático** — Se incrementa al procesar facturas de compra (vía signals)
+- **Stock mínimo** — Configurar umbral por producto para alertas
+- **Auditoría completa** — Registro inmutable de cada movimiento con origen y usuario
+- **Alertas de stock bajo** — Badge en dashboard y listado dedicado
+- **Margen de ganancia** — Configurable por producto en inventario
+
+### 📒 Contabilidad
+- **Libro de compras** — Facturas del período con RUT proveedor, folio, neto, IVA y total
+- **Libro de ventas** — Cotizaciones aprobadas con RUT cliente, folio, neto, IVA y total
+- **Resumen mensual** — Consolidado con IVA a pagar/favor y comparación vs mes anterior
+- **Exportación Excel** — Libros exportables con formato profesional y totales
+- **Extracción de RUT** — Desde texto OCR de facturas cuando no está en el modelo
 
 ### 💰 Lista de Precios de Servicios
 - **Categorías y sub-ítems** — Organización jerárquica de precios de servicios (ej: "PUNTO DE RED" con sub-ítems)
@@ -128,6 +154,8 @@ Sistema full-stack para gestionar cotizaciones, compras, gastos generales, lista
 - **Resumen final** — Presenta impuesto determinado, PPM, retenciones, impuesto trabajadores, honorarios y total a transferir
 
 ### 🌐 Experiencia de Usuario
+- **PWA (Progressive Web App)** — Instalable en dispositivos móviles y escritorio
+- **Dashboard con KPIs** — Vista rápida de métricas clave al iniciar sesión
 - **Búsqueda inteligente** — Autocompletado de clientes en cotizaciones con debounce
 - **Tooltips informativos** — Explicaciones en formularios y cálculos
 - **Actualización automática** — Compras en proceso se actualizan mediante polling
@@ -142,9 +170,10 @@ monaysolutions/                ← raíz del proyecto Django
 ├── monaysolutions/            ← configuración del proyecto
 │   ├── settings.py            ← config DB, JWT, Celery, Redis, CORS
 │   ├── urls.py                ← router principal + endpoints JWT
+│   ├── config.py              ← constantes centralizadas (IVA, PPM, UTM, etc.)
 │   ├── celery.py              ← configuración de Celery
 │   ├── tax_estimator.py       ← estimador tributario mensual
-│   ├── views.py               ← usuario actual y totales auxiliares
+│   ├── views.py               ← usuario actual, totales auxiliares y KPIs dashboard
 │   └── wsgi.py / asgi.py
 │
 ├── invoices/                  ← menú Compras
@@ -161,6 +190,27 @@ monaysolutions/                ← raíz del proyecto Django
 │   ├── views.py               ← perfil empresa, SMTP, QuoteViewSet, PDF/email
 │   ├── email_service.py       ← envío de emails con cotización
 │   └── serializers.py
+│
+├── clients/                   ← menú Clientes
+│   ├── models.py              ← Client, ClientSettings (inactividad configurable)
+│   ├── views.py               ← ClientViewSet + configuración de inactividad
+│   └── serializers.py
+│
+├── products/                  ← Proveedores y productos (materiales)
+│   ├── models.py              ← Provider, Product, PriceHistory
+│   ├── views.py               ← ProviderViewSet, ProductViewSet, ComparacionViewSet
+│   └── serializers.py
+│
+├── provider_inventory/        ← Inventario por proveedor
+│   ├── models.py              ← ProviderInventory, ProviderInventoryAuditLog
+│   ├── views.py               ← CRUD inventario, auditoría, alertas stock bajo
+│   ├── services.py            ← lógica de incremento/decremento de stock
+│   └── signals.py             ← actualización automática desde facturas
+│
+├── accounting/                ← Contabilidad (libros y resumen)
+│   ├── services.py            ← libro de compras, libro de ventas, resumen mensual, export Excel
+│   ├── views.py               ← endpoints de libros y exportación
+│   └── urls.py
 │
 ├── prices/                    ← menú Precios
 │   ├── models.py              ← PriceItem, PriceSubItem
@@ -179,19 +229,24 @@ monaysolutions/                ← raíz del proyecto Django
 │
 ├── frontend/                  ← SPA React + Vite
 │   └── src/
-│       ├── pages/             ← Quotes, Invoices, Prices, GastosGenerales,
-│       │                         Trabajadores, EstimadorTributario, Profile, Login
-│       ├── components/        ← QuoteForm, PriceItemForm, PriceSubItemForm,
-│       │                         SMTPConfigForm, CompanyProfileForm, MonthPicker
+│       ├── pages/             ← Dashboard, Quotes, QuoteDetail, Invoices, Products,
+│       │                         Providers, PriceComparison, Clients, ClientDetail,
+│       │                         Accounting, Prices, GastosGenerales, Trabajadores,
+│       │                         EstimadorTributario, Profile, Login
+│       ├── components/        ← QuoteForm, ClientForm, PriceItemForm, PriceSubItemForm,
+│       │                         SMTPConfigForm, CompanyProfileForm, MonthPicker,
+│       │                         KpiCard, LowStockBadge, MonthlyChart, PWAInstallPrompt
 │       ├── contexts/          ← AuthContext (JWT + localStorage)
-│       ├── services/          ← api.js, quotesApi.js, pricesApi.js,
-│       │                         expensesApi.js, workersApi.js, taxApi.js
+│       ├── services/          ← api.js, quotesApi.js, pricesApi.js, expensesApi.js,
+│       │                         workersApi.js, taxApi.js, clientsApi.js,
+│       │                         accountingApi.js, dashboardApi.js, smtpApi.js
 │       └── layouts/           ← Layout principal con sidebar
 │
 ├── scripts/                   ← scripts de inicialización y utilidades
 ├── docker-compose.yml         ← postgres, redis, backend, celery, frontend
 ├── Dockerfile                 ← imagen Python 3.11 + Tesseract + poppler
-└── requirements.txt
+├── requirements.txt           ← dependencias de producción
+└── requirements-dev.txt       ← dependencias de desarrollo (pytest, etc.)
 ```
 
 ---
@@ -215,7 +270,10 @@ monaysolutions/                ← raíz del proyecto Django
 | sentry-sdk | 1.40 | Error tracking y monitoreo |
 | django-ratelimit | 4.1 | Rate limiting |
 | whitenoise | 6.6 | Servir archivos estáticos en producción |
-| gunicorn | 21.2 | Servidor WSGI en producción |
+| gunicorn | 22.0 | Servidor WSGI en producción |
+| weasyprint | 68.0 | Generación de PDF (cotizaciones) |
+| openpyxl | 3.1 | Exportación/importación Excel |
+| cryptography | 46.0 | Encriptación de campos sensibles (SMTP) |
 
 ### Frontend
 | Tecnología | Versión | Uso |
@@ -243,6 +301,19 @@ monaysolutions/                ← raíz del proyecto Django
 - **QuoteItem** — snapshot de servicio/precio, referencia opcional a `PriceSubItem`, cantidad, precio unitario y total de línea
 - **QuoteEmailLog** — registro de envíos de email con timestamp y estado
 
+### `clients` app
+- **Client** — usuario, RUT (único por usuario), nombre, email, teléfono, dirección, estado activo/inactivo
+- **ClientSettings** — configuración de días de inactividad por usuario (default 90 días)
+
+### `products` app
+- **Provider** — nombre, RUT, sitio web, categoría (electricidad/construcción/fontanería/herramientas/general), logo
+- **Product** — nombre, descripción, marca, modelo, proveedor FK, categoría, unidad de medida
+- **PriceHistory** — historial de precios por producto y proveedor con fecha de registro
+
+### `provider_inventory` app
+- **ProviderInventory** — producto por proveedor con stock, precio unitario, stock mínimo, margen de ganancia
+- **ProviderInventoryAuditLog** — registro inmutable de cambios (incremento/decremento/ajuste/restauración/manual) con origen y trazabilidad
+
 ### `prices` app
 - **PriceItem** — categoría principal de la lista de precios con número de orden
 - **PriceSubItem** — servicio individual con número compuesto, descripción y valor neto
@@ -252,6 +323,9 @@ monaysolutions/                ← raíz del proyecto Django
 
 ### `workers` app
 - **Worker** — trabajador con remuneraciones, sistema de salud, plan Isapre en UF/pesos, tasas previsionales, desglose de descuentos, sueldo líquido e impuesto único de segunda categoría
+
+### `accounting` app
+- Sin modelos propios — usa servicios que consultan `Invoice`, `Quote` y `Expense` para generar libros contables
 
 ---
 
@@ -337,6 +411,46 @@ El estimador consolida:
 - PPM, retenciones de honorarios e impuesto único de trabajadores
 - cortes tributarios y mes de pago
 
+### Clientes
+```
+GET/POST /api/clients/                   → listar/crear clientes
+GET/PUT/PATCH/DELETE /api/clients/{id}/  → detalle/edición/eliminación
+GET/PUT /api/clients/settings/           → configuración de inactividad
+```
+
+### Proveedores y productos
+```
+GET/POST /api/proveedores/               → listar/crear proveedores
+GET/PUT/PATCH/DELETE /api/proveedores/{id}/ → detalle/edición/eliminación
+GET/POST /api/productos/                 → listar/crear productos
+GET/PUT/PATCH/DELETE /api/productos/{id}/ → detalle/edición/eliminación
+GET /api/comparacion/                    → comparación de precios entre proveedores
+```
+
+### Inventario por proveedor
+```
+GET/POST /api/provider-inventory/                  → listar/crear inventario
+GET/PUT/PATCH/DELETE /api/provider-inventory/{id}/ → detalle/edición/eliminación
+GET /api/audit-logs/                               → historial de auditoría
+GET /api/inventory/low-stock/                      → productos con stock bajo
+GET /api/inventory/low-stock/count/                → cantidad de alertas
+```
+
+### Contabilidad
+```
+GET /api/accounting/libro-compras/?year=&month=        → libro de compras mensual
+GET /api/accounting/libro-compras/export/?year=&month= → exportar libro compras (Excel)
+GET /api/accounting/libro-ventas/?year=&month=         → libro de ventas mensual
+GET /api/accounting/libro-ventas/export/?year=&month=  → exportar libro ventas (Excel)
+GET /api/accounting/resumen/?year=&month=              → resumen mensual consolidado
+```
+
+### Dashboard
+```
+GET /api/dashboard/kpis/     → KPIs principales (cotizaciones, compras, gastos, stock)
+GET /api/facturas/diarios/   → totales diarios de facturas
+```
+
 ---
 
 ## Flujo de procesamiento de facturas
@@ -379,7 +493,7 @@ Invoice.total_amount calculado, status = "completed"
 | **Índices BD** | En modelos críticos | Queries rápidas |
 | **Caché** | Redis | Activo |
 | **Monitoreo** | Sentry | Integrado |
-| **Módulos visibles** | 6 principales | Cotizaciones, Compras, Gastos, Precios, Trabajadores, Estimador |
+| **Módulos visibles** | 9 principales | Dashboard, Cotizaciones, Clientes, Compras, Inventario, Gastos, Precios, Trabajadores, Contabilidad, Estimador |
 
 ---
 
@@ -472,6 +586,8 @@ npm run dev
 
 ## Variables de entorno
 
+El archivo `monaysolutions/config.py` centraliza constantes configurables por entorno. Todas tienen valores por defecto sensatos.
+
 ```env
 # Django
 SECRET_KEY=tu-clave-secreta-larga-y-aleatoria
@@ -508,6 +624,13 @@ CORS_ALLOWED_ORIGINS=http://localhost:5173
 # Hosts permitidos
 ALLOWED_HOSTS=localhost,127.0.0.1,monaysolutions.cl
 
+# Tributario (config.py)
+IVA_RATE=0.19
+PPM_RATE=0.01
+HONORARIOS_RETENTION_RATES=2024:0.1375,2025:0.1450,2026:0.1525,2027:0.1600
+TAX_ESTIMATOR_ACCOUNTANT_FEE=127500
+WORKER_UTM_VALUE=67294
+
 # Seguridad (producción)
 SECURE_SSL_REDIRECT=True
 SECURE_HSTS_SECONDS=31536000
@@ -521,8 +644,8 @@ CSRF_COOKIE_SECURE=True
 
 ## 🚀 Uso del Sistema
 
-El menú principal actual muestra solo los módulos que se usarán en esta etapa:
-**Cotizaciones**, **Compras**, **Gastos Generales**, **Precios**, **Trabajadores** y **Estimador Tributario**.
+El menú principal actual muestra los módulos operativos:
+**Dashboard**, **Cotizaciones**, **Clientes**, **Compras**, **Productos**, **Proveedores**, **Inventario**, **Gastos Generales**, **Precios**, **Trabajadores**, **Contabilidad** y **Estimador Tributario**.
 
 ### Crear Cotización
 1. Ir a **Cotizaciones** → **Nueva Cotización**
@@ -570,6 +693,23 @@ El menú principal actual muestra solo los módulos que se usarán en esta etapa
 - Compras con factura descuentan **IVA crédito**, no el valor neto completo.
 - Muestra cortes del período: sin guía hasta día 5 y con guía de despacho hasta día 10 del mes siguiente.
 - Entrega impuesto determinado, total impuesto a pagar y total a transferir para separar caja durante el mes.
+
+### Clientes
+- Crear y gestionar clientes con RUT, nombre, email, teléfono y dirección.
+- Configurar días de inactividad para identificar clientes sin actividad reciente.
+- Búsqueda y autocompletado en cotizaciones.
+
+### Inventario por proveedor
+- El stock se incrementa automáticamente al procesar facturas de compra.
+- Configurar stock mínimo por producto para recibir alertas.
+- Auditoría completa de cada movimiento (origen, usuario, timestamp).
+- Vista de productos con stock bajo en el dashboard.
+
+### Contabilidad
+- **Libro de compras** — Todas las facturas del período con RUT proveedor (extraído de OCR si no está en el modelo), folio, neto, IVA y total.
+- **Libro de ventas** — Cotizaciones aprobadas del período con RUT cliente, folio, neto, IVA y total.
+- **Resumen mensual** — Consolidado con comparación vs mes anterior y variaciones porcentuales.
+- Exportación a Excel con formato profesional y totales.
 
 ## 🔧 Comandos útiles
 
