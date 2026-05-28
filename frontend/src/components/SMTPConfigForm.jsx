@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getSMTPConfig, saveSMTPConfig, updateSMTPConfig, patchSMTPConfig, testSMTPConnection } from '../services/smtpApi'
-import { EnvelopeIcon } from '@heroicons/react/24/outline'
+import { getSMTPConfig, saveSMTPConfig, updateSMTPConfig, testSMTPConnection } from '../services/smtpApi'
 
 const PROVIDER_PRESETS = {
   gmail: {
@@ -31,15 +30,6 @@ const PROVIDER_PRESETS = {
     useTls: true,
     useSsl: false,
   },
-}
-
-function detectProvider(email) {
-  if (!email) return null
-  const domain = email.split('@')[1]?.toLowerCase() || ''
-  if (domain === 'gmail.com') return 'gmail'
-  if (domain === 'outlook.com' || domain === 'hotmail.com' || domain === 'live.com' || domain === 'msn.com') return 'outlook'
-  if (domain === 'yahoo.com' || domain.endsWith('.yahoo.com')) return 'yahoo'
-  return 'custom'
 }
 
 export default function SMTPConfigForm({ onSaved }) {
@@ -120,7 +110,7 @@ export default function SMTPConfigForm({ onSaved }) {
         use_ssl: useSsl,
       }
       await testSMTPConnection(payload)
-      setSuccess('✅ Conexión exitosa. Ahora puedes guardar la configuración.')
+      setSuccess('Conexión exitosa. Ahora puedes guardar la configuración.')
       setTimeout(() => setSuccess(''), 5000)
     } catch (err) {
       const msg = err.response?.data?.detail || 'No se pudo conectar. Revisa los datos.'
@@ -159,7 +149,7 @@ export default function SMTPConfigForm({ onSaved }) {
       } else {
         await saveSMTPConfig(payload)
       }
-      setSuccess('✅ Configuración guardada correctamente')
+      setSuccess('Configuración guardada correctamente')
       setPassword('')
       setExistingEmail(email)
       setEmail('')
@@ -183,20 +173,22 @@ export default function SMTPConfigForm({ onSaved }) {
     <div className="space-y-5">
       {/* Estado actual */}
       {hasExistingConfig && existingEmail && (
-        <div className="p-3 rounded-lg bg-green-50 border border-green-200 flex items-center gap-2">
-          <span className="text-green-600 text-lg">✅</span>
+        <div className="flex flex-col gap-1 border-l-4 border-green-400 pl-3">
           <p className="text-sm text-green-800">
             Configurado para: <strong>{existingEmail}</strong>
           </p>
-          <p className="text-xs text-green-600 ml-auto">Si guardas una nueva configuración, reemplazará la actual</p>
+          <p className="text-xs text-green-600">
+            Si guardas una nueva configuración, reemplazará la actual.
+          </p>
         </div>
       )}
 
       {/* Instrucciones según proveedor */}
       {isGmailLike && (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <div className="p-4 rounded-lg bg-amber-50 border border-amber-200">
-            <p className="text-sm font-bold text-amber-900 mb-2">⚠️ Requisito: Verificación en 2 pasos</p>
+            <p className="text-xs font-bold text-amber-700 uppercase tracking-widest mb-1">Paso 1</p>
+            <p className="text-sm font-bold text-amber-900 mb-2">Verificación en 2 pasos</p>
             <p className="text-sm text-amber-800 mb-2">
               Debes tener activa la <strong>Verificación en dos pasos</strong> para generar contraseñas de aplicación.
             </p>
@@ -215,7 +207,8 @@ export default function SMTPConfigForm({ onSaved }) {
           </div>
 
           <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-            <p className="text-sm font-bold text-blue-800 mb-2">🔑 Generar contraseña de aplicación</p>
+            <p className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-1">Paso 2</p>
+            <p className="text-sm font-bold text-blue-800 mb-2">Generar contraseña de aplicación</p>
             <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
               <li>
                 Abre{' '}
@@ -232,7 +225,7 @@ export default function SMTPConfigForm({ onSaved }) {
 
       {isCustom && (
         <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
-          <p className="text-sm font-bold text-gray-800 mb-1">📧 Correo con dominio propio</p>
+          <p className="text-sm font-bold text-gray-800 mb-1">Correo con dominio propio</p>
           <p className="text-sm text-gray-600">
             Ingresa los datos SMTP que te proporcionó tu proveedor de hosting. 
             Usa puerto <strong>587</strong> para TLS o <strong>465</strong> para SSL.
@@ -247,65 +240,64 @@ export default function SMTPConfigForm({ onSaved }) {
         <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm">{success}</div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Proveedor */}
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">
-            Proveedor de correo
-          </label>
-          <select
-            value={provider}
-            onChange={(e) => handleProviderChange(e.target.value)}
-            className={fieldClass(false)}
-          >
-            {Object.entries(PROVIDER_PRESETS).map(([key, preset]) => (
-              <option key={key} value={key}>{preset.label}</option>
-            ))}
-          </select>
-        </div>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">
+              Proveedor de correo
+            </label>
+            <select
+              value={provider}
+              onChange={(e) => handleProviderChange(e.target.value)}
+              className={fieldClass(false)}
+            >
+              {Object.entries(PROVIDER_PRESETS).map(([key, preset]) => (
+                <option key={key} value={key}>{preset.label}</option>
+              ))}
+            </select>
+          </div>
 
-        {/* Correo */}
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">
-            Correo electrónico
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder={isCustom ? 'juan@empresa.com' : 'tucorreo@gmail.com'}
-            className={fieldClass(false)}
-            required
-          />
-        </div>
-
-        {/* Contraseña */}
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">
-            {isGmailLike ? 'Contraseña de aplicación' : 'Contraseña'} <span className="text-red-400">*</span>
-          </label>
-          <div className="relative">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">
+              Correo electrónico
+            </label>
             <input
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(isGmailLike ? e.target.value.replace(/\s/g, '') : e.target.value)}
-              placeholder={isGmailLike ? 'Los 16 caracteres sin espacios' : 'Tu contraseña de correo'}
-              className={`${fieldClass(false)} pr-20`}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={isCustom ? 'juan@empresa.com' : 'tucorreo@gmail.com'}
+              className={fieldClass(false)}
               required
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-gray-700 underline"
-            >
-              {showPassword ? 'Ocultar' : 'Mostrar'}
-            </button>
           </div>
-          {isGmailLike && (
-            <p className="text-xs text-gray-400 mt-1">
-              No es tu contraseña de Gmail. Son los 16 caracteres generados en Google.
-            </p>
-          )}
+
+          <div className="md:col-span-2">
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">
+              {isGmailLike ? 'Contraseña de aplicación' : 'Contraseña'} <span className="text-red-400">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(isGmailLike ? e.target.value.replace(/\s/g, '') : e.target.value)}
+                placeholder={isGmailLike ? 'Los 16 caracteres sin espacios' : 'Tu contraseña de correo'}
+                className={`${fieldClass(false)} pr-20`}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-gray-700 underline"
+              >
+                {showPassword ? 'Ocultar' : 'Mostrar'}
+              </button>
+            </div>
+            {isGmailLike && (
+              <p className="text-xs text-gray-400 mt-1">
+                No es tu contraseña de Gmail. Son los 16 caracteres generados en Google.
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Campos SMTP solo para custom */}

@@ -4,6 +4,7 @@ import ComparisonTable from '../components/ComparisonTable'
 import PriceVariationBadge from '../components/PriceVariationBadge'
 import InvoiceSearchInput from '../components/InvoiceSearchInput'
 import Pagination from '../components/Pagination'
+import { DEFAULT_PAGE_SIZE } from '../config/appConfig'
 
 const TABS = [
   { key: 'auto', label: 'Comparación Automática' },
@@ -278,8 +279,8 @@ function ManualTab() {
 // ─── Monthly Table (paginated + responsive) ───────────────────────────────────
 function MonthlyTable({ productos = [] }) {
   const [page, setPage] = useState(1)
-  const totalPages = Math.ceil(productos.length / 10)
-  const paginated = productos.slice((page - 1) * 10, page * 10)
+  const totalPages = Math.ceil(productos.length / DEFAULT_PAGE_SIZE)
+  const paginated = productos.slice((page - 1) * DEFAULT_PAGE_SIZE, page * DEFAULT_PAGE_SIZE)
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -518,8 +519,8 @@ function ProvidersTab() {
     )
   }
 
-  const totalPages = Math.ceil(result.productos.length / 10)
-  const paginated = result.productos.slice((page - 1) * 10, page * 10)
+  const totalPages = Math.ceil(result.productos.length / DEFAULT_PAGE_SIZE)
+  const paginated = result.productos.slice((page - 1) * DEFAULT_PAGE_SIZE, page * DEFAULT_PAGE_SIZE)
 
   return (
     <div className="space-y-4">

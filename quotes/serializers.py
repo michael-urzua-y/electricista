@@ -4,6 +4,7 @@ from .validators import validate_rut, validate_logo_base64, validate_text_safe
 from .quote_number_service import next_quote_number
 from prices.models import PriceSubItem
 from clients.models import Client
+from monaysolutions.config import MAX_COMPANY_LOGO_MB
 
 
 class CompanyProfileSerializer(serializers.ModelSerializer):
@@ -26,8 +27,7 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
         return None
 
     def validate_rut(self, value):
-        validate_rut(value)
-        return value
+        return validate_rut(value)
 
     def validate_logo_base64(self, value):
         # Solo validar si es un string no vacío (compatibilidad)
@@ -38,9 +38,9 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
     def validate_logo_upload(self, value):
         if value is None:
             return value
-        # Validar tamaño (2 MB máx)
-        if value.size > 2 * 1024 * 1024:
-            raise serializers.ValidationError('El logo no puede superar 2 MB.')
+        max_size = MAX_COMPANY_LOGO_MB * 1024 * 1024
+        if value.size > max_size:
+            raise serializers.ValidationError(f'El logo no puede superar {MAX_COMPANY_LOGO_MB} MB.')
         # Validar tipo MIME
         if value.content_type not in ('image/png', 'image/jpeg'):
             raise serializers.ValidationError('El logo debe ser PNG o JPEG.')

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { getPriceItems, getSubItems } from '../services/pricesApi'
 import { getClients } from '../services/clientsApi'
 import { formatRut, validateRut } from '../utils/rutUtils'
+import { IVA_PERCENT_LABEL, IVA_RATE } from '../config/appConfig'
 
 const formatCLP = (value) => {
   const num = Number(value)
@@ -193,7 +194,7 @@ export default function QuoteForm({ onSubmit, initialData, onCancel, loading }) 
   const discountPct = parseFloat(discountPercentage) || 0
   const discountAmount = subtotal * (discountPct / 100)
   const total = subtotal - discountAmount
-  const taxAmount = total * 0.19
+  const taxAmount = total * IVA_RATE
   const totalAmount = total + taxAmount
 
   // --- Validation ---
@@ -556,7 +557,7 @@ setErrors({})
             </div>
 
             <div className="px-4 py-3 flex justify-between text-sm text-gray-700 border-t border-gray-200">
-              <span>IVA (19%)</span>
+              <span>IVA ({IVA_PERCENT_LABEL})</span>
               <span className="font-medium">{formatCLP(taxAmount)}</span>
             </div>
 

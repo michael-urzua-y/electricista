@@ -7,6 +7,7 @@ import {
   exportLibroVentas,
   getResumenMensual,
 } from '../services/accountingApi'
+import { ACCOUNTING_PAGE_SIZE } from '../config/appConfig'
 
 const MONTHS = [
   { value: 1, label: 'Enero' },
@@ -105,7 +106,7 @@ export default function Accounting() {
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState('')
 
-  const PAGE_SIZE = 50
+  const PAGE_SIZE = ACCOUNTING_PAGE_SIZE
 
   const fetchCompras = useCallback(async (y, m, page) => {
     setComprasLoading(true)

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Expense
 import magic
+from monaysolutions.config import MAX_EXPENSE_UPLOAD_MB
 
 
 class ExpenseListSerializer(serializers.ModelSerializer):
@@ -61,11 +62,10 @@ class ExpenseCreateUpdateSerializer(serializers.ModelSerializer):
         if value is None:
             return value
 
-        # Límite de 10 MB
-        max_size = 10 * 1024 * 1024
+        max_size = MAX_EXPENSE_UPLOAD_MB * 1024 * 1024
         if value.size > max_size:
             raise serializers.ValidationError(
-                f'El archivo no puede superar 10MB. '
+                f'El archivo no puede superar {MAX_EXPENSE_UPLOAD_MB}MB. '
                 f'Tamaño actual: {value.size / 1024 / 1024:.2f}MB'
             )
 

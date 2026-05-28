@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, InformationCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import { getWorkers, createWorker, updateWorker, deleteWorker, getUfValue } from '../services/workersApi'
+import Pagination from '../components/Pagination'
+import { DEFAULT_PAGE_SIZE, WORKER_HEALTH_RATE, WORKER_UNEMPLOYMENT_RATE } from '../config/appConfig'
+
+const DEFAULT_HEALTH_RATE = WORKER_HEALTH_RATE.toFixed(2)
+const DEFAULT_UNEMPLOYMENT_RATE = WORKER_UNEMPLOYMENT_RATE.toFixed(2)
 
 function formatCLP(value) {
   const num = Number(value)
@@ -45,8 +50,8 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
     health_plan_clp: '0',
     health_uf_value: '0',
     afp_rate: '10.69',
-    health_rate: '7.00',
-    unemployment_rate: '0.60',
+    health_rate: DEFAULT_HEALTH_RATE,
+    unemployment_rate: DEFAULT_UNEMPLOYMENT_RATE,
     is_active: true,
   })
   const [errors, setErrors] = useState({})
@@ -83,8 +88,8 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
         health_plan_clp: fmt(legacyPlanClp),
         health_uf_value: worker.health_uf_value?.toString() || '0',
         afp_rate: worker.afp_rate?.toString() || '10.69',
-        health_rate: '7.00',
-        unemployment_rate: worker.unemployment_rate?.toString() || '0.60',
+        health_rate: DEFAULT_HEALTH_RATE,
+        unemployment_rate: worker.unemployment_rate?.toString() || DEFAULT_UNEMPLOYMENT_RATE,
         is_active: worker.is_active ?? true,
       })
     }
@@ -211,7 +216,7 @@ function WorkerFormModal({ worker, onClose, onSuccess }) {
     setForm((prev) => ({
       ...prev,
       health_system: healthSystem,
-      health_rate: '7.00',
+      health_rate: DEFAULT_HEALTH_RATE,
       additional_health: '0',
       health_plan_unit: healthSystem === 'isapre'
         ? (prev.health_plan_unit === 'clp' ? 'clp' : 'uf')
@@ -783,6 +788,8 @@ export default function Trabajadores() {
   const [editingWorker, setEditingWorker] = useState(null)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+  const [activePage, setActivePage] = useState(1)
+  const [inactivePage, setInactivePage] = useState(1)
 
   const fetchWorkers = useCallback(async () => {
     setLoading(true)
@@ -791,6 +798,8 @@ export default function Trabajadores() {
       const res = await getWorkers()
       const data = res.data?.results ?? res.data ?? []
       setWorkers(data)
+      setActivePage(1)
+      setInactivePage(1)
     } catch {
       setError('No se pudieron cargar los trabajadores')
     } finally {
@@ -830,6 +839,16 @@ export default function Trabajadores() {
 
   const activeWorkers = workers.filter((w) => w.is_active)
   const inactiveWorkers = workers.filter((w) => !w.is_active)
+  const activeTotalPages = Math.ceil(activeWorkers.length / DEFAULT_PAGE_SIZE)
+  const inactiveTotalPages = Math.ceil(inactiveWorkers.length / DEFAULT_PAGE_SIZE)
+  const paginatedActiveWorkers = activeWorkers.slice(
+    (activePage - 1) * DEFAULT_PAGE_SIZE,
+    activePage * DEFAULT_PAGE_SIZE,
+  )
+  const paginatedInactiveWorkers = inactiveWorkers.slice(
+    (inactivePage - 1) * DEFAULT_PAGE_SIZE,
+    inactivePage * DEFAULT_PAGE_SIZE,
+  )
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -897,7 +916,7 @@ export default function Trabajadores() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {activeWorkers.map((w) => (
+                    {paginatedActiveWorkers.map((w) => (
                       <tr key={w.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 sm:px-6 py-3 text-gray-900 font-medium">{w.name}</td>
                         <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{w.position || '—'}</td>
@@ -920,6 +939,13 @@ export default function Trabajadores() {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                currentPage={activePage}
+                totalPages={activeTotalPages}
+                onPageChange={setActivePage}
+                totalItems={activeWorkers.length}
+                pageSize={DEFAULT_PAGE_SIZE}
+              />
             </div>
           )}
 
@@ -940,7 +966,7 @@ export default function Trabajadores() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {inactiveWorkers.map((w) => (
+                    {paginatedInactiveWorkers.map((w) => (
                       <tr key={w.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 sm:px-6 py-3 text-gray-500">{w.name}</td>
                         <td className="px-4 py-3 text-gray-400 hidden sm:table-cell">{w.position || '—'}</td>
@@ -960,6 +986,13 @@ export default function Trabajadores() {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                currentPage={inactivePage}
+                totalPages={inactiveTotalPages}
+                onPageChange={setInactivePage}
+                totalItems={inactiveWorkers.length}
+                pageSize={DEFAULT_PAGE_SIZE}
+              />
             </div>
           )}
         </div>

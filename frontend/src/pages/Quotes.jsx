@@ -8,8 +8,9 @@ import QuoteStatusBadge from '../components/QuoteStatusBadge'
 import QuoteForm from '../components/QuoteForm'
 import Pagination from '../components/Pagination'
 import MonthPicker from '../components/MonthPicker'
+import { DEFAULT_PAGE_SIZE } from '../config/appConfig'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = DEFAULT_PAGE_SIZE
 
 const STATUS_OPTIONS = [
   { value: '',         label: 'Todos' },

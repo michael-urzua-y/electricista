@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import api from '../services/api'
 import Pagination from '../components/Pagination'
 import { ArrowPathIcon } from '@heroicons/react/24/outline'
+import { DEFAULT_PAGE_SIZE } from '../config/appConfig'
 
 const REFRESH_INTERVAL = 30_000 // 30 segundos
 
@@ -18,7 +19,7 @@ export default function Products() {
   const [savingMinStock, setSavingMinStock] = useState({})
   const [editingMarkup, setEditingMarkup] = useState({})
   const [savingMarkup, setSavingMarkup] = useState({})
-  const itemsPerPage = 10
+  const itemsPerPage = DEFAULT_PAGE_SIZE
   const selectedProviderRef = useRef(selectedProvider)
 
   // Keep ref in sync so the interval always uses the latest provider

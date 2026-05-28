@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from .models import Invoice, InvoiceItem
 from products.models import Provider
+from monaysolutions.config import MAX_INVOICE_UPLOAD_MB
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -124,10 +125,12 @@ class InvoiceUploadSerializer(serializers.ModelSerializer):
 
     def validate_file(self, value):
         """Validar tipo y tamaño del archivo"""
-        # Límite de 10MB
-        max_size = 10 * 1024 * 1024
+        max_size = MAX_INVOICE_UPLOAD_MB * 1024 * 1024
         if value.size > max_size:
-            error_msg = f'El archivo no puede superar 10MB. Tamaño actual: {value.size/1024/1024:.2f}MB'
+            error_msg = (
+                f'El archivo no puede superar {MAX_INVOICE_UPLOAD_MB}MB. '
+                f'Tamaño actual: {value.size/1024/1024:.2f}MB'
+            )
             logger.warning(f"[UPLOAD] Archivo demasiado grande: {value.size} bytes")
             raise serializers.ValidationError(error_msg)
 

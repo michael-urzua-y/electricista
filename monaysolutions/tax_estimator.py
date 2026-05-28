@@ -12,6 +12,18 @@ from expenses.models import Expense
 from invoices.models import Invoice
 from quotes.models import Quote
 from workers.models import Worker
+from monaysolutions.config import (
+    HONORARIOS_RETENTION_RATES,
+    IVA_RATE,
+    PPM_RATE,
+    TAX_CUTOFF_WITH_GUIDE_DAY,
+    TAX_CUTOFF_WITHOUT_GUIDE_DAY,
+    TAX_ESTIMATOR_ACCOUNTANT_FEE,
+    TAX_ESTIMATOR_RENTA_AT_AMOUNT,
+    TAX_ESTIMATOR_RENTA_AT_MONTH,
+    TAX_ESTIMATOR_RENTA_AT_YEAR,
+    TWO_PLACES,
+)
 
 
 MESES = [
@@ -19,16 +31,7 @@ MESES = [
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 
-IVA_RATE = Decimal('0.19')
-TWO_PLACES = Decimal('0.01')
 ZERO = Decimal('0')
-HONORARIOS_CONTADOR = Decimal('127500')
-RENTA_AT_FEES = {
-    2026: {
-        'month': 4,
-        'amount': Decimal('300000'),
-    },
-}
 
 
 def _money(value):
@@ -76,19 +79,15 @@ def _quote_amounts(quote):
 
 
 def _honorarios_retention_rate(year):
-    rates = {
-        2024: Decimal('0.1375'),
-        2025: Decimal('0.1450'),
-        2026: Decimal('0.1525'),
-        2027: Decimal('0.1600'),
-    }
-    return rates.get(year, Decimal('0.1700') if year >= 2028 else Decimal('0.1375'))
+    return HONORARIOS_RETENTION_RATES.get(
+        year,
+        Decimal('0.1700') if year >= 2028 else Decimal('0.1375'),
+    )
 
 
 def _renta_at_fee(year, month):
-    fee = RENTA_AT_FEES.get(year)
-    if fee and fee['month'] == month:
-        return fee['amount']
+    if year == TAX_ESTIMATOR_RENTA_AT_YEAR and month == TAX_ESTIMATOR_RENTA_AT_MONTH:
+        return TAX_ESTIMATOR_RENTA_AT_AMOUNT
     return ZERO
 
 
@@ -114,8 +113,8 @@ def _expense_exempt_invoice_filter():
 def _period_cutoff_status(year, month):
     today = timezone.localdate()
     payment_year, payment_month = _next_month(year, month)
-    cutoff_without_guide = date(payment_year, payment_month, 5)
-    cutoff_with_guide = date(payment_year, payment_month, 10)
+    cutoff_without_guide = date(payment_year, payment_month, TAX_CUTOFF_WITHOUT_GUIDE_DAY)
+    cutoff_with_guide = date(payment_year, payment_month, TAX_CUTOFF_WITH_GUIDE_DAY)
 
     if today <= cutoff_without_guide:
         code = 'open'
@@ -237,7 +236,7 @@ class TaxEstimatorView(APIView):
         impuesto_determinado = max(resultado_iva, ZERO)
         remanente_iva_estimado = max(iva_credito - iva_debito, ZERO)
 
-        ppm_rate = Decimal('0.01')
+        ppm_rate = PPM_RATE
         ppm = (ventas_netas * ppm_rate).quantize(TWO_PLACES, rounding=ROUND_HALF_UP)
 
         honorarios_qs = Expense.objects.filter(
@@ -256,7 +255,7 @@ class TaxEstimatorView(APIView):
         impuesto_trabajadores = sum((w.tax_amount or ZERO) for w in active_workers)
 
         total_impuesto = impuesto_determinado + ppm + retencion_2da_categoria + impuesto_trabajadores
-        honorarios_contador = HONORARIOS_CONTADOR
+        honorarios_contador = TAX_ESTIMATOR_ACCOUNTANT_FEE
         honorarios_renta_at = _renta_at_fee(current_year, current_month)
         total_a_transferir = total_impuesto + honorarios_contador + honorarios_renta_at
 

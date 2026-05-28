@@ -10,6 +10,7 @@ import {
 } from '@heroicons/react/24/outline'
 import api from '../services/api'
 import Pagination from '../components/Pagination'
+import { DEFAULT_PAGE_SIZE } from '../config/appConfig'
 
 const CATEGORY_OPTIONS = [
   { value: 'electricidad', label: 'Electricidad' },
@@ -19,7 +20,7 @@ const CATEGORY_OPTIONS = [
   { value: 'general', label: 'General' },
 ]
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = DEFAULT_PAGE_SIZE
 
 export default function Providers() {
   const [providers, setProviders] = useState([])

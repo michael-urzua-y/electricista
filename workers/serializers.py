@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 from .models import Worker
+from monaysolutions.config import WORKER_HEALTH_RATE
 
 
 class WorkerSerializer(serializers.ModelSerializer):
@@ -108,7 +109,7 @@ class WorkerSerializer(serializers.ModelSerializer):
 
         health_system = value('health_system', Worker.HEALTH_SYSTEM_FONASA)
         health_plan_unit = value('health_plan_unit', Worker.HEALTH_PLAN_MANUAL)
-        data['health_rate'] = Decimal('7.00')
+        data['health_rate'] = WORKER_HEALTH_RATE
 
         if health_system == Worker.HEALTH_SYSTEM_FONASA:
             data['additional_health'] = Decimal('0')

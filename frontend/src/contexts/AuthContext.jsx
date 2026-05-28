@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import axios from 'axios'
+import api from '../services/api'
 
 // Usar variable de entorno o fallback a /api para el proxy
 const API_URL = import.meta.env.VITE_API_URL || '/api'
@@ -16,20 +17,28 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      setLoading(true)
       fetchUser()
     } else {
+      setUser(null)
       setLoading(false)
     }
   }, [token])
 
   const fetchUser = async () => {
     try {
-      const res = await axios.get(`${API_URL}/users/me/`)
+      const res = await api.get('/users/me/', { timeout: 10000 })
       setUser(res.data)
+      const currentToken = localStorage.getItem('token')
+      if (currentToken && currentToken !== token) {
+        setToken(currentToken)
+      }
     } catch (err) {
       console.error('Error fetching user:', err)
       localStorage.removeItem('token')
       setToken(null)
+      setUser(null)
+      localStorage.removeItem('refreshToken')
       delete axios.defaults.headers.common['Authorization']
     } finally {
       setLoading(false)

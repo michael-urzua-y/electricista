@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, PaperClipIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline'
 import { getExpenses, createExpense, updateExpense, deleteExpense, getComprobante } from '../services/expensesApi'
 import MonthPicker from '../components/MonthPicker'
+import Pagination from '../components/Pagination'
+import { DEFAULT_PAGE_SIZE } from '../config/appConfig'
 
 function formatCLP(value) {
   const num = Number(value)
@@ -531,6 +533,7 @@ export default function GastosGenerales() {
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [selectedPeriod, setSelectedPeriod] = useState(null)
+  const [monthPages, setMonthPages] = useState({})
 
   const fetchGastos = useCallback(async () => {
     setLoading(true)
@@ -549,6 +552,10 @@ export default function GastosGenerales() {
   useEffect(() => {
     fetchGastos()
   }, [fetchGastos])
+
+  useEffect(() => {
+    setMonthPages({})
+  }, [selectedPeriod])
 
   const showSuccess = (msg) => {
     setSuccessMsg(msg)
@@ -714,6 +721,12 @@ export default function GastosGenerales() {
               (sum, g) => sum + Number.parseFloat(g.total_amount || 0),
               0
             )
+            const currentPage = monthPages[month] || 1
+            const totalPages = Math.ceil(monthGastos.length / DEFAULT_PAGE_SIZE)
+            const paginatedGastos = monthGastos.slice(
+              (currentPage - 1) * DEFAULT_PAGE_SIZE,
+              currentPage * DEFAULT_PAGE_SIZE,
+            )
 
             return (
               <div key={month} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -743,7 +756,7 @@ export default function GastosGenerales() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {monthGastos.map((gasto) => (
+                      {paginatedGastos.map((gasto) => (
                         <tr key={gasto.id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-4 sm:px-6 py-3 text-gray-700 whitespace-nowrap">
                             {gasto.date}
@@ -802,6 +815,13 @@ export default function GastosGenerales() {
                     </tbody>
                   </table>
                 </div>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={(page) => setMonthPages(prev => ({ ...prev, [month]: page }))}
+                  totalItems={monthGastos.length}
+                  pageSize={DEFAULT_PAGE_SIZE}
+                />
               </div>
             )
           })}

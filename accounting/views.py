@@ -8,13 +8,14 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 
 from .services import get_libro_compras, get_libro_ventas, get_resumen_mensual, export_to_excel
+from monaysolutions.config import ACCOUNTING_PAGE_SIZE, API_MAX_PAGE_SIZE
 
 
 class AccountingPagination(PageNumberPagination):
     """Paginación de 50 registros por página para libros contables."""
-    page_size = 50
+    page_size = ACCOUNTING_PAGE_SIZE
     page_size_query_param = 'page_size'
-    max_page_size = 100
+    max_page_size = API_MAX_PAGE_SIZE
 
 
 @api_view(['GET'])

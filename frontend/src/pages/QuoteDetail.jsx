@@ -7,6 +7,7 @@ import { getQuote, updateQuote, changeQuoteStatus, downloadQuotePdf } from '../s
 import api from '../services/api'
 import QuoteStatusBadge from '../components/QuoteStatusBadge'
 import QuoteForm from '../components/QuoteForm'
+import { IVA_PERCENT_LABEL } from '../config/appConfig'
 
 // Transiciones permitidas por estado
 const ALLOWED_TRANSITIONS = {
@@ -352,7 +353,7 @@ export default function QuoteDetail() {
             <span className="font-medium">{formatCurrency(quote.total)}</span>
           </div>
           <div className="px-5 py-3 flex justify-between text-sm text-gray-700 border-t border-gray-100">
-            <span>IVA (19%)</span>
+            <span>IVA ({IVA_PERCENT_LABEL})</span>
             <span className="font-medium">{formatCurrency(quote.tax_amount)}</span>
           </div>
           <div className="px-5 py-4 flex justify-between bg-gray-900 text-yellow-400">

@@ -1,10 +1,14 @@
 from django.db import models
 from django.conf import settings
 from decimal import Decimal, ROUND_HALF_UP
+from monaysolutions.config import (
+    WORKER_HEALTH_RATE,
+    WORKER_UNEMPLOYMENT_RATE,
+    WORKER_UTM_VALUE,
+)
 
 
-# Valor UTM 2026
-UTM_VALUE = Decimal('67294')
+UTM_VALUE = WORKER_UTM_VALUE
 
 
 class Worker(models.Model):
@@ -89,11 +93,11 @@ class Worker(models.Model):
         verbose_name='% AFP'
     )
     health_rate = models.DecimalField(
-        max_digits=5, decimal_places=2, default=Decimal('7.00'),
+        max_digits=5, decimal_places=2, default=WORKER_HEALTH_RATE,
         verbose_name='% Salud'
     )
     unemployment_rate = models.DecimalField(
-        max_digits=5, decimal_places=2, default=Decimal('0.60'),
+        max_digits=5, decimal_places=2, default=WORKER_UNEMPLOYMENT_RATE,
         verbose_name='% Seguro Cesantía'
     )
     is_active = models.BooleanField(default=True, verbose_name='Activo')

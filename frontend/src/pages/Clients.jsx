@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { MagnifyingGlassIcon, PlusIcon, XMarkIcon, UserGroupIcon } from '@heroicons/react/24/outline'
 import { getClients, createClient, deactivateClient, getInactiveClients } from '../services/clientsApi'
 import ClientForm from '../components/ClientForm'
+import Pagination from '../components/Pagination'
+import { DEFAULT_PAGE_SIZE } from '../config/appConfig'
 
 export default function Clients() {
   const navigate = useNavigate()
@@ -13,7 +15,13 @@ export default function Clients() {
   const [showModal, setShowModal] = useState(false)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
   const debounceRef = useRef(null)
+  const totalPages = Math.ceil(clients.length / DEFAULT_PAGE_SIZE)
+  const paginatedClients = clients.slice(
+    (currentPage - 1) * DEFAULT_PAGE_SIZE,
+    currentPage * DEFAULT_PAGE_SIZE,
+  )
 
   const fetchClients = useCallback(async (q = '') => {
     setLoading(true)
@@ -23,6 +31,7 @@ export default function Clients() {
       const res = await getClients(params)
       const data = res.data?.results ?? res.data ?? []
       setClients(Array.isArray(data) ? data : [])
+      setCurrentPage(1)
     } catch {
       setError('No se pudieron cargar los clientes')
     } finally {
@@ -164,7 +173,7 @@ export default function Clients() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {clients.map(client => (
+                {paginatedClients.map(client => (
                   <tr
                     key={client.id}
                     onClick={() => navigate(`/clients/${client.id}`)}
@@ -202,6 +211,13 @@ export default function Clients() {
                 ))}
               </tbody>
             </table>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={clients.length}
+              pageSize={DEFAULT_PAGE_SIZE}
+            />
           </div>
         )}
       </div>

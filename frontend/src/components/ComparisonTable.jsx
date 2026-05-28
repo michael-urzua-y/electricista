@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import PriceVariationBadge from './PriceVariationBadge'
 import Pagination from './Pagination'
+import { DEFAULT_PAGE_SIZE } from '../config/appConfig'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = DEFAULT_PAGE_SIZE
 
 const formatCurrency = (value) => {
   if (value === null || value === undefined) return '—'

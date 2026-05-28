@@ -11,10 +11,9 @@ from django.contrib.auth import get_user_model
 
 from invoices.models import Invoice
 from quotes.models import Quote
+from monaysolutions.config import IVA_RATE, TWO_PLACES
 
 User = get_user_model()
-
-IVA_RATE = Decimal('0.19')
 
 
 def _extract_rut_from_ocr(ocr_text: str) -> str:
@@ -49,7 +48,7 @@ def _calc_neto_iva(invoice: Invoice):
     """
     Calcula neto e IVA desde los campos de la factura.
     Si subtotal_amount y tax_amount están disponibles, los usa directamente.
-    Si no, calcula desde total_amount usando IVA 19%.
+    Si no, calcula desde total_amount usando el IVA configurado.
     """
     total = invoice.total_amount or Decimal('0')
 
@@ -66,8 +65,8 @@ def _calc_neto_iva(invoice: Invoice):
         neto = total - iva
         return neto, iva
 
-    # Calcular desde total: total = neto * 1.19 → neto = total / 1.19
-    neto = (total / (1 + IVA_RATE)).quantize(Decimal('0.01'))
+    # Calcular desde total: total = neto * (1 + IVA)
+    neto = (total / (1 + IVA_RATE)).quantize(TWO_PLACES)
     iva = total - neto
     return neto, iva
 

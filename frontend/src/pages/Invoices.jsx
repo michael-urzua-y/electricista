@@ -12,8 +12,9 @@ import { es } from 'date-fns/locale'
 import PriceVariationBadge from '../components/PriceVariationBadge'
 import Pagination from '../components/Pagination'
 import MonthPicker from '../components/MonthPicker'
+import { DEFAULT_PAGE_SIZE } from '../config/appConfig'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = DEFAULT_PAGE_SIZE
 
 function todayISO() {
   return new Date().toISOString().split('T')[0]

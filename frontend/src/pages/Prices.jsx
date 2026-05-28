@@ -15,8 +15,9 @@ import {
 import PriceItemForm from '../components/PriceItemForm'
 import PriceSubItemForm from '../components/PriceSubItemForm'
 import Pagination from '../components/Pagination'
+import { DEFAULT_PAGE_SIZE } from '../config/appConfig'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = DEFAULT_PAGE_SIZE
 
 function formatCLP(value) {
   const num = Number(value)

@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal, ROUND_HALF_UP
+from monaysolutions.config import IVA_RATE, TWO_PLACES
 
 
 class SMTPConfig(models.Model):
@@ -139,7 +140,6 @@ class Quote(models.Model):
 
     def recalculate_totals(self):
         """Recalcula todos los montos de la cotización."""
-        TWO_PLACES = Decimal('0.01')
         subtotal = sum(item.line_total for item in self.items.all())
         self.subtotal = subtotal.quantize(TWO_PLACES, rounding=ROUND_HALF_UP)
 
@@ -151,7 +151,7 @@ class Quote(models.Model):
             TWO_PLACES, rounding=ROUND_HALF_UP
         )
 
-        self.tax_amount = (self.total * Decimal('0.19')).quantize(
+        self.tax_amount = (self.total * IVA_RATE).quantize(
             TWO_PLACES, rounding=ROUND_HALF_UP
         )
 

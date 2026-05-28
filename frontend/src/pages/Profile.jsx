@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import api from '../services/api'
-import { UserIcon, EnvelopeIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline'
+import {
+  UserIcon,
+  EnvelopeIcon,
+  BuildingOffice2Icon,
+  CheckCircleIcon,
+} from '@heroicons/react/24/outline'
 import CompanyProfileForm from '../components/CompanyProfileForm'
 import SMTPConfigForm from '../components/SMTPConfigForm'
 import { getCompanyProfile, saveCompanyProfile, patchCompanyProfile } from '../services/quotesApi'
@@ -14,8 +19,10 @@ export default function Profile() {
   const [savingProfile, setSavingProfile] = useState(false)
   const [profileApiErrors, setProfileApiErrors] = useState({})
   const [profileSuccess, setProfileSuccess] = useState('')
+  const [smtpSuccess, setSmtpSuccess] = useState('')
+  const [profileEditing, setProfileEditing] = useState(false)
+  const [activeConfigSection, setActiveConfigSection] = useState('company')
 
-  const [smtpExpanded, setSmtpExpanded] = useState(false)
   const [hasSMTPConfig, setHasSMTPConfig] = useState(false)
 
   useEffect(() => {
@@ -23,8 +30,11 @@ export default function Profile() {
       try {
         const res = await getCompanyProfile()
         setCompanyProfile(res.data)
+        setProfileEditing(false)
       } catch (err) {
-        if (err.response?.status !== 404) {
+        if (err.response?.status === 404) {
+          setProfileEditing(true)
+        } else {
           console.error('Error cargando perfil de empresa:', err)
         }
       } finally {
@@ -35,12 +45,10 @@ export default function Profile() {
   }, [])
 
   useEffect(() => {
-    // Verificar si ya existe configuración SMTP para decidir el estado inicial del acordeón
     const fetchSMTP = async () => {
       try {
         await api.get('/empresa/smtp/')
         setHasSMTPConfig(true)
-        setSmtpExpanded(true)
       } catch {
         setHasSMTPConfig(false)
       }
@@ -48,7 +56,7 @@ export default function Profile() {
     fetchSMTP()
   }, [])
 
-  const handleSaveCompanyProfile = async (data, options = {}) => {
+  const handleSaveCompanyProfile = async (data) => {
     setSavingProfile(true)
     setProfileApiErrors({})
     setProfileSuccess('')
@@ -58,6 +66,7 @@ export default function Profile() {
         ? await patchCompanyProfile(data)
         : await saveCompanyProfile(data)
       setCompanyProfile(res.data)
+      setProfileEditing(false)
       setProfileSuccess('Perfil de empresa guardado correctamente')
       setTimeout(() => setProfileSuccess(''), 5000)
     } catch (err) {
@@ -73,19 +82,44 @@ export default function Profile() {
 
   const handleSMTPSaved = () => {
     setHasSMTPConfig(true)
-    setSmtpExpanded(false)
-    setProfileSuccess('Configuración de correo guardada correctamente')
-    setTimeout(() => setProfileSuccess(''), 5000)
+    setSmtpSuccess('Configuración de correo guardada correctamente')
+    setTimeout(() => setSmtpSuccess(''), 5000)
   }
 
+  const handleEditCompanyProfile = () => {
+    setProfileApiErrors({})
+    setProfileSuccess('')
+    setProfileEditing(true)
+  }
+
+  const handleCancelCompanyProfile = () => {
+    setProfileApiErrors({})
+    setProfileSuccess('')
+    setProfileEditing(false)
+  }
+
+  const hasCompanyProfile = Boolean(companyProfile?.id)
+  const profileLocked = hasCompanyProfile && !profileEditing
+
+  const statusBadgeClass = (isReady) =>
+    `inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
+      isReady ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+    }`
+
+  const navButtonClass = (section) =>
+    `w-full text-left p-3 rounded-lg border transition-colors ${
+      activeConfigSection === section
+        ? 'bg-white border-yellow-300 shadow-sm'
+        : 'bg-transparent border-transparent hover:bg-white hover:border-gray-200'
+    }`
+
   return (
-    <div className="max-w-2xl space-y-8 animate-fade-in">
+    <div className="max-w-5xl space-y-8 animate-fade-in">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Mi Perfil</h1>
         <p className="text-gray-500 mt-1">Información de tu cuenta y empresa</p>
       </div>
 
-      {/* Datos de usuario */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center">
@@ -97,7 +131,7 @@ export default function Profile() {
           </div>
         </div>
 
-        <form className="space-y-4">
+        <form className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               <span className="flex items-center gap-2">
@@ -125,72 +159,131 @@ export default function Profile() {
             />
           </div>
 
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 md:col-span-2">
             Para modificar datos personales, contacta al administrador.
           </p>
         </form>
       </div>
 
-      {/* Perfil de empresa */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <div className="mb-5">
-          <h2 className="text-lg font-bold text-gray-900">Perfil de Empresa</h2>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100">
+          <h2 className="text-xl font-bold text-gray-900">Configuración para cotizaciones</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Estos datos aparecerán en los PDFs de cotizaciones generados.
+            Administra los datos comerciales y el correo de salida desde un mismo panel.
           </p>
         </div>
 
-        {profileSuccess && (
-          <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm">
-            {profileSuccess}
-          </div>
-        )}
-
-        {loadingProfile ? (
-          <p className="text-gray-400 text-sm py-4">Cargando perfil de empresa...</p>
-        ) : (
-          <CompanyProfileForm
-            initialData={companyProfile}
-            onSubmit={handleSaveCompanyProfile}
-            loading={savingProfile}
-            apiErrors={profileApiErrors}
-          />
-        )}
-      </div>
-
-      {/* Configuración de correo SMTP */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setSmtpExpanded(!smtpExpanded)}
-          className="w-full flex items-center justify-between p-6 hover:bg-gray-50 transition-colors"
-        >
-          <div className="text-left">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <EnvelopeIcon className="w-5 h-5 text-primary-700" />
-              Correo para envío de cotizaciones
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Configura tu correo para enviar cotizaciones a tus clientes
-              {hasSMTPConfig && (
-                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  Configurado
+        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr]">
+          <nav className="bg-gray-50/80 p-4 border-b border-gray-100 lg:border-b-0 lg:border-r">
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setActiveConfigSection('company')}
+                className={navButtonClass('company')}
+              >
+                <span className="flex items-start gap-3">
+                  <BuildingOffice2Icon className="w-5 h-5 text-yellow-700 mt-0.5" />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold text-gray-900">Perfil de Empresa</span>
+                    <span className="block text-xs text-gray-500 mt-0.5">Datos para PDFs</span>
+                  </span>
                 </span>
-              )}
-            </p>
-          </div>
-          {smtpExpanded ? (
-            <ChevronUpIcon className="w-5 h-5 text-gray-400" />
-          ) : (
-            <ChevronDownIcon className="w-5 h-5 text-gray-400" />
-          )}
-        </button>
+                <span className={`${statusBadgeClass(hasCompanyProfile)} mt-3`}>
+                  {hasCompanyProfile ? 'Guardado' : 'Pendiente'}
+                </span>
+              </button>
 
-        {smtpExpanded && (
-          <div className="px-6 pb-6 border-t border-gray-100">
-            <SMTPConfigForm onSaved={handleSMTPSaved} />
+              <button
+                type="button"
+                onClick={() => setActiveConfigSection('smtp')}
+                className={navButtonClass('smtp')}
+              >
+                <span className="flex items-start gap-3">
+                  <EnvelopeIcon className="w-5 h-5 text-primary-700 mt-0.5" />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold text-gray-900">Correo de cotizaciones</span>
+                    <span className="block text-xs text-gray-500 mt-0.5">Envío SMTP</span>
+                  </span>
+                </span>
+                <span className={`${statusBadgeClass(hasSMTPConfig)} mt-3`}>
+                  {hasSMTPConfig ? 'Configurado' : 'Pendiente'}
+                </span>
+              </button>
+            </div>
+          </nav>
+
+          <div className="p-6">
+            {activeConfigSection === 'company' ? (
+              <section>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-5">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
+                      <BuildingOffice2Icon className="w-5 h-5 text-yellow-700" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">Perfil de Empresa</h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Nombre, RUT, contacto, dirección y logo de la empresa.
+                      </p>
+                    </div>
+                  </div>
+                  <span className={statusBadgeClass(hasCompanyProfile)}>
+                    {hasCompanyProfile ? 'Guardado' : 'Pendiente'}
+                  </span>
+                </div>
+
+                {profileSuccess && (
+                  <div className="mb-5 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm flex items-center gap-2">
+                    <CheckCircleIcon className="w-5 h-5" />
+                    <span>{profileSuccess}</span>
+                  </div>
+                )}
+
+                {loadingProfile ? (
+                  <p className="text-gray-400 text-sm py-4">Cargando perfil de empresa...</p>
+                ) : (
+                  <CompanyProfileForm
+                    initialData={companyProfile}
+                    onSubmit={handleSaveCompanyProfile}
+                    loading={savingProfile}
+                    apiErrors={profileApiErrors}
+                    readOnly={profileLocked}
+                    onEdit={handleEditCompanyProfile}
+                    onCancelEdit={handleCancelCompanyProfile}
+                  />
+                )}
+              </section>
+            ) : (
+              <section>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-5">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
+                      <EnvelopeIcon className="w-5 h-5 text-primary-700" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">Correo para envío de cotizaciones</h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Cuenta SMTP desde donde el sistema enviará las cotizaciones a tus clientes.
+                      </p>
+                    </div>
+                  </div>
+                  <span className={statusBadgeClass(hasSMTPConfig)}>
+                    {hasSMTPConfig ? 'Configurado' : 'Pendiente'}
+                  </span>
+                </div>
+
+                {smtpSuccess && (
+                  <div className="mb-5 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm flex items-center gap-2">
+                    <CheckCircleIcon className="w-5 h-5" />
+                    <span>{smtpSuccess}</span>
+                  </div>
+                )}
+
+                <SMTPConfigForm onSaved={handleSMTPSaved} />
+              </section>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   )

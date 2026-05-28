@@ -6,6 +6,7 @@ from .models import Invoice, InvoiceItem
 from products.models import Product, PriceHistory
 from .ocr import OCRProcessor
 from .ai_parser import InvoiceAIParser
+from monaysolutions.config import IVA_RATE
 from thefuzz import process as fuzz_process
 
 logger = logging.getLogger(__name__)
@@ -168,12 +169,12 @@ def process_invoice(invoice_id: int) -> None:
             if ai_total:
                 invoice.total_amount = float(ai_total)
             else:
-                # Fallback: calcular desde ítems (neto) + IVA 19%
+                # Fallback: calcular desde ítems (neto) + IVA configurado
                 subtotal = sum(
                     float(item.total_price or 0)
                     for item in invoice.items.all()
                 )
-                invoice.total_amount = round(subtotal * 1.19, 0)
+                invoice.total_amount = round(subtotal * float(1 + IVA_RATE), 0)
 
             if ai_tax:
                 invoice.tax_amount = float(ai_tax)

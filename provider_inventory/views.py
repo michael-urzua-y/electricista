@@ -16,15 +16,16 @@ from .serializers import (
 )
 from .services import InventoryService, InvoiceProcessingService, AuditService, get_low_stock_items
 from invoices.models import Invoice
+from monaysolutions.config import API_MAX_PAGE_SIZE, LOW_STOCK_PAGE_SIZE
 
 logger = logging.getLogger(__name__)
 
 
 class LowStockPagination(PageNumberPagination):
     """Pagination for low stock items."""
-    page_size = 50
+    page_size = LOW_STOCK_PAGE_SIZE
     page_size_query_param = 'page_size'
-    max_page_size = 100
+    max_page_size = API_MAX_PAGE_SIZE
 
 
 class ProviderInventoryViewSet(viewsets.ModelViewSet):
