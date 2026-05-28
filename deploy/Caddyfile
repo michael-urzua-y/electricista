@@ -32,9 +32,11 @@ monaysolutions.cl, www.monaysolutions.cl, app.monaysolutions.cl {
 		reverse_proxy backend:8000
 	}
 
-	root * /srv/frontend
-	try_files {path} /index.html
-	file_server
+	handle {
+		root * /srv/frontend
+		try_files {path} /index.html
+		file_server
+	}
 }
 
 api.monaysolutions.cl {
