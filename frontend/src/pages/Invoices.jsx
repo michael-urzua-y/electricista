@@ -161,8 +161,8 @@ export default function Invoices() {
   const validateForm = () => {
     const errors = {}
     if (!formData.file) errors.file = 'El archivo es obligatorio'
-    if (!formData.issue_date) errors.issue_date = 'La fecha es obligatoria'
-    if (!formData.received_date) errors.received_date = 'La recepción es obligatoria'
+    if (!formData.issue_date) errors.issue_date = 'La fecha de emisión es obligatoria'
+    if (!formData.received_date) errors.received_date = 'La fecha de recepción es obligatoria'
     if (!formData.provider) errors.provider = 'Selecciona un proveedor'
     setFormErrors(errors)
     return Object.keys(errors).length === 0
@@ -375,8 +375,8 @@ export default function Invoices() {
 
               <div>
                 <label className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
-                  Fecha de emisión
-                  <HelpTooltip text="Fecha que aparece en la factura del proveedor." />
+                  Fecha de emisión del documento
+                  <HelpTooltip text="Fecha impresa en la factura del proveedor. No es la fecha en que la subes al sistema." />
                 </label>
                 <input
                   type="date"
@@ -388,12 +388,13 @@ export default function Invoices() {
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 outline-none"
                 />
                 {formErrors.issue_date && <p className="text-red-500 text-sm mt-1">{formErrors.issue_date}</p>}
+                <p className="text-xs text-gray-500 mt-1">Corresponde a la fecha de la factura. No permite fechas futuras.</p>
               </div>
 
               <div>
                 <label className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
-                  Fecha de recepción
-                  <HelpTooltip text="Fecha en que recibiste la factura. El estimador usa esta fecha para ubicar el IVA crédito." />
+                  Fecha de recepción / registro
+                  <HelpTooltip text="Fecha en que recibiste o registraste la factura en el sistema. El estimador usa esta fecha para ubicar el IVA crédito." />
                 </label>
                 <input
                   type="date"
@@ -405,7 +406,7 @@ export default function Invoices() {
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 outline-none"
                 />
                 {formErrors.received_date && <p className="text-red-500 text-sm mt-1">{formErrors.received_date}</p>}
-                <p className="text-xs text-gray-500 mt-1">El estimador tributario usa esta fecha para el IVA crédito.</p>
+                <p className="text-xs text-gray-500 mt-1">Por defecto carga hoy. Cámbiala si recibiste la factura otro día; esta fecha alimenta el IVA crédito.</p>
               </div>
 
                <div>
@@ -446,27 +447,7 @@ export default function Invoices() {
                  />
                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Margen de Ganancia General (%)
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    name="markup_percentage"
-                    value={formData.markup_percentage}
-                    onChange={handleChange}
-                    min="0"
-                    step="1"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-100 outline-none pr-8"
-                    placeholder="Ej: 15"
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">%</span>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">Este margen se aplicará a todos los productos por defecto.</p>
-              </div>
+              <input type="hidden" name="markup_percentage" value={formData.markup_percentage} readOnly />
 
               <div className="flex gap-3 pt-2">
                 <button
