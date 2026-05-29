@@ -29,7 +29,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
+    <div className="min-h-screen min-h-[100svh] relative overflow-hidden bg-gray-950">
       {/* Single background image covering entire screen */}
       <img
         src="/fondo.jpeg"
@@ -50,11 +50,11 @@ export default function Login() {
         <div className="particle particle-8" />
       </div>
       {/* Color shift overlay: warm amber/yellow tint to match our palette */}
-      <div className="absolute inset-0 bg-amber-900/40" />
-      <div className="absolute inset-0 bg-gradient-to-r from-gray-900/60 via-transparent to-gray-900/70" />
+      <div className="absolute inset-0 bg-amber-900/25 lg:bg-amber-900/40" />
+      <div className="absolute inset-0 bg-gradient-to-b from-gray-950/95 via-gray-950/80 to-gray-950/95 lg:bg-gradient-to-r lg:from-gray-900/60 lg:via-transparent lg:to-gray-900/70" />
 
       {/* Content layer */}
-      <div className="relative z-10 min-h-screen flex">
+      <div className="relative z-10 min-h-screen min-h-[100svh] flex flex-col lg:flex-row">
 
         {/* Left side - Landing text (3/4) */}
         <div className="hidden lg:flex lg:w-3/4 flex-col justify-between px-16 xl:px-24 py-12">
@@ -87,14 +87,18 @@ export default function Login() {
         </div>
 
         {/* Right side - Login panel (1/4, semi-transparent, full height) */}
-        <div className="w-full lg:w-1/4 lg:min-w-[320px] flex flex-col bg-gray-900/80 backdrop-blur-md">
+        <div className="w-full lg:w-1/4 lg:min-w-[320px] flex flex-1 lg:flex-none flex-col bg-gray-950/80 lg:bg-gray-900/80 backdrop-blur-md">
 
           {/* Login content - centered vertically */}
-          <div className="flex-1 flex flex-col justify-center px-8 xl:px-10 py-12">
+          <div className="flex-1 flex flex-col justify-center w-full max-w-sm mx-auto px-6 py-8 sm:px-8 lg:max-w-none lg:px-8 lg:py-12 xl:px-10">
+            <div className="lg:hidden mb-8">
+              <img src="/monay-solutions-logo.png" alt="Monay Solutions" className="h-20 w-auto drop-shadow-2xl" />
+            </div>
+
             {/* Welcome */}
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-white">Bienvenido</h2>
-              <p className="text-gray-400 text-sm mt-1">Ingresa tus credenciales para continuar</p>
+              <h2 className="text-3xl lg:text-2xl font-bold text-white">Bienvenido</h2>
+              <p className="text-gray-300 lg:text-gray-400 text-base lg:text-sm mt-2 lg:mt-1 leading-relaxed">Ingresa tus credenciales para continuar</p>
             </div>
 
             {/* Error */}
@@ -117,7 +121,7 @@ export default function Login() {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   autoComplete="username"
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-sm backdrop-blur-sm"
+                  className="w-full px-4 py-3.5 lg:py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all text-base lg:text-sm backdrop-blur-sm"
                   placeholder="Tu usuario"
                 />
               </div>
@@ -134,7 +138,7 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="current-password"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all pr-12 text-sm backdrop-blur-sm"
+                    className="w-full px-4 py-3.5 lg:py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/30 outline-none transition-all pr-12 text-base lg:text-sm backdrop-blur-sm"
                     placeholder="Tu contraseña"
                   />
                   <button
@@ -156,7 +160,7 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-600 text-gray-900 font-bold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-yellow-500/20"
+                  className="w-full bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-600 text-gray-900 font-bold py-3.5 lg:py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-yellow-500/20"
                 >
                   {loading ? (
                     <span className="inline-flex items-center gap-2">
@@ -172,23 +176,10 @@ export default function Login() {
             </form>
           </div>
 
-{/* Footer */}
+          {/* Footer */}
           <div className="px-6 py-4 border-t border-white/10">
             <p className="text-gray-400 text-xs text-center">
               © 2026 <span className="text-yellow-400 font-semibold">Monay Solutions</span>. Todos los derechos reservados.
-            </p>
-          </div>
-        </div>
-
-        {/* Mobile/Tablet landing text - visible below lg breakpoint */}
-        <div className="lg:hidden relative z-10 px-6 py-8 mt-auto">
-          <div className="max-w-md mx-auto text-center space-y-4">
-            <h1 className="text-3xl font-bold text-white leading-tight">
-              Gestión
-              <span className="text-yellow-400"> Inteligente.</span>
-            </h1>
-            <p className="text-gray-300 text-sm leading-relaxed">
-              Cotiza más rápido, controla gastos, administra materiales y organiza toda tu documentación desde un solo lugar.
             </p>
           </div>
         </div>
