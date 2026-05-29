@@ -91,8 +91,8 @@ export default function Login() {
 
           {/* Login content - centered vertically */}
           <div className="flex-1 flex flex-col justify-center w-full max-w-sm mx-auto px-6 py-8 sm:px-8 lg:max-w-none lg:px-8 lg:py-12 xl:px-10">
-            <div className="lg:hidden mb-8">
-              <img src="/monay-solutions-logo.png" alt="Monay Solutions" className="h-20 w-auto drop-shadow-2xl" />
+            <div className="lg:hidden mb-10 flex justify-center">
+              <img src="/monay-solutions-logo.png" alt="Monay Solutions" className="h-28 w-auto drop-shadow-2xl" />
             </div>
 
             {/* Welcome */}
